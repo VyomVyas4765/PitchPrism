@@ -19,6 +19,7 @@ import { entrepreneurRouter } from './modules/entrepreneur/index.js';
 import { partnerRouter } from './modules/partners/router.js';
 import { setTenancyMode, tenancyContext } from './platform/tenancy.js';
 import { hqRouter } from './modules/hq/admin.js';
+import { pipelineRouter } from './platform/pipeline.js';
 import { invitationAcceptRouter, staffRouter } from './modules/hq/staff.js';
 
 const loginInput = z.object({ email: z.email().max(254).transform(value => value.toLowerCase()), password: z.string().min(1).max(128), client: z.enum(['web', 'mobile']).default('web') }).strict();
@@ -118,6 +119,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
     }
     res.json({ id: String(submission._id), title: submission.title ?? '', status: submission.status, ...(applicant ? { applicant } : {}) });
   });
+  app.use('/api/v1', pipelineRouter()); // route-level guards only: /submissions/:id/process|pipeline, /jobs/:id/cancel, /events
   app.use('/api/v1', entrepreneurRouter(config));
   app.use((_req, res) => { res.status(404).json({ error: 'Endpoint not found.' }); });
   app.use(errorHandler);

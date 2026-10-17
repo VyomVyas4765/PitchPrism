@@ -20,6 +20,12 @@ export const tenancyContext: RequestHandler = (req, _res, next) => {
   context.run({ route: `${req.method} ${req.baseUrl}${req.path}`.replace(/[a-f\d]{24}/gi, ':id') }, next);
 };
 
+/**
+ * Run an already-authorised helper as system work (outside request scope), for example a consent check in
+ * another module. The caller must have checked access first; prefer setOptions({ tenant }) for your own queries.
+ */
+export function asSystem<T>(fn: () => Promise<T>): Promise<T> { return context.exit(fn); }
+
 export class UnscopedQueryError extends Error {
   constructor(collection: string, route: string) { super(`Unscoped query on ${collection} during ${route}`); this.name = 'UnscopedQueryError'; }
 }

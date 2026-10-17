@@ -10,6 +10,7 @@
     "test": "vitest run",
     "seed": "tsx src/seed.ts",
     "fixtures:load": "tsx src/load-fixtures.ts",
+    "pipeline:replay": "tsx src/replay-pipeline.ts",
     "db:check": "tsx src/check-database.ts"
   },
   "dependencies": {

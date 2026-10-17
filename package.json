@@ -17,6 +17,7 @@
     "test": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend test",
     "contracts:generate": "pnpm --filter @pitchprism/contracts generate",
     "seed": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend seed",
-    "fixtures:load": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend fixtures:load"
+    "fixtures:load": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend fixtures:load",
+    "pipeline:replay": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend pipeline:replay --"
   }
 }

@@ -23,7 +23,29 @@ Settings load from the ignored root `.env` or explicit process environment. `mak
 - Callers must redact PII before generation/vision and validate evidence after generation. `complete_json`/`vision_json` validate JSON Schema, not truth, citations, fairness, language quality or financial arithmetic. Those guards remain the stage owners' duties.
 - Logged metrics contain provider/model, duration, token counts and zero hosted API cost, without prompts/model output. Compute, electricity, disks, production hosting and SMS/identity services have separate costs.
 
-## Provider interfaces
+## Job queue (D-29)
+
+`ai/jobqueue.py` is the worker side of the MongoDB queue; `backend/src/platform/jobs.ts` is the API side, and the two implement one protocol. The API enqueues after checking consent and access. The worker connects to `MONGODB_URI`, claims one job at a time with an atomic lease, and wraps each stage in `run.stage(name)`. That records `started` and `done`/`skipped`/`failed` stage events for the live card (streamed over SSE), writes a `pipelineRuns` row with timing and model use (A-29), and extends the lease.
+
+```python
+from ai.jobqueue import Consumer, connect
+
+def handle(job, run):                      # job: the claimed Job document; run.from_stage is where to start
+    if run.should_run("read"):
+        with run.stage("read") as stage:
+            stage.summary(segments=14, languages=["te"])     # small, non-personal counts only
+            stage.model_use(provider="ollama", model="…", llm_calls=1)
+    run.submission_status("READY")         # or NEEDS_INPUT / UNASSESSABLE; reviewers set decisions
+
+Consumer(connect(), handle, worker_id="worker-1").run_forever()
+```
+
+- Raise `CapabilityUnavailable` when a local provider is missing: the job fails visibly with `capability_unavailable` and is not retried. Raise `TimeoutError` or `RetryableError` for transient faults: they are retried with backoff (5 s, 20 s, 80 s) up to `maxAttempts`. Any other exception fails the attempt as `stage_error`.
+- Exception text is never stored, because it may contain prompts or personal data. Staff see fixed messages.
+- A worker that crashes loses its lease after 60 seconds and the job returns to the queue; after `maxAttempts` it fails as `attempts_exhausted`.
+- Until the real handlers exist, `pnpm pipeline:replay` (development only) consumes jobs and replays the fixture's stage timings, marked `replay: true`, so the live card can be built and demonstrated. It never marks an idea assessed unless a stored evaluation already exists.
+
+
 
 `ai/providers.py` defines task requests and a local-provider registry for transcription, OCR, translation, transliteration, embeddings, structured generation and speech synthesis. Unregistered tasks fail explicitly. `ai/llm/adapter.py` provides the initial Ollama `complete_json` and `vision_json` interface; vision requires an installed vision-capable model and redacted image crops. No OCR or multilingual capability is inferred from the existence of that method.
 

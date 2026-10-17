@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import LiveStages from '../pipeline/LiveStages';
+import ReviewTranscript from '../pipeline/ReviewTranscript';
 
 type QueueItem = { submissionId: string; title: string; state: string; status: string; potential: number | null;
   completeness: number | null; band: string | null; updatedAt: string };
@@ -104,6 +105,7 @@ export default function CentreWorkspace() {
             card.input.context.plannedBusinessLocation.pincode].filter(Boolean).join(', ')}
             {card.input.context.businessType ? ` · ${card.input.context.businessType}` : ''}</p></header>
         <LiveStages submissionId={card.submissionId} canRescore onFinished={() => { void refresh(); void open(card.submissionId); }} />
+        <ReviewTranscript submissionId={card.submissionId} />
         <div className="score-strip"><div><strong>{card.evaluation?.potential ?? '—'}</strong><span>Potential / 100</span></div>
           <div><strong>{card.evaluation?.completeness ?? card.quality?.completeness ?? '—'}</strong><span>Completeness / 100</span></div>
           <div><strong>{card.evaluation?.coverage ?? '—'}</strong><span>Coverage / 100</span></div></div>

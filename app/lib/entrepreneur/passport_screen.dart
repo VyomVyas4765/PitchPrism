@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/api.dart';
 import 'common.dart';
+import 'followup_screen.dart';
 
 /// M-15: who can see each idea and why, with one switch per partner type.
 /// Turning a switch off revokes on the server before the screen reloads, so a
@@ -101,8 +102,18 @@ class IdeasScreen extends StatelessWidget {
           child: ListView(children: [
             for (final item in items)
               ListTile(
+                key: Key('idea-${item['id']}'),
                 title: Text(item['title'] as String),
                 subtitle: Text(ctx.t('status${item['status']}')),
+                // D-33: an idea with questions waiting (or being reviewed) opens the follow-up questions.
+                trailing: item['status'] == 'NEEDS_INPUT' ? const Icon(Icons.question_answer_outlined) : null,
+                onTap: const ['NEEDS_INPUT', 'QUEUED', 'PROCESSING'].contains(item['status'])
+                    ? () async {
+                        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FollowUpScreen(
+                            ctx: ctx, submissionId: item['id'] as String, title: ctx.t('followUpTitle'))));
+                        reload();
+                      }
+                    : null,
               ),
           ]),
         );

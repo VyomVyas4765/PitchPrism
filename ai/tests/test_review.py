@@ -5,7 +5,7 @@ from ai.intel.scoring import evaluate, prepare_input
 from ai.llm.adapter import ModelOutputError
 from ai.review import ReviewEngine, extracted_input, pending_questions
 from ai.review import ask, extract, judge
-from ai.review.criteria import CORE, MAX_ASKS_PER_FIELD, QUESTIONS_PER_ROUND
+from ai.review.criteria import CORE, FORM_QUESTION, MAX_ASKS_PER_FIELD, QUESTIONS_PER_ROUND
 from ai.review.segment import PitchTooLong, segment
 from ai.tests.review_fakes import COMPLETE_PITCH, FACTS, FakeLLM
 from ai.tests.test_centre_scoring import scorer
@@ -111,7 +111,9 @@ class ReviewLoopTests(unittest.TestCase):
         session = engine.start(GAPPY_PITCH)
         self.assertEqual(session["status"], "needs_input")
         first = pending_questions(session)
-        self.assertEqual([q["field"] for q in first], ["customers", "location", "funding"])
+        # The printed form's order (Q1 location, Q3 customers, Q4 market research); untouched topics use its wording.
+        self.assertEqual([q["field"] for q in first], ["location", "customers", "market_research"])
+        self.assertEqual(first[0]["questionEn"], FORM_QUESTION["location"])
         self.assertLessEqual(len(first), QUESTIONS_PER_ROUND)
         session, rounds = answer_all(engine, session, lambda field: FACTS[field])
         self.assertEqual(session["status"], "complete")

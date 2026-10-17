@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from typing import Callable
 
-from ai.review.criteria import DESCRIBE, FALLBACK_QUESTION, MAX_ASKS_PER_FIELD, PRIORITY, QUESTIONS_PER_ROUND
+from ai.review.criteria import DESCRIBE, FALLBACK_QUESTION, FORM_QUESTION, MAX_ASKS_PER_FIELD, PRIORITY, QUESTIONS_PER_ROUND
 
 PROMPT_VERSION = "review-ask-v1"
 # Questions must never ask for the entrepreneur's own personal details (D-13, PRD section 21).
@@ -48,16 +48,24 @@ def prompt(keys: list[str], verdicts: dict[str, dict], fields: dict) -> str:
 
 def questions(keys: list[str], verdicts: dict[str, dict], fields: dict, attempts: dict[str, int],
               call: Callable[[str, str, dict], dict]) -> dict[str, str]:
-    """Question text per field. Model wording when it passes the rules, otherwise the bank's fallback wording."""
+    """Question text per field. A topic the pitch has not touched is first asked with the printed form question; an
+    unclear answer gets a model-written follow-up when it passes the rules, otherwise the bank's fallback wording."""
     if not keys:
         return {}
+    first = {key for key in keys if attempts.get(key, 0) == 0 and verdicts[key]["verdict"] == "missing"}
+    written: dict[str, str] = {}
+    follow = [key for key in keys if key not in first]
     try:
-        raw = call("ask", prompt(keys, verdicts, fields), schema(keys))
-        written = {item["key"]: item["question"].strip() for item in raw.get("questions", []) if item.get("key") in keys}
+        if follow:
+            raw = call("ask", prompt(follow, verdicts, fields), schema(follow))
+            written = {item["key"]: item["question"].strip() for item in raw.get("questions", []) if item.get("key") in follow}
     except ValueError:
         written = {}
     result = {}
     for key in keys:
+        if key in first:
+            result[key] = FORM_QUESTION[key]
+            continue
         text = written.get(key, "")
         text = text if acceptable(text) else FALLBACK_QUESTION[key]
         if attempts.get(key, 0) == MAX_ASKS_PER_FIELD - 1:

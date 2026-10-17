@@ -1,7 +1,8 @@
 import mongoose, { Schema } from 'mongoose';
 import { LANGUAGES } from './models.js';
 
-export const PITCH_MODES = ['guided', 'free_talk', 'typed', 'upload'] as const;
+// 'chat' (M-05): the AI asks, the person answers by text, voice note or PDF until every field is covered (D-33).
+export const PITCH_MODES = ['guided', 'free_talk', 'typed', 'upload', 'chat'] as const;
 export const DOCUMENT_KINDS = ['audio', 'pdf', 'image', 'text'] as const;
 export const GUIDED_STEPS = ['sell', 'buyers', 'where', 'money', 'skills'] as const;
 // Byte ceilings per kind; Opus at ~16 kbps keeps a 10-minute pitch near 1.2 MB.
@@ -36,7 +37,8 @@ const documentSchema = new Schema({
   submissionId: Schema.Types.ObjectId,
   entrepreneurId: { type: Schema.Types.ObjectId, required: true },
   createdByUserId: { type: Schema.Types.ObjectId, required: true },
-  purpose: { type: String, enum: ['pitch', 'consent_evidence'], required: true },
+  // chat_reply: a voice note or file sent in the chat after submission; the worker reads it with the open questions.
+  purpose: { type: String, enum: ['pitch', 'consent_evidence', 'chat_reply'], required: true },
   kind: { type: String, enum: DOCUMENT_KINDS, required: true },
   declaredMime: { type: String, required: true },
   clientFileId: { type: String, required: true },
@@ -60,6 +62,19 @@ const chunkSchema = new Schema({
 });
 chunkSchema.index({ documentId: 1, offset: 1 }, { unique: true });
 
+// One entry per person's reply in a chat pitch. Round 0 is the opening reply (it submits the pitch); round n answers
+// the questions the review asked in round n. Assistant turns are read from the review session, never stored twice.
+const chatMessageSchema = new Schema({
+  pitchId: { type: Schema.Types.ObjectId, required: true },
+  round: { type: Number, required: true, min: 0 },
+  kind: { type: String, enum: DOCUMENT_KINDS, required: true },
+  text: { type: String, maxlength: 4000 },
+  documentId: Schema.Types.ObjectId,
+  storageId: { type: Schema.Types.ObjectId, required: true },
+}, { timestamps: true });
+chatMessageSchema.index({ pitchId: 1, round: 1 }, { unique: true });
+
 export const Pitch = mongoose.model('Pitch', pitchSchema);
+export const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 export const PitchDocument = mongoose.model('PitchDocument', documentSchema, 'documents');
 export const DocumentChunk = mongoose.model('DocumentChunk', chunkSchema);

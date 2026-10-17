@@ -33,6 +33,8 @@
           "field": { "$ref": "common.json#/definitions/CanonicalField" },
           "round": { "type": "integer", "minimum": 1 },
           "questionEn": { "type": "string", "maxLength": 600 },
+          "text": { "type": "string", "maxLength": 600, "description": "The question as the entrepreneur reads it in the chat (M-05): their language, or English when no checked translation exists." },
+          "lang": { "type": "string", "enum": ["en", "hi", "mr", "te", "or", "bn"], "description": "Language of text." },
           "reason": { "type": "string", "maxLength": 300 },
           "status": { "type": "string", "enum": ["pending", "answered", "skipped"] },
           "answerSegIds": { "type": "array", "items": { "type": "string", "maxLength": 80 } },

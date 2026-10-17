@@ -67,6 +67,29 @@ class _DemoApi implements ApiClient {
     'block': 'Demo Block', 'district': 'Nashik', 'state': 'Maharashtra', 'pincode': '422001',
   };
 
+  // Chat tour: two scripted questions in the chosen language, then done. No AI runs on the device.
+  final _chats = <String, List<Map<String, dynamic>>>{};
+
+  Map<String, dynamic> _chat(String id, Map<String, dynamic>? body) {
+    final replies = _chats.putIfAbsent(id, () => []);
+    if (body != null && (body['text'] != null || body['documentId'] != null)) {
+      if (replies.length >= 3) throw const ApiException('This demo chat is complete.', 409);
+      replies.add({'role': 'user', 'round': replies.length, 'kind': body['text'] != null ? 'text' : 'pdf', 'text': body['text']});
+    }
+    const asks = ['targetCustomers', 'setupLocation'];
+    final messages = <Map<String, dynamic>>[];
+    for (final reply in replies) {
+      messages.add(reply);
+      final round = reply['round'] as int;
+      if (round < asks.length) {
+        messages.add({'role': 'assistant', 'round': round + 1, 'qId': 'f${round + 1}', 'field': asks[round],
+          'text': onboardingText(_language, asks[round]), 'lang': _language});
+      }
+    }
+    return {'pitchId': id, 'language': _language, 'state': replies.isEmpty ? 'start' : replies.length > asks.length ? 'complete' : 'your_turn',
+      'round': replies.length, 'messages': messages};
+  }
+
   Map<String, dynamic> _consents() => {
     'processing': _processing ? {'id': 'demo-processing'} : null,
     'sharing': Map<String, dynamic>.from(_sharing),
@@ -121,7 +144,13 @@ class _DemoApi implements ApiClient {
       ]) {'key': key, 'maxSeconds': 120,
         'prompt': {for (final language in launchLanguages) language: onboardingText(language, label)}},
     ]};
-    if (path == '/pitches' && body != null) return {'id': 'demo-pitch-${++_nextId}'};
+    if (path == '/pitches' && body != null) {
+      final id = 'demo-pitch-${++_nextId}';
+      _chats[id] = [];
+      return {'id': id};
+    }
+    if (path == '/pitches') return {'pitches': [for (final id in _chats.keys) if (_chats[id]!.isNotEmpty) {'id': id, 'mode': 'chat', 'status': 'SUBMITTED'}]};
+    if (path.endsWith('/chat') || path.endsWith('/chat/retry')) return _chat(path.split('/')[2], body);
     if (path.endsWith('/answers')) return {};
     if (path.endsWith('/documents') && body != null) {
       return {'id': 'demo-document-${++_nextId}', 'receivedBytes': 0, 'state': 'receiving'};

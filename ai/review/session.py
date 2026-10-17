@@ -82,6 +82,25 @@ class ReviewEngine:
                 question["status"] = "skipped"
         return self._review(session, {GROUP_OF[field] for field in touched}, recheck=touched)
 
+    def answer_message(self, session: dict, segments: list[dict], english: str) -> dict:
+        """Merge one free chat reply (text, a voice note or a PDF, already read, redacted and translated by Dev 1's
+        intake into numbered segments) that answers the pending questions together, then review again.
+
+        A chat reply may also touch topics nobody asked about yet, so every group is re-read, not only the asked ones."""
+        if session["status"] != "needs_input":
+            raise ValueError("This review is not waiting for answers.")
+        pending = [question for question in session["questions"] if question["status"] == "pending"]
+        if not pending or not segments:
+            raise ValueError("No pending question was answered.")
+        session["segments"] += segments
+        declined = judge.is_declined(english)
+        for question in pending:
+            question.update({"status": "answered", "answerSegIds": [seg["segId"] for seg in segments], "answerText": english[:2000]})
+            if declined:
+                session["declined"][question["field"]] = "The entrepreneur has not decided this yet."
+        touched = set() if declined else {question["field"] for question in pending}
+        return self._review(session, set(GROUPS), recheck=touched)
+
     # ---- one review pass
     def _review(self, session: dict, groups: set[str], recheck: set[str]) -> dict:
         session["round"] += 1

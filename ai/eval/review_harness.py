@@ -21,10 +21,11 @@ import time
 from ai.intel.scoring import quality
 from ai.review import ReviewEngine, extracted_input, pending_questions
 from ai.review.ask import acceptable
-from ai.review.criteria import CORE
+from ai.review.criteria import CORE, FORM_QUESTION
 
 CASES = Path(__file__).with_name("review_set") / "cases.json"
 NOT_DECIDED = "I have not decided this yet."
+FORM_WORDING = set(FORM_QUESTION.values())  # printed form questions are approved wording, not model output
 
 
 def run_case(case: dict, llm, model: str | None, max_rounds: int = 12) -> dict:
@@ -51,7 +52,8 @@ def run_case(case: dict, llm, model: str | None, max_rounds: int = 12) -> dict:
         "expectedGaps": sorted(expected), "foundGaps": sorted(first_open),
         "recall": round(len(first_open & expected) / len(expected), 3) if expected else None,
         "precision": round(len(first_open & expected) / len(first_open), 3) if first_open else None,
-        "questions": len(questions), "badQuestions": sum(1 for q in questions if not acceptable(q["questionEn"].split(" If you have")[0])),
+        "questions": len(questions), "badQuestions": sum(1 for q in questions if q["questionEn"].split(" If you have")[0] not in FORM_WORDING
+                            and not acceptable(q["questionEn"].split(" If you have")[0])),
         "redundantQuestions": redundant, "declined": sorted(session["declined"]),
         "calls": len(session["calls"]), "failedCalls": sum(1 for call in session["calls"] if not call["ok"]),
         "modelSeconds": round(sum(call["ms"] for call in session["calls"]) / 1000, 1), "wallSeconds": round(time.monotonic() - started, 1),

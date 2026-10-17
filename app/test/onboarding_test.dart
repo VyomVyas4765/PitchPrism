@@ -211,9 +211,7 @@ void main() {
     state = me(consent: true, complete: true);
     await tester.pumpWidget(const SizedBox());
     await show();
-    for (final key in ['speak', 'type', 'upload']) {
-      expect(find.byKey(Key('home-$key')), findsOneWidget);
-    }
+    expect(find.byKey(const Key('home-chat')), findsOneWidget);
   });
 
   testWidgets('an expired session returns to sign-in', (tester) async {

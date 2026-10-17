@@ -338,7 +338,6 @@ export interface Entrepreneur {
   createdVia: "self" | "assisted" | "import";
   facilitatorId?: ObjectId;
   /**
-   * Facilitator device ID used to make assisted applicant creation idempotent.
    * Assisted mode: the facilitator device's ID for this applicant, so an offline retry does not register them twice (Dev 1).
    */
   clientApplicantId?: string;
@@ -756,6 +755,14 @@ export interface ReviewQuestion {
   field: CanonicalField;
   round: number;
   questionEn: string;
+  /**
+   * The question as the entrepreneur reads it in the chat (M-05): their language, or English when no checked translation exists.
+   */
+  text?: string;
+  /**
+   * Language of text.
+   */
+  lang?: "en" | "hi" | "mr" | "te" | "or" | "bn";
   reason?: string;
   status: "pending" | "answered" | "skipped";
   answerSegIds?: string[];

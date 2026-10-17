@@ -269,6 +269,13 @@ class Pipeline:
         for key in CORE_FIELDS:
             fields.setdefault(key, {"state": "not_asked", "evidence": []})
 
+        # Which question each answer line belongs to, so later readers (the chat review) keep the form's context.
+        by_id = {segment["segId"]: segment for segment in segments}
+        for pair in pairs:
+            for line in pair.answer:
+                if pair.canonical and id(line) in seg_of:
+                    by_id[seg_of[id(line)]]["field"] = pair.canonical
+
         location = self._location(fields.get("location"), segments, job.get("profile") or {})
         if location is None:
             pending.append({"stage": "location", "reason": "No district and state could be read; ask the applicant or use the profile."})

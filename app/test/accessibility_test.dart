@@ -23,7 +23,7 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets('home with Speak, Type and Upload meets the same guidelines', (tester) async {
+  testWidgets('home with the chat entry meets the same guidelines', (tester) async {
     final handle = tester.ensureSemantics();
     final server = ScreenServer();
     final services = IntakeServices(api: server, store: MemoryStore(), directory: () async => Directory.systemTemp,
@@ -31,7 +31,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: EntrepreneurShell(api: server, speech: SilentSpeech(), language: 'hi',
         onChangeLanguage: () {}, onSignOut: () async {}, services: (_) => services)));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('home-speak')), findsOneWidget);
+    expect(find.byKey(const Key('home-chat')), findsOneWidget);
     await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
     handle.dispose();

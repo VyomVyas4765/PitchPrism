@@ -72,9 +72,11 @@ Not Dev 3 (integrate, don't duplicate): intake and AI stages (Dev 1); scoring, s
 
 ## In progress
 
-2026-10-17 · Phase 2, security foundations (tenancy plugin, permission matrix, audit middleware, role router mounting) · touches `backend/src/auth/`, `backend/src/models/`, `backend/src/app.ts`, `packages/contracts/src/index.ts` · contracts v1 awaiting review by Devs 1, 2 and 4.
+None claimed. Next Dev 3 work: migrate live models and HQ routes to the generated domain contracts, then complete request-scoped tenancy, the permission matrix, audit middleware, and D-26 MongoDB jobs/events. Contracts v1 still await Devs 1, 2 and 4 review.
 
 ## Done
+
+- 2026-10-17 · Phase 1/2 integration and access slice: removed a merged duplicate Mongoose export that compiled `Org` twice; restored the live Entrepreneur/Consent contract models and assisted applicant device ID contract/index; pointed fixture loading and contract tests to the generated model registry. Centre cohort writes now derive/validate their organisation scope and are audited. HQ routing requires active processing and partner-type sharing consent before activating shares. Added cross-centre and consent access tests; W-04/W-32 remain `api_partial`. Verified 123 backend tests, workspace typecheck/build, contract generation, matrix generation and duty coverage. Dev 1 should review the removal of duplicate declarations from its `modules/entrepreneur/models.ts`; generated and live model migrations remain separate. Atlas DNS remains NXDOMAIN before port/authentication checks.
 
 - 2026-10-17 · Phase 1 end-to-end verification on a live local stack (MongoDB 8.2 standalone, API, dashboard, worker): seed and new `pnpm fixtures:load` both idempotent; stored ObjectIds/Dates, capped `stageEvents`, indexes and encrypted applicant fields confirmed in MongoDB; 29 HTTP checks across seven roles (scope, partner projection, lender rules, origin checks, cookies, logout/revocation) pass twice in a row; dashboard sign-in, session and scoped reads through the Next proxy verified. Fixed: the login limiter counted successful sign-ins and locked out a shared IP after ten logins; it now counts failures only (new test). Not verified here: Docker Compose, Firebase OTP, Android build.
 

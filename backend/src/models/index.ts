@@ -29,7 +29,8 @@ export const Entrepreneur = define<S.Entrepreneur>('Entrepreneur', {
     personal: { select: false }, // sealed; read only with .select('+personal')
     district: { trim: true }, pincode: { trim: true }, trade: { trim: true },
   },
-  indexes: [[{ contactHashes: 1 }], [{ homeOrgId: 1 }]],
+  indexes: [[{ contactHashes: 1 }], [{ homeOrgId: 1 }],
+    [{ facilitatorId: 1, clientApplicantId: 1 }, { unique: true, partialFilterExpression: { clientApplicantId: { $type: 'string' } } }]],
 });
 export const Consent = define<S.Consent>('Consent', {
   indexes: [

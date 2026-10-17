@@ -325,6 +325,10 @@ export interface Entrepreneur {
   education?: string;
   createdVia: "self" | "assisted" | "import";
   facilitatorId?: ObjectId;
+  /**
+   * Facilitator device ID used to make assisted applicant creation idempotent.
+   */
+  clientApplicantId?: string;
   homeOrgId?: ObjectId;
   createdAt?: DateTime;
   updatedAt?: DateTime;

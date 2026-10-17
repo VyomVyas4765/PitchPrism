@@ -511,7 +511,7 @@
     "owner": "dev-3-hq-platform",
     "priority": "P0",
     "requirement": "Routing rules: which partner orgs receive which trades, sectors and districts",
-    "implementation": "Partner routing-rule administration",
+    "implementation": "HQ routing API exists; activation now checks current processing and partner-type consent. Rule form, domain-contract migration, and complete audit remain pending.",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Deterministic trade/district rule forms; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
@@ -519,9 +519,9 @@
       "Role/org/consent guards; shared contracts"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate partner routing-rule administration with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "acceptance_test": "Demonstrate rule form and permitted projection; verify missing or revoked consent blocks partner access, cross-org denial, loading/error/empty states, and audit history.",
+    "status": "api_partial",
+    "evidence": ["backend/tests/hq-admin.test.ts"]
   },
   "W-05": {
     "owner": "dev-3-hq-platform",
@@ -993,7 +993,7 @@
     "owner": "dev-3-hq-platform",
     "priority": "P0",
     "requirement": "Cohort and trade admin: create cohorts, edit the trade list, synonyms and OSM tags",
-    "implementation": "Cohort/trade admin",
+    "implementation": "Cohort API derives centre ownership from the session, validates active centre targets, and tests cross-centre denial. Trade API and UI still need contract-aligned completion.",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Shared admin service with narrower centre permissions; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
@@ -1001,9 +1001,9 @@
       "Role/org/consent guards; shared contracts"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate cohort/trade admin with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "acceptance_test": "Demonstrate cohort/trade admin with loading/error/empty states, contract validation and audit; test HQ versus centre scope, cross-org denial and permitted projection.",
+    "status": "api_partial",
+    "evidence": ["backend/tests/hq-admin.test.ts"]
   },
   "W-33": {
     "owner": "dev-3-hq-platform",

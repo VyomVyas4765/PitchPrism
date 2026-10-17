@@ -7,7 +7,7 @@ import { connectDatabase } from './database.js';
 import { contactHasher } from './crypto.js';
 import { piiVault } from './modules/entrepreneur/pii-vault.js';
 import { hashPassword } from './auth/password.js';
-import { ALL_MODELS } from './models.js';
+import { ALL_MODELS } from './models/index.js';
 
 // Development only: loads packages/contracts/fixtures/synthetic.json so every role has realistic records to
 // work against (pnpm fixtures:load). Upserts by _id, so reruns refresh the fixtures without touching other data.

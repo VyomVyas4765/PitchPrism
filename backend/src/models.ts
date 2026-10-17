@@ -1,7 +1,7 @@
-// Barrel kept for existing imports. Models live in ./models/index.ts and are built from the shared contracts.
-export * from './models/index.js';
 import mongoose, { Schema } from 'mongoose';
 import { ORG_TYPES, ROLES } from '@pitchprism/contracts';
+import { contractSchema } from './models/schema.js';
+import type * as Stored from './models/stored.generated.js';
 const orgSchema = new Schema({
   name: { type: String, required: true }, type: { type: String, enum: ORG_TYPES, required: true },
   active: { type: Boolean, default: true }, fundingMode: { type: String, enum: ['lender', 'csr'] },
@@ -24,7 +24,7 @@ const submissionSchema = new Schema({
   title: { type: String, required: true }, ownerOrgId: { type: Schema.Types.ObjectId, required: true },
   sourceOrgId: Schema.Types.ObjectId, entrepreneurId: { type: Schema.Types.ObjectId, required: true },
   createdByUserId: { type: Schema.Types.ObjectId, required: true },
-  cohortId: Schema.Types.ObjectId, language: String, inputFormat: String, gender: String,
+  cohortId: Schema.Types.ObjectId, language: String, inputFormat: String, channel: String, gender: String,
   district: String, trade: String, sector: String, band: String, pathway: String, score: Number,
   status: { type: String, enum: ['DRAFT', 'READY', 'SHORTLISTED', 'NOT_YET', 'MORE_INFO', 'UNASSESSABLE'], default: 'DRAFT' },
   fundingReady: { type: Boolean, default: false },
@@ -109,3 +109,16 @@ export const StageEvent = mongoose.model('StageEvent', stageEventSchema);
 export const Job = mongoose.model('Job', jobSchema);
 export const ReviewSample = mongoose.model('ReviewSample', reviewSampleSchema);
 export const ClusterPoint = mongoose.model('ClusterPoint', clusterPointSchema);
+// These two collections already use the reviewed domain contracts; the other live models still
+// need a coordinated migration from the legacy definitions above to ./models/index.ts.
+export const Entrepreneur = mongoose.model<Stored.Entrepreneur>('Entrepreneur', contractSchema('Entrepreneur', {
+  overrides: { userId: { unique: true, sparse: true }, personal: { select: false } },
+  indexes: [[{ contactHashes: 1 }], [{ homeOrgId: 1 }],
+    [{ facilitatorId: 1, clientApplicantId: 1 }, { unique: true, partialFilterExpression: { clientApplicantId: { $type: 'string' } } }]],
+}));
+export const Consent = mongoose.model<Stored.Consent>('Consent', contractSchema('Consent', {
+  indexes: [
+    [{ entrepreneurId: 1, purpose: 1, status: 1 }],
+    [{ entrepreneurId: 1, purpose: 1, scope: 1 }, { unique: true, partialFilterExpression: { status: 'active' } }],
+  ],
+}));

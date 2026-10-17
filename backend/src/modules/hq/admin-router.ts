@@ -2,14 +2,16 @@ import { createHash } from 'node:crypto';
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { requirePermission } from '../../auth/authorization.js';
+import { HttpError } from '../../errors.js';
 import { AuditEvent, Cohort, ClusterPoint, EvaluationRun, Job, Org, Programme, ReviewSample, RoutingRule, Rubric, StageEvent, Submission, Trade } from '../../models.js';
+import { sharingAllowed } from '../entrepreneur/index.js';
 
 const id = z.string().regex(/^[a-f\d]{24}$/i);
 const text = z.string().trim().min(1).max(160);
 const definition = z.record(z.string(), z.unknown());
 const versioned = z.object({ name: text, definition }).strict();
 const rule = z.object({ partnerOrgId: id, trades: z.array(text).max(100).default([]), sectors: z.array(text).max(100).default([]), districts: z.array(text).max(100).default([]) }).strict();
-const cohort = z.object({ name: text, orgId: id, programmeId: id.optional(), startsAt: z.coerce.date().optional(), endsAt: z.coerce.date().optional() }).strict();
+const cohort = z.object({ name: text, orgId: id.optional(), programmeId: id.optional(), startsAt: z.coerce.date().optional(), endsAt: z.coerce.date().optional() }).strict();
 const trade = z.object({ name: text, synonyms: z.array(text).max(50).default([]), osmTags: z.array(text).max(50).default([]) }).strict();
 const pagination = z.object({ page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(25) });
 const pipelineQuery = pagination.extend({
@@ -59,12 +61,26 @@ export function hqAdminRouter() {
     res.json(item);
   });
   router.get('/hq/cohorts', cohorts, async (req, res) => res.json({ cohorts: await Cohort.find(req.auth!.user.role === 'hq_admin' ? {} : { orgId: req.auth!.user.orgId }).sort({ startsAt: -1 }).lean() }));
-  router.post('/hq/cohorts', cohorts, async (req, res) => res.status(201).json(await Cohort.create(cohort.parse(req.body))));
+  router.post('/hq/cohorts', cohorts, async (req, res) => {
+    const input = cohort.parse(req.body);
+    const actor = req.auth!.user;
+    if (actor.role !== 'hq_admin' && input.orgId && input.orgId !== actor.orgId) throw new HttpError(403, 'This centre is outside your access.');
+    const orgId = actor.role === 'hq_admin' ? input.orgId : actor.orgId;
+    if (!orgId) throw new HttpError(400, 'Choose a centre.');
+    if (!await Org.exists({ _id: orgId, type: 'centre', active: true })) throw new HttpError(400, 'Choose an active centre.');
+    const item = await Cohort.create({ ...input, orgId });
+    await AuditEvent.create({ actorUserId: actor.id, action: 'create', resourceType: 'Cohort', resourceId: String(item._id) });
+    res.status(201).json(item);
+  });
   router.patch('/hq/cohorts/:id', cohorts, async (req, res) => {
     const input = cohort.partial().parse(req.body);
-    const filter = req.auth!.user.role === 'hq_admin' ? { _id: id.parse(req.params.id) } : { _id: id.parse(req.params.id), orgId: req.auth!.user.orgId };
-    const item = await Cohort.findOneAndUpdate(filter, { $set: input }, { returnDocument: 'after' }).lean();
+    const actor = req.auth!.user;
+    if (actor.role !== 'hq_admin' && input.orgId && input.orgId !== actor.orgId) throw new HttpError(403, 'This centre is outside your access.');
+    if (input.orgId && !await Org.exists({ _id: input.orgId, type: 'centre', active: true })) throw new HttpError(400, 'Choose an active centre.');
+    const filter = actor.role === 'hq_admin' ? { _id: id.parse(req.params.id) } : { _id: id.parse(req.params.id), orgId: actor.orgId };
+    const item = await Cohort.findOneAndUpdate(filter, { $set: actor.role === 'hq_admin' ? input : { ...input, orgId: actor.orgId } }, { returnDocument: 'after' }).lean();
     if (!item) { res.status(404).json({ error: 'Cohort not found.' }); return; }
+    await AuditEvent.create({ actorUserId: actor.id, action: 'update', resourceType: 'Cohort', resourceId: String(item._id) });
     res.json(item);
   });
   router.get('/hq/trades', cohorts, async (_req, res) => res.json({ trades: await Trade.find({ active: true }).sort({ name: 1 }).lean() }));
@@ -104,9 +120,13 @@ export function hqAdminRouter() {
       const fits = (values: string[], actual?: string) => values.length === 0 || (!!actual && values.includes(actual));
       return fits(item.trades, submission.trade ?? undefined) && fits(item.sectors, submission.sector ?? undefined) && fits(item.districts, submission.district ?? undefined);
     });
-    const partnerOrgs = await Org.find({ _id: { $in: matches.map(item => item.partnerOrgId) }, type: { $in: ['sector_partner', 'funding_partner'] } }).select('_id type').lean();
-    const partnerIds = partnerOrgs.map(item => item._id);
-    submission.shares = partnerOrgs.map(org => ({ orgId: org._id, partnerType: org.type === 'funding_partner' ? 'funding_partner' : 'sector_partner', active: true, contactAccepted: false })) as typeof submission.shares;
+    const partnerOrgs = await Org.find({ _id: { $in: matches.map(item => item.partnerOrgId) }, type: { $in: ['sector_partner', 'funding_partner'] }, active: true }).select('_id type').lean();
+    const allowed = new Map(await Promise.all((['sector_partner', 'funding_partner'] as const).map(async type =>
+      [type, await sharingAllowed(submission.entrepreneurId, type)] as const)));
+    const consentedOrgs = partnerOrgs.filter(org => allowed.get(org.type as 'sector_partner' | 'funding_partner'));
+    if (partnerOrgs.length && !consentedOrgs.length) throw new HttpError(409, 'The applicant has not consented to sharing with these partner types.');
+    const partnerIds = consentedOrgs.map(item => item._id);
+    submission.shares = consentedOrgs.map(org => ({ orgId: org._id, partnerType: org.type === 'funding_partner' ? 'funding_partner' : 'sector_partner', active: true, contactAccepted: false })) as typeof submission.shares;
     await submission.save();
     await AuditEvent.create({ actorUserId: req.auth!.user.id, action: 'route', resourceType: 'Submission', resourceId: String(submission._id), metadata: { partnerCount: partnerIds.length } });
     res.json({ submissionId: String(submission._id), matchedRules: matches.length, partnerOrgIds: partnerIds.map(String) });

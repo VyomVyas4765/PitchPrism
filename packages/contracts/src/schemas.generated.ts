@@ -852,6 +852,11 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         "facilitatorId": {
           "$ref": "#/definitions/ObjectId"
         },
+        "clientApplicantId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{8,64}$",
+          "description": "Facilitator device ID used to make assisted applicant creation idempotent."
+        },
         "homeOrgId": {
           "$ref": "#/definitions/ObjectId",
           "description": "Centre that owns the relationship, once assigned."

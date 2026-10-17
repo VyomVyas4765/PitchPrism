@@ -18,6 +18,7 @@
     "education": { "type": "string", "maxLength": 120 },
     "createdVia": { "type": "string", "enum": ["self", "assisted", "import"] },
     "facilitatorId": { "$ref": "common.json#/definitions/ObjectId" },
+    "clientApplicantId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{8,64}$", "description": "Facilitator device ID used to make assisted applicant creation idempotent." },
     "homeOrgId": { "$ref": "common.json#/definitions/ObjectId", "description": "Centre that owns the relationship, once assigned." },
     "createdAt": { "$ref": "common.json#/definitions/DateTime" },
     "updatedAt": { "$ref": "common.json#/definitions/DateTime" }

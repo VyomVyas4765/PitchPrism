@@ -6,7 +6,7 @@ import { createApp } from '../src/app.js';
 import { hashPassword } from '../src/auth/password.js';
 import { configSchema } from '../src/config.js';
 import { connectDatabase } from '../src/database.js';
-import { AuditEvent, Cohort, Job, Org, Programme, Rubric, Session, Submission, User } from '../src/models.js';
+import { AuditEvent, Cohort, Consent, Job, Org, Programme, RoutingRule, Rubric, Session, Submission, User } from '../src/models.js';
 
 const config = configSchema.parse({ NODE_ENV: 'test', JWT_SECRET: 'hq-admin-test-secret-with-more-than-thirty-two-characters' });
 const password = 'SyntheticHQPassword!42';
@@ -21,11 +21,11 @@ let centreCookie: string;
 beforeAll(async () => {
   mongo = await MongoMemoryServer.create();
   await connectDatabase({ ...config, MONGODB_URI: mongo.getUri() });
-  await Promise.all([User.init(), Org.init(), Session.init(), Submission.init(), Programme.init(), Rubric.init(), Cohort.init(), Job.init(), AuditEvent.init()]);
+  await Promise.all([User.init(), Org.init(), Session.init(), Submission.init(), Programme.init(), Rubric.init(), Cohort.init(), Job.init(), AuditEvent.init(), Consent.init(), RoutingRule.init()]);
   app = createApp(config);
 }, 120000);
 beforeEach(async () => {
-  await Promise.all([User.deleteMany({}), Org.deleteMany({}), Session.deleteMany({}), Submission.deleteMany({}), Programme.deleteMany({}), Rubric.deleteMany({}), Cohort.deleteMany({}), Job.deleteMany({}), AuditEvent.deleteMany({})]);
+  await Promise.all([User.deleteMany({}), Org.deleteMany({}), Session.deleteMany({}), Submission.deleteMany({}), Programme.deleteMany({}), Rubric.deleteMany({}), Cohort.deleteMany({}), Job.deleteMany({}), AuditEvent.deleteMany({}), Consent.deleteMany({}), RoutingRule.deleteMany({})]);
   const orgs = await Org.create([{ name: 'HQ', type: 'hq' }, { name: 'Centre', type: 'centre' }]);
   const hqOrg = orgs[0]!;
   const centreOrg = orgs[1]!;
@@ -58,6 +58,37 @@ describe('HQ administration routes', () => {
     await request(app).get('/api/v1/hq/pipeline').set('Cookie', centreCookie).expect(403);
     await request(app).post('/api/v1/hq/review-samples').set('Cookie', centreCookie).set('Origin', config.WEB_ORIGIN).send({ limit: 1 }).expect(403);
     await request(app).post('/api/v1/hq/submissions/' + submission.id + '/route').set('Cookie', centreCookie).set('Origin', config.WEB_ORIGIN).send({}).expect(403);
+  });
+  it('keeps centre cohort writes inside the signed-in centre', async () => {
+    const sibling = await Org.create({ name: 'Sibling centre', type: 'centre' });
+    const origin = config.WEB_ORIGIN;
+    const own = await request(app).post('/api/v1/hq/cohorts').set('Cookie', centreCookie).set('Origin', origin)
+      .send({ name: 'Own cohort' }).expect(201);
+    expect(String(own.body.orgId)).toBe(String(centre._id));
+    await request(app).post('/api/v1/hq/cohorts').set('Cookie', centreCookie).set('Origin', origin)
+      .send({ name: 'Foreign cohort', orgId: String(sibling._id) }).expect(403);
+    await request(app).patch(`/api/v1/hq/cohorts/${own.body._id}`).set('Cookie', centreCookie).set('Origin', origin)
+      .send({ orgId: String(sibling._id) }).expect(403);
+    expect(String((await Cohort.findById(own.body._id))?.orgId)).toBe(String(centre._id));
+    const foreign = await Cohort.create({ name: 'Sibling cohort', orgId: sibling._id });
+    await request(app).patch(`/api/v1/hq/cohorts/${foreign._id}`).set('Cookie', centreCookie).set('Origin', origin)
+      .send({ name: 'Taken over' }).expect(404);
+    await request(app).post('/api/v1/hq/cohorts').set('Cookie', hqCookie).set('Origin', origin)
+      .send({ name: 'Wrong type', orgId: String(hq.orgId) }).expect(400);
+  });
+  it('requires current applicant consent before HQ grants partner access', async () => {
+    const partner = await Org.create({ name: 'Synthetic sector partner', type: 'sector_partner' });
+    await RoutingRule.create({ partnerOrgId: partner._id, trades: [], sectors: [], districts: [] });
+    const path = `/api/v1/hq/submissions/${submission._id}/route`;
+    await request(app).post(path).set('Cookie', hqCookie).set('Origin', config.WEB_ORIGIN).send({}).expect(409);
+    expect((await Submission.findById(submission._id))?.shares).toHaveLength(0);
+    const applicantId = submission.entrepreneurId;
+    const base = { entrepreneurId: applicantId, status: 'active' as const, method: 'app_tap' as const, language: 'en' as const, noticeVersion: 'consent-notice-2026-10-17', grantedAt: new Date(), grantedByUserId: applicantId };
+    await Consent.create({ ...base, purpose: 'processing', scope: 'all' });
+    await request(app).post(path).set('Cookie', hqCookie).set('Origin', config.WEB_ORIGIN).send({}).expect(409);
+    await Consent.create({ ...base, purpose: 'partner_sharing', scope: 'sector_partner' });
+    await request(app).post(path).set('Cookie', hqCookie).set('Origin', config.WEB_ORIGIN).send({}).expect(200);
+    expect((await Submission.findById(submission._id))?.shares?.[0]?.orgId?.toString()).toBe(String(partner._id));
   });
   it('creates a durable processing job when a job is explicitly queued', async () => {
     const job = await Job.create({ type: 'submission.process', payload: { submissionId: submission.id } });

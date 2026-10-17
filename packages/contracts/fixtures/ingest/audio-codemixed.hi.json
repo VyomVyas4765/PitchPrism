@@ -1,0 +1,33 @@
+{
+  "submissionId": "fixture-audio-codemixed-hi",
+  "contractVersion": "ingest-output.v0",
+  "segments": [
+    { "segId": "s_0001", "source": { "type": "audio", "documentId": "doc_audio_step1", "chunkId": "c_0001", "start": 0.4, "end": 14.8 }, "text": "मैं घर पर पापड़ और अचार बनाऊँगी, और बाद में मसाले भी।", "lang": "hi", "textEn": "I will make papad and pickles at home, and later spices too.", "translit": null, "struck": false, "supersededBy": null, "confidence": 0.86 },
+    { "segId": "s_0002", "source": { "type": "audio", "documentId": "doc_audio_step2", "chunkId": "c_0001", "start": 0.2, "end": 21.5 }, "text": "मेरे customers गाँव की दुकानें और self help group की महिलाएँ होंगी, हर हफ़्ते order देती हैं।", "lang": "hi", "langs": ["hi", "en"], "textEn": "My customers will be village shops and women from the self-help group; they order every week.", "translit": null, "struck": false, "supersededBy": null, "confidence": 0.78 },
+    { "segId": "s_0003", "source": { "type": "audio", "documentId": "doc_audio_step3", "chunkId": "c_0001", "start": 0.5, "end": 12.1 }, "text": "अपने घर से ही, सिन्नर तालुका, नाशिक।", "lang": "hi", "textEn": "From my own home, Sinnar taluka, Nashik.", "translit": null, "struck": false, "supersededBy": null, "confidence": 0.84 },
+    { "segId": "s_0004", "source": { "type": "audio", "documentId": "doc_audio_step4", "chunkId": "c_0001", "start": 0.3, "end": 27.9 }, "text": "मुझे लगभग पंद्रह हज़ार चाहिए, पाँच हज़ार मेरे पास हैं, बाकी SHG loan से। मेरा नंबर ⟨PHONE⟩ है।", "lang": "hi", "langs": ["hi", "en"], "textEn": "I need about fifteen thousand; I have five thousand, the rest from an SHG loan. My number is ⟨PHONE⟩.", "translit": null, "struck": false, "supersededBy": null, "confidence": 0.81 },
+    { "segId": "s_0005", "source": { "type": "audio", "documentId": "doc_audio_step4", "chunkId": "c_0002", "start": 28.4, "end": 41.0 }, "text": "एक पैकेट चालीस रुपये का, महीने में करीब छह हज़ार कमाई।", "lang": "hi", "textEn": "One packet for forty rupees; about six thousand a month in earnings.", "translit": null, "struck": false, "supersededBy": null, "confidence": 0.8 },
+    { "segId": "s_0006", "source": { "type": "audio", "documentId": "doc_audio_step5", "chunkId": "c_0001", "start": 0.6, "end": 18.2 }, "text": "दस साल से घर के लिए बनाती हूँ, मेले में दो बार बेचा भी है।", "lang": "hi", "textEn": "I have made them for my household for ten years and have sold at the fair twice.", "translit": null, "struck": false, "supersededBy": null, "confidence": 0.85 }
+  ],
+  "qa": [
+    { "qId": "step1.offering", "question": "आप क्या बेचेंगे, और सामान कहाँ से लेंगे?", "questionLang": "hi", "answerSegIds": ["s_0001"], "canonicalField": "offering", "mappingConfidence": 1, "state": "answered", "overwrites": [] },
+    { "qId": "step1.suppliers", "question": "आप क्या बेचेंगे, और सामान कहाँ से लेंगे?", "questionLang": "hi", "answerSegIds": [], "canonicalField": "suppliers", "mappingConfidence": 1, "state": "missing", "blankMarker": null, "overwrites": [] },
+    { "qId": "step2", "question": "कौन खरीदेगा?", "questionLang": "hi", "answerSegIds": ["s_0002"], "canonicalField": "customers", "mappingConfidence": 1, "state": "answered", "overwrites": [] },
+    { "qId": "step3", "question": "कहाँ?", "questionLang": "hi", "answerSegIds": ["s_0003"], "canonicalField": "location", "mappingConfidence": 1, "state": "answered", "overwrites": [] },
+    { "qId": "step4", "question": "कितने पैसे चाहिए?", "questionLang": "hi", "answerSegIds": ["s_0004", "s_0005"], "canonicalField": "funding", "mappingConfidence": 1, "state": "answered", "overwrites": [] },
+    { "qId": "step5", "question": "आपके हुनर क्या हैं?", "questionLang": "hi", "answerSegIds": ["s_0006"], "canonicalField": "existing_business", "mappingConfidence": 0.7, "state": "answered", "overwrites": [] }
+  ],
+  "fields": {
+    "offering": { "value": "Homemade papad and pickles; spices later", "segIds": ["s_0001"], "confidence": 0.85 },
+    "customers": { "value": "Village shops and women from a self-help group, ordering weekly", "segIds": ["s_0002"], "confidence": 0.8 },
+    "location": { "value": "Home-based, Sinnar taluka, Nashik district", "segIds": ["s_0003"], "confidence": 0.85 },
+    "funding": { "value": "About ₹15,000 needed: ₹5,000 own money, the rest from a self-help-group loan", "segIds": ["s_0004"], "confidence": 0.8 },
+    "investment_required": { "value": "₹15,000", "segIds": ["s_0004"], "confidence": 0.8 },
+    "self_investment": { "value": "₹5,000", "segIds": ["s_0004"], "confidence": 0.8 },
+    "unit_price": { "value": "₹40 per packet", "segIds": ["s_0005"], "confidence": 0.8 },
+    "monthly_revenue": { "value": "About ₹6,000 per month", "segIds": ["s_0005"], "confidence": 0.75 },
+    "existing_business": { "value": "Ten years of household production; sold at a fair twice", "segIds": ["s_0006"], "confidence": 0.75 }
+  },
+  "summary": { "value": "Home-based papad and pickle unit selling to village shops and a self-help group.", "segIds": ["s_0001", "s_0002", "s_0003"], "confidence": 0.85 },
+  "problemAddressed": null
+}

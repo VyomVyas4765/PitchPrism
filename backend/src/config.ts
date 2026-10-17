@@ -12,11 +12,14 @@ export const configSchema = z.object({
   MONGODB_DNS_SERVERS: z.string().default('').refine(value => !value || value.split(',').every(ip => isIP(ip.trim()) !== 0), 'Use comma-separated DNS server IP addresses'),
   JWT_SECRET: z.string().min(32, 'Set JWT_SECRET to at least 32 random characters in .env'),
   FIREBASE_PROJECT_ID: z.string().default(''),
+  // Entrepreneur personal fields are sealed with this key; blank disables profile storage (fails closed).
+  PII_ENCRYPTION_KEY: z.string().default('').refine(value => !value || /^[a-f\d]{64}$/i.test(value), 'PII_ENCRYPTION_KEY must be 64 hex characters (32 random bytes)'),
 });
 export type Config = z.infer<typeof configSchema>;
 export function readConfig(): Config {
   const config = configSchema.parse(process.env);
   if (config.NODE_ENV === 'production' && !config.WEB_ORIGIN.startsWith('https://')) throw new Error('Production WEB_ORIGIN must use HTTPS');
   if (config.NODE_ENV === 'production' && process.env.FIREBASE_AUTH_EMULATOR_HOST) throw new Error('Firebase emulator is forbidden in production');
+  if (config.NODE_ENV === 'production' && !config.PII_ENCRYPTION_KEY) throw new Error('Production requires PII_ENCRYPTION_KEY');
   return config;
 }

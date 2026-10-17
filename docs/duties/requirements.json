@@ -9,12 +9,16 @@
     "dependencies": [
       "Auth/consent contracts",
       "Private submission API",
-      "Local worker capabilities where required"
+      "Local worker capabilities where required",
+      "Flutter picker with per-locale TTS check (pending)"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "All six locale choices are usable; unavailable voices are explicit",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-02": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -50,8 +54,11 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Consent is recorded per purpose and can be withdrawn",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-04": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -67,8 +74,11 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Profile edit persists without leaking sensitive attributes to models",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-05": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -85,7 +95,9 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Each source format reaches the same submission pipeline",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "docs/duties/dev-1-intake-proposal.md"
+    ]
   },
   "M-06": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -102,7 +114,10 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Pause/re-record works and evidence retains timestamps",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "data/seed/question-bank.json",
+      "ai/tests/test_question_bank.py"
+    ]
   },
   "M-07": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -187,7 +202,9 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Airplane-mode recording survives restart and uploads once",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "docs/duties/dev-1-intake-proposal.md"
+    ]
   },
   "M-12": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -204,7 +221,9 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Lifecycle updates remain scoped and refresh after reconnection",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-13": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -250,12 +269,16 @@
     "dependencies": [
       "Auth/consent contracts",
       "Private submission API",
-      "Local worker capabilities where required"
+      "Local worker capabilities where required",
+      "Share contact-request state (W-17, Dev 4) for accept/decline"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Revoke and contact decline remove partner access immediately",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-16": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -309,7 +332,9 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Restart/reconnect does not lose or mix applicants",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-19": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -993,7 +1018,9 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Saved original hashes match; no overwrite on retry",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "docs/duties/dev-1-intake-proposal.md"
+    ]
   },
   "A-02": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1007,8 +1034,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "All organiser formats classified or explicitly unknown",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/classify.py",
+      "ai/tests/test_ingest_classify.py"
+    ]
   },
   "A-03": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1016,14 +1046,17 @@
     "requirement": "Convert to 16 kHz mono with ffmpeg; split at silences with a voice-activity detector into chunks under 30 s, each with its start time; reject near-silent or clipped audio with a re-record prompt",
     "implementation": "Audio normalization and pause-based chunks",
     "execution": "worker",
-    "local_strategy": "Installed ffmpeg; local VAD candidate not yet validated",
+    "local_strategy": "Installed ffmpeg; silencedetect pause baseline; Silero-class VAD comparison and threshold tuning not yet validated",
     "dependencies": [
       "Original audio; timestamps"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "16 kHz mono chunks under 30 s preserve time anchors",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/audio.py",
+      "ai/tests/test_ingest_audio.py"
+    ]
   },
   "A-04": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1113,7 +1146,9 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Custom/changed forms distinguish missing, not asked and unknown Q&A",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "data/seed/question-bank.json"
+    ]
   },
   "A-10": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1127,8 +1162,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Phone/email/name never reach model/map payloads or partner images",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/pii.py",
+      "ai/tests/test_ingest_pii.py",
+      "backend/src/modules/entrepreneur/pii-vault.ts"
+    ]
   },
   "A-11": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1158,7 +1197,10 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "At least 90% canonical field accuracy; drop uncited claims",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "packages/contracts/schemas/drafts/ingest-output.v0.json",
+      "packages/contracts/fixtures/ingest/README.md"
+    ]
   },
   "A-13": {
     "owner": "dev-2-centre-cohort",

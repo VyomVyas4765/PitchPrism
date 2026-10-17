@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-17",
+  "owner": "dev-1-entrepreneur-facilitator",
+  "host": {
+    "cpu": "Intel Core i5-13450HX (10 cores)",
+    "ram_gib": 15.7,
+    "os": "Windows 11",
+    "gpu": "not used"
+  },
+  "policy": "Local only (D-24): models in ignored local/models, local_files_only, no hosted API. Smoke tests below are not organiser-data evaluations and approve nothing.",
+  "models": [
+    {
+      "task": "transcribe",
+      "model": "Systran/faster-whisper-small",
+      "revision": "536b0662742c02347bc0e980a01041f333bce120",
+      "licence": "MIT",
+      "runtime": "CTranslate2 int8 CPU",
+      "smoke": "Synthetic English 7.7 s clip (Windows SAPI voice): cold 4.5 s, warm 1.6 s; text correct except place name Sinnar -> Sennar; language en p=0.998.",
+      "languages": {
+        "hi": "supported, not evaluated",
+        "mr": "supported, not evaluated",
+        "te": "supported, not evaluated",
+        "bn": "supported, not evaluated",
+        "en": "smoke only",
+        "or": "NOT SUPPORTED by Whisper; Odia audio stays pending"
+      },
+      "status": "candidate"
+    },
+    {
+      "task": "translate",
+      "model": "Helsinki-NLP/opus-mt-{hi,mr,bn,dra,inc}-en",
+      "revisions": {
+        "hi": "a7d96a16729f812578bd55e7366147beda625d86",
+        "mr": "c0ec0f65f03e82cfacf1cb53f56b96cb65fd2c8f",
+        "bn": "098d427088fba65d683639e91742c783cc7c1434",
+        "te(dra)": "619712578b75d80f1603cace0e5d35e94c3da538",
+        "or(inc)": "b237db6975a3f7973fb149adc7166bfa30f8f224"
+      },
+      "licence": "Apache-2.0 (model cards)",
+      "runtime": "transformers MarianMT CPU, ~0.3 GB each, one loaded at a time",
+      "smoke": "One synthetic sentence per language. bn correct (sewing shop); te partly wrong (repair shop -> recording store); or vague (shop -> factory); hi meaning lost (papad and pickles -> 'a sin and a scene'); mr meaning lost (Bible-style output). Redaction tokens survive after a fix.",
+      "status": "rejected for production; evaluation-only via TRANSLATION_PROVIDER=opus-mt-eval"
+    },
+    {
+      "task": "translate",
+      "model": "ai4bharat/indictrans2-indic-en-dist-200M",
+      "licence": "MIT",
+      "status": "candidate in use (default translator); organiser-data accuracy pending",
+      "revision": "d66a2122ad6d28184f3dc3797b652bd80ae3f65f",
+      "runtime": "transformers CPU, 0.9 GB safetensors, use_cache=False (reviewed code predates Cache objects)",
+      "code_review": "configuration/modeling/tokenization files read 2026-10-17: imports torch/transformers/sentencepiece/stdlib only; no network, subprocess, eval/exec or pickle; tokenizer reads only its own vocab files. SHA-256 pinned in local_models.REVIEWED_CODE; load refuses on mismatch.",
+      "smoke": "One synthetic sentence per language, all correct: hi 'I will make papad and pickles at home.', mr 'I am going to make papad and pickle at home.', te 'I'll set up a mobile phone repair shop.', bn 'I will open a tailoring shop.', or 'I will open a shop in the village.' ~1 s per sentence warm (13.7 s first call incl. load). Redaction tokens preserved."
+    },
+    {
+      "task": "ocr",
+      "model": "Tesseract 5.4.0 (UB Mannheim build) + tessdata_best hin/mar/tel/ori/ben/eng",
+      "licence": "Apache-2.0",
+      "smoke": "Clean synthetic English lines read exactly with confidence > 80; random noise returned only as unreadable lines. Indic OCR not evaluated (no shaped Indic test images on this host; organiser scans not present).",
+      "status": "candidate; handwriting quality unknown"
+    }
+  ],
+  "not_evaluated": "All six languages on organiser audio, PDFs and handwritten scans (datasets/raw is not on this host); peak RAM under load; Android/iOS device speech and TTS."
+}

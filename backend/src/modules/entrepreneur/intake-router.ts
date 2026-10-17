@@ -8,7 +8,10 @@ import { requirePermission } from '../../auth/authorization.js';
 import { hasProcessingConsent } from './consent.js';
 import { Entrepreneur, LANGUAGES } from './models.js';
 import { CHUNK_BYTES, DOCUMENT_KINDS, GUIDED_STEPS, MAX_BYTES, MAX_DOCUMENTS, PITCH_MODES, Pitch, PitchDocument } from './intake-models.js';
-import { appendChunk, finalise, storeOriginal } from './storage.js';
+import { appendChunk, finalise, readOriginal, storeOriginal } from './storage.js';
+import { processPitch, Transcript } from './processing.js';
+import { piiVault } from './pii-vault.js';
+import type { Config } from '../../config.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 const clientId = z.string().regex(/^[A-Za-z0-9_-]{8,64}$/);
@@ -52,8 +55,9 @@ const documentView = (document: InstanceType<typeof PitchDocument>) => ({
   bytes: document.bytes, receivedBytes: document.receivedBytes, state: document.state,
 });
 
-export function intakeRouter() {
+export function intakeRouter(config: Config) {
   const router = Router();
+  const vault = piiVault(config.PII_ENCRYPTION_KEY);
   const canPitch: express.RequestHandler = (req, _res, next) => {
     const role = req.auth?.user.role;
     if (role === 'entrepreneur' || role === 'facilitator') { next(); return; }
@@ -157,6 +161,15 @@ export function intakeRouter() {
 
   router.get('/documents/:id', canPitch, async (req, res) => { res.json(documentView(await ownDocument(req, req.params.id as string))); });
 
+  // Playback of the person's own original (M-08); the content is private and never cached.
+  router.get('/documents/:id/original', canPitch, async (req, res) => {
+    const user = req.auth!.user;
+    const document = await PitchDocument.findOne({ _id: objectId.parse(req.params.id), state: 'complete',
+      ...(user.role === 'entrepreneur' ? { entrepreneurId: user.id } : { createdByUserId: user.id }) });
+    if (!document?.storageId) throw new HttpError(404, 'Document not found.');
+    res.set('Content-Type', document.declaredMime).set('Content-Disposition', 'inline').send(await readOriginal(document.storageId));
+  });
+
   // Resumable upload: the client sends the next chunk at Upload-Offset; any other offset gets 409 and the server's count.
   router.put('/documents/:id/content', canPitch, express.raw({ type: 'application/octet-stream', limit: CHUNK_BYTES + 1024 }), async (req, res) => {
     const document = await ownDocument(req, req.params.id as string);
@@ -203,6 +216,57 @@ export function intakeRouter() {
       { $set: { status: 'SUBMITTED', submissionId: submission._id, pipeline: 'pending_queue', submittedAt: new Date() } }, { returnDocument: 'after' });
     if (!updated) { await Submission.deleteOne({ _id: submission._id }); throw new HttpError(409, 'This pitch was already submitted.'); }
     res.status(201).json(pitchView(updated, await PitchDocument.find({ pitchId: pitch._id })));
+    // Reading, transcription and translation run in the background on this host (no hosted service).
+    void processPitch(updated._id, vault);
+  });
+
+  // Retry after a failure or once a missing local capability has been installed.
+  router.post('/pitches/:id/process', canPitch, async (req, res) => {
+    const pitch = await ownPitch(req, req.params.id as string);
+    if (pitch.status !== 'SUBMITTED') throw new HttpError(409, 'Submit the pitch first.');
+    // A run interrupted by a restart stays `processing`; after 30 minutes it may be retried too.
+    const stale = pitch.pipeline === 'processing' && (pitch.get('updatedAt') as Date) < new Date(Date.now() - 30 * 60 * 1000);
+    if (!['pending_capability', 'failed'].includes(pitch.pipeline) && !stale) throw new HttpError(409, 'This pitch is already processed or processing.');
+    await Pitch.updateOne({ _id: pitch._id }, { $set: { pipeline: 'pending_queue' } });
+    void processPitch(pitch._id, vault);
+    res.status(202).json({ pipeline: 'pending_queue' });
+  });
+
+  // M-08: the latest transcript version, in the speaker's own script with English beside it.
+  router.get('/pitches/:id/transcript', canPitch, async (req, res) => {
+    const pitch = await ownPitch(req, req.params.id as string);
+    const latest = await Transcript.findOne({ pitchId: pitch._id }).sort({ version: -1 }).lean();
+    if (!latest) { res.json({ pipeline: pitch.pipeline, transcript: null }); return; }
+    res.json({ pipeline: pitch.pipeline, transcript: { version: latest.version, status: latest.status, pending: latest.pending,
+      segments: latest.segments, edited: latest.version > 1 } });
+  });
+
+  // Corrections create a new version; version 1 (the machine reading) stays addressable.
+  router.put('/pitches/:id/transcript', canPitch, async (req, res) => {
+    const input = z.object({ baseVersion: z.number().int().min(1), edits: z.array(z.object({
+      segId: z.string().regex(/^s_\d{4,}$/), text: z.string().trim().min(1).max(4000).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]*$/),
+    }).strict()).min(1).max(200) }).strict().parse(req.body);
+    const pitch = await ownPitch(req, req.params.id as string);
+    const latest = await Transcript.findOne({ pitchId: pitch._id }).sort({ version: -1 }).lean();
+    if (!latest) throw new HttpError(404, 'No transcript yet.');
+    if (latest.version !== input.baseVersion) throw new HttpError(409, 'The transcript changed since you opened it. Reload and try again.');
+    const edits = new Map(input.edits.map(edit => [edit.segId, edit.text]));
+    const segments = (latest.segments as Record<string, unknown>[]).map(segment => {
+      const text = edits.get(segment.segId as string);
+      // Edited text needs translating again; the earlier English no longer matches it.
+      return text === undefined ? segment : { ...segment, textOriginal: text, textEn: null, edited: true };
+    });
+    if (input.edits.some(edit => !(latest.segments as Record<string, unknown>[]).some(segment => segment.segId === edit.segId))) {
+      throw new HttpError(400, 'Check the request fields and try again.');
+    }
+    try {
+      const next = await Transcript.create({ pitchId: pitch._id, submissionId: latest.submissionId, version: latest.version + 1,
+        status: latest.status, segments, extracted: latest.extracted, pending: latest.pending, issues: latest.issues, blurBoxes: latest.blurBoxes, editedByUserId: req.auth!.user.id });
+      res.json({ version: next.version, segments: next.segments, edited: true });
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000) throw new HttpError(409, 'The transcript changed since you opened it. Reload and try again.');
+      throw error;
+    }
   });
 
   return router;

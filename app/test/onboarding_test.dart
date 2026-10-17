@@ -32,6 +32,9 @@ class FakeApi implements ApiClient {
   @override
   Future<Map<String, dynamic>> uploadChunk(String documentId, int offset, List<int> bytes) =>
       throw UnimplementedError();
+
+  @override
+  Future<List<int>> download(String path) async => throw UnimplementedError();
 }
 
 /// Odia has no voice on this fake phone; everything else does.
@@ -78,13 +81,14 @@ void main() {
   });
 
   testWidgets('first launch asks for a language, flags missing voices, and remembers the choice', (tester) async {
+    tallScreen(tester);
     final speech = FakeSpeech();
     await tester.pumpWidget(PitchPrismApp(speech: speech));
     await tester.pumpAndSettle();
     for (final language in launchLanguages) {
       expect(find.byKey(Key('language-$language')), findsOneWidget);
     }
-    expect(find.text(tr('or', 'voiceUnavailable')), findsOneWidget);
+    expect(find.textContaining(tr('or', 'voiceUnavailable')), findsOneWidget);
     expect(tester.widget<IconButton>(find.byKey(const Key('listen-or'))).onPressed, isNull);
     await tester.tap(find.byKey(const Key('listen-mr')));
     expect(speech.spoken.single, (tr('mr', 'chooseLanguage'), 'mr'));

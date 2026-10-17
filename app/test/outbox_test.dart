@@ -74,6 +74,9 @@ class FakeServer implements ApiClient {
     }
     return {'receivedBytes': received.length, 'state': doc['state']};
   }
+
+  @override
+  Future<List<int>> download(String path) async => throw UnimplementedError();
 }
 
 class MemoryStore implements OutboxStore {

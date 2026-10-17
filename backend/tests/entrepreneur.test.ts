@@ -41,8 +41,8 @@ beforeEach(async () => {
     { name: 'Synthetic centre', type: 'centre' }, { name: 'Synthetic agri partner', type: 'sector_partner' },
     { name: 'Synthetic lender', type: 'funding_partner', fundingMode: 'lender' },
   ]) as [typeof centre, typeof sector, typeof funding];
-  applicant = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', firebaseUid: 'synthetic-uid-1' });
-  other = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', firebaseUid: 'synthetic-uid-2' });
+  applicant = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', email: 'synthetic-uid-1@pitchprism.test' });
+  other = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', email: 'synthetic-uid-2@pitchprism.test' });
   submission = await Submission.create({ title: 'Synthetic papad unit', ownerOrgId: centre._id, entrepreneurId: applicant._id,
     createdByUserId: applicant._id, status: 'SHORTLISTED', fundingReady: true,
     shares: [{ orgId: sector._id, partnerType: 'sector_partner', active: true, contactAccepted: false },
@@ -95,7 +95,7 @@ describe('language and profile', () => {
     await grantProcessing(auth);
     const saved = await request(app).put('/api/v1/me').set('Authorization', auth)
       .send({ language: 'mr', name: syntheticName, district: 'Nashik', pincode: '422001', trade: 'Food processing', gender: 'female' }).expect(200);
-    expect(saved.body.profile).toEqual({ name: syntheticName, gender: 'female', district: 'Nashik', pincode: '422001', trade: 'Food processing' });
+    expect(saved.body.profile).toEqual({ name: syntheticName, gender: 'female', district: 'Nashik', pincode: '422001', state: null, trade: 'Food processing' });
     expect(saved.body.profileComplete).toBe(true);
     const raw = await mongoose.connection.collection('entrepreneurs').findOne({ _id: applicant._id });
     expect(JSON.stringify(raw)).not.toContain(syntheticName);

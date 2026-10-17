@@ -1,0 +1,10 @@
+# Optional local model runtimes for speech and translation (D-24: local only, no downloads at run time).
+# Install the CPU build of PyTorch first:
+#   pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+# Model weights are fetched separately into the ignored local/models folder (see ai/ingest/README.md).
+faster-whisper==1.2.1
+ctranslate2==4.8.3
+transformers==4.57.6
+sentencepiece==0.2.2
+# Only for IndicTrans2 once its gated terms are accepted and its code is reviewed and pinned.
+IndicTransToolkit==1.1.1

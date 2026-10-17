@@ -9,7 +9,7 @@ const orgSchema = new Schema({
 }, { timestamps: true });
 const userSchema = new Schema({
   displayName: { type: String, required: true }, email: { type: String, lowercase: true, trim: true, unique: true, sparse: true },
-  passwordHash: { type: String, select: false }, firebaseUid: { type: String, unique: true, sparse: true },
+  passwordHash: { type: String, select: false },
   role: { type: String, enum: ROLES, required: true }, orgId: { type: Schema.Types.ObjectId, ref: 'Org' },
   disabled: { type: Boolean, default: false },
 }, { timestamps: true });

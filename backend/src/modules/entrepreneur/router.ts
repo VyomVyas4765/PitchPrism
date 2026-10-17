@@ -5,7 +5,7 @@ import { HttpError } from '../../errors.js';
 import { Org, Submission } from '../../models.js';
 import { requirePermission, submissionScope } from '../../auth/authorization.js';
 import { piiVault, type Sealed } from './pii-vault.js';
-import { CONSENT_NOTICE_VERSION, CONSENT_NOTICE_VERSIONS, Consent, Entrepreneur, GENDERS, LANGUAGES, SHARING_SCOPES, type SharingScope } from './models.js';import { grantConsent, hasProcessingConsent, revokeConsent } from './consent.js';
+import { CONSENT_NOTICE_VERSION, CONSENT_NOTICE_VERSIONS, Consent, Entrepreneur, GENDERS, INDIAN_STATES, LANGUAGES, SHARING_SCOPES, type SharingScope } from './models.js';import { grantConsent, hasProcessingConsent, revokeConsent } from './consent.js';
 import { intakeRouter } from './intake-router.js';
 import { assistedRouter } from './assisted-router.js';
 
@@ -17,6 +17,7 @@ const profileInput = z.object({
   name: text(100).optional(),
   district: text(80).optional(),
   pincode: z.string().trim().regex(/^[1-9]\d{5}$/).optional(),
+  state: z.enum(INDIAN_STATES).optional(),
   trade: text(80).optional(),
   gender: z.enum(GENDERS).nullable().optional(),
 }).strict();
@@ -62,7 +63,7 @@ export function entrepreneurRouter(config: Config) {
     const personal = record?.personal && vault ? vault.open<{ name?: string; gender?: string | null }>(record.personal as Sealed, entrepreneurId) : {};
     const profile = {
       name: personal.name ?? null, gender: personal.gender ?? null,
-      district: record?.district ?? null, pincode: record?.pincode ?? null, trade: record?.trade ?? null,
+      district: record?.district ?? null, pincode: record?.pincode ?? null, state: record?.state ?? null, trade: record?.trade ?? null,
     };
     return {
       id: entrepreneurId, language: record?.language ?? null, profile,
@@ -155,7 +156,7 @@ export function entrepreneurRouter(config: Config) {
   });
 
   // Intake and assisted mode live in this module and mount through this router (no extra app.ts edit).
-  router.use(intakeRouter());
+  router.use(intakeRouter(config));
   router.use(assistedRouter(config));
   return router;
 }

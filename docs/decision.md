@@ -36,6 +36,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-24 | Full scope, local-only AI; lean Android; explicit cost/capability evidence | ✅ | All |
 | D-25 | Reconcile answered, superseded and still-open PRD questions | ✅ | All |
 | D-26 | Remove Redis; persistent local MongoDB; add iOS development target | ✅ | Dev 1, Dev 3 |
+| D-27 | Email-only sign-in; iOS-only build target for now | ✅ | Dev 1, Dev 3 |
 
 ---
 
@@ -242,3 +243,12 @@ Current register after D-25. The complete answered/partial/open classification i
 **Firebase.** Keep the existing integration lazy until the team supplies Firebase configuration. Without it, open facilitator password sign-in and show phone sign-in as unavailable; do not introduce a fake OTP or role bypass. Native Firebase libraries may still be needed to build the integrated app.
 
 **Build networking.** The Mac's global Git HTTPS→SSH rewrite can hang public Swift-package downloads on a restricted network. `GIT_CONFIG_GLOBAL=/dev/null` is scoped to the Flutter build process; global Git settings are not modified.
+
+
+### D-27 · Email-only sign-in and iOS-only build target ✅
+
+**Context.** 17 October 2026, team direction (Arnav): remove phone OTP, SMS and other non-email sign-in; build only for iOS for now.
+
+**Decision.** Every role signs in with email and password. Entrepreneurs self-register (`POST /auth/register`) and are always entrepreneurs; staff, including facilitators, join only through scoped invitations (W-01). Firebase phone OTP, its verifier, `firebase-admin`, the Flutter Firebase packages and `User.firebaseUid` are removed. This supersedes D-21's Firebase OTP for entrepreneurs and PRD M-02's "phone number login with OTP". The Flutter app is built and tested for iPhone only; the Android project stays in the repository but is not built or tested. This supersedes D-20/D-26's Android-first performance target for the current build; the PRD's low-cost Android audience is deferred, not dropped.
+
+**Consequences.** Email addresses are not verified (no mail provider is configured), and there is no password reset yet; an administrator must help with a lost password. Entrepreneurs without an email address cannot self-register; facilitators register them in assisted mode instead. M-16 SMS fallback and M-21 WhatsApp are notification/intake channels, not sign-in, and keep their PRD priorities. Spoken prompts use the iPhone's own voices with per-language availability checks (Marathi, Telugu, Odia and Bengali voices may be missing on a given device).

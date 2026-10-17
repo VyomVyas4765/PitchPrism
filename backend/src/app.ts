@@ -8,7 +8,6 @@ import type { Config } from './config.js';
 import { errorHandler, HttpError } from './errors.js';
 import { Org, Session, Submission, User } from './models.js';
 import { sessionService, userContext, SESSION_COOKIE } from './auth/session.js';
-import { firebasePhoneVerifier, type VerifyPhoneToken } from './auth/firebase.js';
 import { hashPassword, verifyPassword } from './auth/password.js';
 import { requirePermission, submissionScope } from './auth/authorization.js';
 import { centreRouter } from './modules/centre/router.js';
@@ -18,13 +17,13 @@ import { entrepreneurRouter } from './modules/entrepreneur/index.js';
 import { accessRouter, inviteAcceptRouter } from './modules/hq/router.js';
 
 const loginInput = z.object({ email: z.email().max(254).transform(value => value.toLowerCase()), password: z.string().min(1).max(128), client: z.enum(['web', 'mobile']).default('web') }).strict();
+const registerInput = z.object({ email: z.email().max(254).transform(value => value.toLowerCase()), password: z.string().min(12).max(128), client: z.enum(['web', 'mobile']).default('mobile') }).strict();
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 const dummyHash = hashPassword('unused-random-timing-placeholder');
 
-export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPhoneToken; assessIdea?: (input: CentreExtractedInput) => Promise<AssessmentResult> } = {}) {
+export function createApp(config: Config, options: { assessIdea?: (input: CentreExtractedInput) => Promise<AssessmentResult> } = {}) {
   const app = express();
   const sessions = sessionService(config);
-  const verifyPhoneToken = options.verifyPhoneToken ?? firebasePhoneVerifier(config.FIREBASE_PROJECT_ID);
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(express.json({ limit: '128kb' }));
@@ -45,21 +44,28 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
     const input = loginInput.parse(req.body);
     const user = await User.findOne({ email: input.email }).select('+passwordHash');
     const valid = await verifyPassword(input.password, user?.passwordHash ?? await dummyHash);
-    if (!valid || !user || user.disabled || user.role === 'entrepreneur') throw new HttpError(401, 'Email or password is incorrect.');
+    if (!valid || !user || user.disabled) throw new HttpError(401, 'Email or password is incorrect.');
     const { user: actor } = await userContext(String(user._id));
     const token = await sessions.create(actor.id);
     if (input.client === 'web') sessions.setCookie(res, token);
     res.json({ user: actor, ...(input.client === 'mobile' ? { accessToken: token } : {}) });
   });
-  app.post('/api/v1/auth/otp/verify', authLimiter, async (req, res) => {
-    const { idToken } = z.object({ idToken: z.string().min(1).max(10000) }).strict().parse(req.body);
-    const identity = await verifyPhoneToken(idToken);
-    const user = await User.findOneAndUpdate({ firebaseUid: identity.uid }, {
-      $setOnInsert: { displayName: 'Entrepreneur', firebaseUid: identity.uid, role: 'entrepreneur' },
-    }, { upsert: true, returnDocument: 'after', runValidators: true });
-    const { user: actor } = await userContext(String(user!._id));
-    if (actor.role !== 'entrepreneur') throw new HttpError(403, 'This phone identity is not an entrepreneur account.');
-    res.json({ user: actor, accessToken: await sessions.create(actor.id) });
+  // D-27: email is the only sign-in method. Entrepreneurs register themselves and are always entrepreneurs;
+  // staff join by invitation. The role is never taken from the request.
+  app.post('/api/v1/auth/register', authLimiter, async (req, res) => {
+    const input = registerInput.parse(req.body);
+    if (await User.exists({ email: input.email })) throw new HttpError(409, 'An account with this email already exists. Sign in instead.');
+    let user;
+    try {
+      user = await User.create({ displayName: 'Entrepreneur', email: input.email, role: 'entrepreneur', passwordHash: await hashPassword(input.password) });
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000) throw new HttpError(409, 'An account with this email already exists. Sign in instead.');
+      throw error;
+    }
+    const { user: actor } = await userContext(String(user._id));
+    const token = await sessions.create(actor.id);
+    if (input.client === 'web') sessions.setCookie(res, token);
+    res.status(201).json({ user: actor, ...(input.client === 'mobile' ? { accessToken: token } : {}) });
   });
   // Invitation preview/acceptance are public (the one-time token is the credential) and rate limited.
   app.use('/api/v1', inviteAcceptRouter(sessions, authLimiter));

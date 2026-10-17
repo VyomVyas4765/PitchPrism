@@ -27,9 +27,15 @@ Entrepreneurs act on their own pitches; facilitators only on pitches and applica
 | `PUT /documents/:id/content` | Raw `application/octet-stream` chunk (≤ 1 MiB) at `Upload-Offset`; a wrong offset gets 409 with the server's `receivedBytes`. The final chunk is checked against size and sha256: `complete` (immutable GridFS original) or `rejected` |
 | `GET /documents/:id` | Resume point after an app restart |
 | `POST /pitches/:id/submit` | Needs processing consent, a centre, finished uploads and some content. Typed answers become an immutable text original. Creates one `Submission` (owner = centre, source = facilitator's org) and marks `pipeline: pending_queue`; no queue consumer exists yet, so nothing claims processing happened |
+| `POST /pitches/:id/process` | Retry reading after `pending_capability`, `failed`, or `processing` stuck for 30 minutes (owner) |
+| `GET /pitches/:id/transcript` | Latest transcript version with pipeline state (`pending_queue`, `processing`, `transcribed`, `pending_capability`, `failed`) |
+| `PUT /pitches/:id/transcript` | `{baseVersion, edits:[{segId, text}]}` saves corrections as a new version; version 1 stays as read; a stale base gets 409 |
+| `GET /documents/:id/original` | The owner's own original for playback (private, not cached) |
 | `POST /assisted/applicants`, `GET /assisted/applicants` | Facilitator registers applicants (name/gender sealed) and lists only their own |
 | `POST /assisted/applicants/:id/evidence` | Registers the spoken-consent recording; uploaded through the content route |
 | `POST /assisted/applicants/:id/consents` | Records consent with `method: assisted_recorded`; needs a complete evidence recording and `checkboxConfirmed: true` |
+
+After submit, `processing.ts` runs the local Python pipeline (`ai.ingest.run`) in the background on this host and stores its result as transcript version 1, including the `CentreExtractedInput` for Dev 2 and page blur boxes. This is an integration bridge until the shared job queue exists: a run interrupted by a restart stays `processing` and its owner can retry it after 30 minutes.
 
 Facilitators from an implementation partner cannot submit yet: their linked centre needs `Org.parentOrgId` (shared model, Dev 3).
 

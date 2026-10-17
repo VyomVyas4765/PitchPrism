@@ -4,6 +4,10 @@ import mongoose, { Schema } from 'mongoose';
 export const LANGUAGES = ['hi', 'mr', 'te', 'or', 'bn', 'en'] as const;
 export type Language = typeof LANGUAGES[number];
 export const GENDERS = ['female', 'male', 'other', 'prefer_not_to_say'] as const;
+export const INDIAN_STATES = ['Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
+  'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
+  'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Puducherry', 'Chandigarh', 'Andaman and Nicobar Islands', 'Dadra and Nagar Haveli and Daman and Diu', 'Lakshadweep'] as const;
 export const SHARING_SCOPES = ['sector_partner', 'funding_partner'] as const;
 export type SharingScope = typeof SHARING_SCOPES[number];
 // The consent notice text shown in the app carries this version; records store what was shown.
@@ -21,6 +25,7 @@ const entrepreneurSchema = new Schema({
   personal: { type: sealedSchema, select: false },
   district: { type: String, trim: true },
   pincode: { type: String, trim: true },
+  state: { type: String, trim: true },
   trade: { type: String, trim: true },
   createdVia: { type: String, enum: ['self', 'assisted'], required: true },
   facilitatorId: { type: Schema.Types.ObjectId, ref: 'User' },

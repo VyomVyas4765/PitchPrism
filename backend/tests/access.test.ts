@@ -124,7 +124,7 @@ describe('invitations', () => {
     const facilitator = await User.create({ displayName: 'Synthetic facilitator', email: 'fac@pitchprism.test', role: 'facilitator', orgId: centre._id });
     await invite(await as(facilitator), { email: 'f10@pitchprism.test', role: 'facilitator' }).expect(403);
     await request(app).get('/api/v1/invites').set('Authorization', await as(facilitator)).expect(403);
-    const entrepreneur = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', firebaseUid: 'synthetic-access' });
+    const entrepreneur = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', email: 'synthetic-access@pitchprism.test' });
     await invite(await as(entrepreneur), { email: 'f11@pitchprism.test', role: 'facilitator' }).expect(403);
     await invite(await as(admin), { email: 'f12@pitchprism.test', role: 'entrepreneur', orgId: String(centre._id) }).expect(400);
     // Lists stay inside the actor's organisation.

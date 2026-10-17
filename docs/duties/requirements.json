@@ -26,18 +26,19 @@
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Phone number login with OTP",
-    "implementation": "Phone OTP and API session exchange",
+    "implementation": "Email and password sign-in and entrepreneur self-registration (D-27 supersedes phone OTP)",
     "execution": "Flutter mobile + API; Android primary, iOS development build",
-    "local_strategy": "Firebase Auth is identity, separate from the hosted AI budget",
+    "local_strategy": "API sessions; no Firebase, SMS or OTP provider",
     "dependencies": [
       "Auth/consent contracts",
       "Private submission API",
       "Local worker capabilities where required"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
-    "acceptance_test": "Configured test-phone sign-in, expiry and invalid-code/device checks",
-    "status": "foundation_partial",
+    "acceptance_test": "Register, sign in, expiry and wrong-password checks on an iPhone",
+    "status": "device_pending",
     "evidence": [
+      "app/test/auth_entry_test.dart",
       "backend/tests/auth.test.ts",
       "docs/auth.md"
     ]
@@ -100,14 +101,16 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Each source format reaches the same submission pipeline",
-    "status": "client_partial",
+    "status": "device_pending",
     "evidence": [
       "docs/duties/dev-1-intake-proposal.md",
       "app/lib/intake/pitch_screen.dart",
       "backend/src/modules/entrepreneur/intake-router.ts",
       "backend/tests/intake.test.ts",
       "app/test/outbox_test.dart",
-      "app/test/intake_ui_test.dart"
+      "app/test/intake_ui_test.dart",
+      "app/lib/intake/transcript_screen.dart",
+      "app/test/accessibility_test.dart"
     ]
   },
   "M-06": {
@@ -124,14 +127,17 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Pause/re-record works and evidence retains timestamps",
-    "status": "client_partial",
+    "status": "device_pending",
     "evidence": [
       "data/seed/question-bank.json",
       "ai/tests/test_question_bank.py",
       "app/lib/intake/record_tile.dart",
       "backend/tests/intake.test.ts",
       "app/test/outbox_test.dart",
-      "app/test/intake_ui_test.dart"
+      "app/test/intake_ui_test.dart",
+      "app/lib/intake/pitch_screen.dart",
+      "app/lib/intake/transcript_screen.dart",
+      "app/test/accessibility_test.dart"
     ]
   },
   "M-07": {
@@ -148,8 +154,14 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Five-minute recordings preserve source and resume upload",
-    "status": "planned",
-    "evidence": []
+    "status": "device_pending",
+    "evidence": [
+      "app/lib/intake/pitch_screen.dart",
+      "app/lib/intake/transcript_screen.dart",
+      "app/test/intake_ui_test.dart",
+      "app/test/accessibility_test.dart",
+      "backend/tests/intake.test.ts"
+    ]
   },
   "M-08": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -165,8 +177,14 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Original segments remain addressable after corrections",
-    "status": "planned",
-    "evidence": []
+    "status": "device_pending",
+    "evidence": [
+      "app/lib/intake/pitch_screen.dart",
+      "app/lib/intake/transcript_screen.dart",
+      "app/test/intake_ui_test.dart",
+      "app/test/accessibility_test.dart",
+      "backend/tests/intake.test.ts"
+    ]
   },
   "M-09": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -380,9 +398,15 @@
       "Local worker capabilities where required"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
-    "acceptance_test": "Measure install/download sizes and memory on 2 GB target; Android 8+",
-    "status": "planned",
-    "evidence": []
+    "acceptance_test": "iPhone tap targets/labels pass; size and memory measured on device (Android deferred by D-27)",
+    "status": "device_pending",
+    "evidence": [
+      "app/lib/intake/pitch_screen.dart",
+      "app/lib/intake/transcript_screen.dart",
+      "app/test/intake_ui_test.dart",
+      "app/test/accessibility_test.dart",
+      "backend/tests/intake.test.ts"
+    ]
   },
   "M-20": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1069,7 +1093,8 @@
     "evidence": [
       "docs/duties/dev-1-intake-proposal.md",
       "backend/src/modules/entrepreneur/storage.ts",
-      "backend/tests/intake.test.ts"
+      "backend/tests/intake.test.ts",
+      "backend/src/modules/entrepreneur/processing.ts"
     ]
   },
   "A-02": {
@@ -1114,14 +1139,17 @@
     "requirement": "Transcribe chunks in parallel within Sarvam's rate limits, with language detected per chunk; output segments with ID, language, text, start and end",
     "implementation": "Six-language transcription with per-chunk language",
     "execution": "worker; optional Android after capability checks",
-    "local_strategy": "Local STT candidate TBD after six-language evaluation",
+    "local_strategy": "faster-whisper small (MIT) via local/models; hi/mr/te/bn/en supported but unevaluated; Odia has no local model and stays pending",
     "dependencies": [
       "Audio chunks; local model/runtime"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Evaluate all aud-* files, code mixing, timestamps and language labels",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/local_models.py",
+      "docs/benchmarks/dev1-local-models-2026-10-17.json"
+    ]
   },
   "A-05": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1129,14 +1157,19 @@
     "requirement": "Extract text spans with bounding box, font and colour, plus drawn lines and table rules; rebuild question and answer cells from the layout, not the content-stream order",
     "implementation": "Digital PDF geometry and table reconstruction",
     "execution": "worker",
-    "local_strategy": "Local PDF parser candidate; no hosted document API",
+    "local_strategy": "pdfplumber + pypdfium2 (permissive) geometry; organiser PDFs not yet run",
     "dependencies": [
       "Private PDFs; source-anchor contract"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Spans/bboxes/lines reconstruct Q&A independent of stream order",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/pdf.py",
+      "ai/tests/test_ingest_pdf_ocr.py",
+      "ai/ingest/run.py",
+      "ai/tests/test_ingest_pipeline.py"
+    ]
   },
   "A-06": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1150,8 +1183,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Corrupt MR/TE/HI samples rerender and reread with confidence",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/language.py",
+      "ai/tests/test_ingest_pdf_ocr.py"
+    ]
   },
   "A-07": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1159,14 +1195,17 @@
     "requirement": "Render pages at 300 dpi; detect blur and skew; read with Sarvam Document AI, falling back to a vision model for handwriting with low confidence; resolve ditto marks in tables; return per-region confidence",
     "implementation": "Scans, layout, handwriting and low-confidence crops",
     "execution": "worker",
-    "local_strategy": "Local OCR/vision candidates; model choice not locked",
+    "local_strategy": "Tesseract 5 + tessdata_best six languages; handwriting accuracy unknown; no vision fallback installed",
     "dependencies": [
       "Rendering; model licence/RAM/language evaluation"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Handwritten organiser samples meet eval targets or remain explicitly unreadable",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/ocr.py",
+      "docs/benchmarks/dev1-local-models-2026-10-17.json"
+    ]
   },
   "A-08": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1180,8 +1219,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Final corrected values match manifest while struck originals remain linked",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/pdf.py",
+      "ai/ingest/run.py",
+      "ai/tests/test_ingest_pipeline.py"
+    ]
   },
   "A-09": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1195,9 +1238,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Custom/changed forms distinguish missing, not asked and unknown Q&A",
-    "status": "planned",
+    "status": "worker_partial",
     "evidence": [
-      "data/seed/question-bank.json"
+      "data/seed/question-bank.json",
+      "ai/ingest/structure.py",
+      "ai/ingest/run.py",
+      "ai/tests/test_ingest_pipeline.py"
     ]
   },
   "A-10": {
@@ -1216,7 +1262,9 @@
     "evidence": [
       "ai/ingest/pii.py",
       "ai/tests/test_ingest_pii.py",
-      "backend/src/modules/entrepreneur/pii-vault.ts"
+      "backend/src/modules/entrepreneur/pii-vault.ts",
+      "ai/ingest/run.py",
+      "ai/tests/test_ingest_pipeline.py"
     ]
   },
   "A-11": {
@@ -1225,14 +1273,18 @@
     "requirement": "Identify the language of every answer separately; translate each segment to English, keeping its ID; transliterate on request. Code-mixed answers are translated whole, never truncated to one language",
     "implementation": "Per-answer language, translation and transliteration",
     "execution": "worker",
-    "local_strategy": "Local multilingual model candidates; immutable originals and content cache",
+    "local_strategy": "Rule-based per-answer language ID; IndicTrans2 Indic→English (MIT, code reviewed and hash-pinned) as the local translator; Opus-MT rejected",
     "dependencies": [
       "Redacted segments; six-language benchmark"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Six languages/code mixing retain segIds and satisfy parity targets",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/language.py",
+      "ai/ingest/local_models.py",
+      "docs/benchmarks/dev1-local-models-2026-10-17.json"
+    ]
   },
   "A-12": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1246,9 +1298,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "At least 90% canonical field accuracy; drop uncited claims",
-    "status": "planned",
+    "status": "worker_partial",
     "evidence": [
-      "packages/contracts/fixtures/extracted-input/README.md"
+      "packages/contracts/fixtures/extracted-input/README.md",
+      "ai/ingest/run.py",
+      "ai/tests/test_ingest_pipeline.py"
     ]
   },
   "A-13": {

@@ -133,6 +133,14 @@ describe('queue protocol', () => {
     expect(String(retry.job._id)).not.toBe(String(job._id));
   });
 
+  it('never changes the status of an idea a reviewer has decided', async () => {
+    await Submission.updateOne({ _id: submission._id }, { $set: { status: 'SHORTLISTED' } });
+    await enqueue();
+    const job = (await claimJob('worker'))!;
+    expect(await failJob(String(job._id), 'worker', { code: 'capability_unavailable', message: 'No local model' })).toBe('failed');
+    expect((await Submission.findById(submission._id).lean())!.status).toBe('SHORTLISTED');
+  });
+
   it('records stage events and pipeline runs with timing and zero hosted cost', async () => {
     const { job } = await enqueue();
     await recordStage(job, 'read', 'started');

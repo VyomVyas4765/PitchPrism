@@ -40,10 +40,16 @@ LEASE_SECONDS = 60
 log = logging.getLogger("ai.jobqueue")
 STAGES = tuple(bundle()["definitions"]["Stage"]["enum"])
 FINAL_STATUSES = ("READY", "NEEDS_INPUT", "UNASSESSABLE")
+# The queue never changes the status of an idea a reviewer has decided: a rescore versions the evaluation only.
+DECIDED_STATUSES = ("SHORTLISTED", "NOT_YET", "MORE_INFO", "SHARED")
 
 
 class RetryableError(RuntimeError):
     """A transient failure (model still loading, local service restarting): retry with backoff."""
+
+
+class InvalidInput(ValueError):
+    """The submission's evidence cannot be processed as it is (for example unredacted text): fail at once, no retry."""
 
 
 class LeaseLost(RuntimeError):
@@ -154,7 +160,8 @@ class JobQueue:
                                              {"$set": update, "$unset": {"leaseUntil": 1}}, return_document=ReturnDocument.AFTER)
 
     def _submission(self, job, status):
-        self.db["submissions"].update_one({"_id": job["submissionId"]}, {"$set": {"status": status, "updatedAt": now()}})
+        self.db["submissions"].update_one({"_id": job["submissionId"], "status": {"$nin": list(DECIDED_STATUSES)}},
+                                          {"$set": {"status": status, "updatedAt": now()}})
 
 
 @dataclass
@@ -216,6 +223,7 @@ class Run:
         self.final_status = status
 
 
+
 class _StageFailed(RuntimeError):
     def __init__(self, stage):
         super().__init__(stage)
@@ -228,6 +236,8 @@ def _safe_message(error):
         return "A required local capability is not installed."
     if isinstance(error, (TimeoutError, RetryableError)):
         return "The local service did not respond in time."
+    if isinstance(error, InvalidInput):
+        return "The evidence for this idea cannot be processed as it is; check the extraction and redaction."
     return "The stage stopped with an unexpected error."
 
 
@@ -261,6 +271,8 @@ class Consumer:
     def _fail(self, job, error, stage):
         if isinstance(error, CapabilityUnavailable):
             code, retryable = "capability_unavailable", False
+        elif isinstance(error, InvalidInput):
+            code, retryable = "invalid_input", False
         elif isinstance(error, (TimeoutError, RetryableError)):
             code, retryable = "timeout", True
         else:

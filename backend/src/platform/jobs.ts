@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import type { Stage, StageStatus } from '@pitchprism/contracts';
+import type { Stage, StageStatus, SubmissionStatus } from '@pitchprism/contracts';
 import { Job, PipelineRun, StageEvent, Submission } from '../models.js';
 
 // MongoDB job queue (D-29). The API enqueues; one worker claims a job with an atomic lease, extends the lease
@@ -10,6 +10,10 @@ import { Job, PipelineRun, StageEvent, Submission } from '../models.js';
 export const LEASE_MS = 60_000;
 export const MAX_ATTEMPTS = 3;
 const SYSTEM = { tenant: 'system' } as const;
+// The queue never changes the status of an idea a reviewer has decided: a rescore versions the evaluation only.
+const DECIDED: SubmissionStatus[] = ['SHORTLISTED', 'NOT_YET', 'MORE_INFO', 'SHARED'];
+const setStatus = (submissionId: unknown, status: SubmissionStatus) =>
+  Submission.updateOne({ _id: submissionId, status: { $nin: DECIDED } }, { $set: { status } }).setOptions(SYSTEM);
 export type JobReason = 'new' | 'followup' | 'transcript_edit' | 'rescore' | 'retry';
 export interface JobErrorInput { code: string; message: string; stage?: Stage; retryable?: boolean }
 
@@ -33,7 +37,7 @@ export async function enqueueJob(input: { submissionId: string; ownerOrgId: stri
     $setOnInsert: { ...input, inputVersion, idempotencyKey, status: 'queued', attempts: 0, maxAttempts: input.maxAttempts ?? MAX_ATTEMPTS, availableAt: now },
   }, { upsert: true, returnDocument: 'after', includeResultMetadata: true, runValidators: true }).setOptions(SYSTEM);
   const created = !result.lastErrorObject?.updatedExisting;
-  if (created) await Submission.updateOne({ _id: input.submissionId }, { $set: { status: 'QUEUED' } }).setOptions(SYSTEM);
+  if (created) await setStatus(input.submissionId, 'QUEUED');
   return { job: result.value!, created };
 }
 
@@ -50,7 +54,7 @@ export async function claimJob(workerId: string, leaseMs = LEASE_MS) {
     await finish(String(job._id), workerId, 'failed', { code: 'attempts_exhausted', message: 'The pipeline stopped responding on every attempt.' });
     return claimJob(workerId, leaseMs);
   }
-  await Submission.updateOne({ _id: job.submissionId }, { $set: { status: 'PROCESSING' } }).setOptions(SYSTEM);
+  await setStatus(job.submissionId, 'PROCESSING');
   return job;
 }
 
@@ -89,7 +93,7 @@ export async function failJob(jobId: string, workerId: string, error: JobErrorIn
     return 'requeued' as const;
   }
   await finish(jobId, workerId, 'failed', error);
-  await Submission.updateOne({ _id: job.submissionId }, { $set: { status: 'FAILED' } }).setOptions(SYSTEM);
+  await setStatus(job.submissionId, 'FAILED');
   return 'failed' as const;
 }
 

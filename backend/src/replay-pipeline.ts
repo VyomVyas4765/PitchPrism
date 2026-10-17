@@ -36,7 +36,8 @@ for (;;) {
   }
   if (await completeJob(String(job._id), WORKER)) {
     const submission = await Submission.findById(job.submissionId).select('latestEvaluationId').setOptions({ tenant: 'system' }).lean();
-    await Submission.updateOne({ _id: job.submissionId }, { $set: { status: submission?.latestEvaluationId ? 'READY' : 'DRAFT' } }).setOptions({ tenant: 'system' });
+    await Submission.updateOne({ _id: job.submissionId, status: { $nin: ['SHORTLISTED', 'NOT_YET', 'MORE_INFO', 'SHARED'] } },
+      { $set: { status: submission?.latestEvaluationId ? 'READY' : 'DRAFT' } }).setOptions({ tenant: 'system' });
   }
   if (once) break;
 }

@@ -18,6 +18,7 @@
     "contracts:generate": "pnpm --filter @pitchprism/contracts generate",
     "seed": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend seed",
     "fixtures:load": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend fixtures:load",
+    "worker": "node scripts/run-worker.mjs",
     "pipeline:replay": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend pipeline:replay --"
   }
 }

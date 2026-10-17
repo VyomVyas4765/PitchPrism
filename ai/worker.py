@@ -1,0 +1,192 @@
+"""Pipeline worker (A-28): consumes the MongoDB job queue and runs each available stage for real.
+
+    python -m ai.worker            # run until stopped (pnpm worker)
+    python -m ai.worker --once     # process at most one job
+
+Stage by stage (docs/flow.md section 1.3):
+- ingest .. extract (except redact) belong to Dev 1's intake pipeline. When the idea's evidence has already been
+  extracted (stored on its centre case), they are recorded as skipped. Otherwise the job fails visibly with
+  capability_unavailable: nothing is guessed from missing evidence.
+- redact runs the shared PII detector over every segment; unredacted text fails the job as invalid_input.
+- quality, followup, score, narrative, feedback and route run Dev 2's functions (ai.intel), with the job's
+  published rubric version (W-02) driving weights, bands and pathway rules.
+- normalise, similar, local and rank have no local implementation yet (A-15, A-19, A-20, A-21) and are recorded
+  as skipped, never faked.
+A missing local model fails the score stage visibly; the deterministic quality and follow-ups are still stored,
+like the synchronous centre route does. Results go to the centre case in the same shape the centre card reads.
+"""
+from __future__ import annotations
+
+import argparse
+import logging
+import os
+import socket
+
+from ai.config import PolicyViolation, Settings
+from ai.contracts import bundle
+from ai.ingest.pii import find_pii
+from ai.intel.finance import check_finances
+from ai.intel.narrative import feedback_draft, followups, summary_plan
+from ai.intel.routing import suggest_partners
+from ai.intel.scoring import FIELDS, InvalidEvidence, evaluate, prepare_input, quality
+from ai.jobqueue import Consumer, InvalidInput, connect, now
+from ai.llm.adapter import LocalJsonAdapter, ModelOutputError
+from ai.providers import CapabilityUnavailable
+
+log = logging.getLogger("ai.worker")
+INTAKE_STAGES = ("ingest", "classify", "read", "structure", "translate", "extract")
+NOT_AVAILABLE = {"normalise": "A-15", "similar": "A-19", "local": "A-20", "rank": "A-21"}
+STAGES = tuple(bundle()["definitions"]["Stage"]["enum"])
+
+
+def rubric_payload(db, job):
+    """The job's rubric version as ai.intel.scoring expects it in idea["rubric"]; None keeps the calculator defaults."""
+    if not job.get("rubricKey") or not job.get("rubricVersion"):
+        return None
+    rubric = db["rubrics"].find_one({"rubricKey": job["rubricKey"], "version": job["rubricVersion"]})
+    if not rubric:
+        return None
+    payload = {"version": f"{rubric['rubricKey']}-v{rubric['version']}", "bands": rubric["bands"],
+               "domains": [{key: domain[key] for key in ("key", "weight", "evidenceFields") if key in domain} for domain in rubric["domains"]]}
+    if rubric.get("pathwayRules"):
+        payload["pathwayRules"] = rubric["pathwayRules"]
+    weights = rubric.get("completenessWeights")
+    # The calculator takes whole-number weights over the ten EDP fields; anything else keeps its default.
+    if weights and set(weights) == set(FIELDS) and all(isinstance(v, int) for v in weights.values()) and sum(weights.values()) == 100:
+        payload["completenessWeights"] = weights
+    return payload
+
+
+def state_of(result):
+    """Same mapping as the centre route (backend/src/modules/centre/router.ts)."""
+    if result["status"] == "pending_model":
+        return "PENDING_MODEL"
+    if result["evaluation"].get("band") == "Unassessable":
+        return "UNASSESSABLE"
+    return "NEEDS_ATTENTION" if result["evaluation"].get("needsAttention") else "READY"
+
+
+def store(db, job, case, result):
+    """Write the outcome to the centre case, archiving the previous evaluation, as the centre route does."""
+    evaluation = result.get("evaluation")
+    update = {"$set": {"ownerOrgId": job["ownerOrgId"], "evaluation": evaluation, "quality": result.get("quality"),
+                       "financialChecks": result.get("financialChecks", []), "followUps": result.get("followUps", []),
+                       "planDraft": result.get("planDraft"), "state": state_of(result), "reason": result.get("reason"),
+                       "updatedAt": now()}}
+    if case.get("evaluation"):
+        update["$push"] = {"evaluationHistory": {"evaluation": case["evaluation"], "archivedAt": now().isoformat()}}
+    db["centrecases"].update_one({"_id": case["_id"]}, update)
+
+
+def routing_view(db, job, case, idea):
+    """Adapt stored rules and consents to ai.intel.routing (rules suggest; sharing still needs a reviewer)."""
+    rules = [{"partnerOrgId": str(rule["partnerOrgId"]), "partnerType": rule["partnerType"], "active": rule.get("active") is True,
+              "trades": rule.get("tradeKeys") or [], "sectors": rule.get("sectors") or [], "districts": rule.get("districts") or []}
+             for rule in db["routingRules"].find({"active": True})]
+    submission = db["submissions"].find_one({"_id": job["submissionId"]}, {"entrepreneurId": 1, "tradeKey": 1, "sector": 1, "fundingReady": 1}) or {}
+    consents = [{"active": True, "partnerType": consent["scope"]} for consent in
+                db["consents"].find({"entrepreneurId": submission.get("entrepreneurId"), "purpose": "partner_sharing", "status": "active"})]
+    view = {"tradeKey": submission.get("tradeKey"), "sector": submission.get("sector"), "fundingReady": submission.get("fundingReady"),
+            "district": idea.get("context", {}).get("plannedBusinessLocation", {}).get("district"),
+            "decision": (case.get("decision") or {}).get("decision")}
+    return view, rules, consents
+
+
+def handler_for(db, adapter_factory=None):
+    def make_adapter():
+        return (adapter_factory or (lambda: LocalJsonAdapter(Settings.from_env())))()
+
+    def handle(job, run):
+        case = db["centrecases"].find_one({"submissionId": job["submissionId"]})
+        idea = (case or {}).get("input")
+        for stage in INTAKE_STAGES:
+            if run.should_run(stage):
+                with run.stage(stage) as current:
+                    if idea is None:
+                        raise CapabilityUnavailable("intake stages are not available in this worker")
+                    current.skip()
+                    current.summary(reason="evidence_already_extracted")
+        if idea is None:  # a job that starts after intake still needs extracted evidence
+            with run.stage(job["fromStage"]):
+                raise CapabilityUnavailable("no extracted evidence for this idea")
+        if run.should_run("redact"):
+            with run.stage("redact") as current:
+                texts = [text for segment in idea.get("segments", []) for text in (segment.get("textEn", ""), segment.get("textOriginal", ""))]
+                if any(find_pii(text) for text in texts if isinstance(text, str)):
+                    raise InvalidInput("unredacted personal data in evidence")
+                current.summary(segments=len(idea.get("segments", [])))
+        rubric = rubric_payload(db, job)
+        if rubric:
+            idea = {**idea, "rubric": rubric}
+        try:
+            _, _, valid_ids = prepare_input(idea)
+            q = quality(idea)
+        except (InvalidEvidence, ValueError) as error:
+            raise InvalidInput("evidence failed validation") from error
+        checks = check_finances(idea.get("financials", {}), valid_ids)
+        if run.should_run("quality"):
+            with run.stage("quality") as current:
+                current.summary(completeness=q["completeness"], flags=len(q["flags"]), unassessable=q["unassessable"], financialChecks=len(checks))
+        questions = followups(idea)
+        if run.should_run("followup"):
+            with run.stage("followup") as current:
+                current.summary(questions=len(questions))
+        for stage, requirement in NOT_AVAILABLE.items():
+            if run.should_run(stage) and STAGES.index(stage) < STAGES.index("score"):
+                with run.stage(stage) as current:
+                    current.skip()
+                    current.summary(available=False, requirement=requirement)
+        plan = summary_plan(idea)
+        with run.stage("score") as current:
+            try:
+                adapter = make_adapter()
+                result = evaluate(idea, adapter)
+                current.model_use(provider="ollama", model=getattr(getattr(adapter, "settings", None), "model", None), llm_calls=2)
+                current.summary(potential=result["potential"], band=result["band"], coverage=result["coverage"], rubric=result["rubricVersion"])
+            except (CapabilityUnavailable, ModelOutputError, PolicyViolation) as error:
+                # Keep the useful deterministic results, as the centre route does, then fail the stage visibly.
+                store(db, job, case, {"status": "pending_model", "quality": q, "financialChecks": checks, "followUps": questions,
+                                      "planDraft": plan, "reason": "Local scoring model unavailable or output invalid."})
+                raise CapabilityUnavailable("local scoring model unavailable") from error
+            except InvalidEvidence as error:
+                raise InvalidInput("evidence failed validation") from error
+        with run.stage("narrative") as current:
+            current.summary(sections=len(plan["sections"]))
+        if run.should_run("rank"):
+            with run.stage("rank") as current:
+                current.skip()
+                current.summary(available=False, requirement=NOT_AVAILABLE["rank"])
+        with run.stage("feedback") as current:
+            draft = feedback_draft(result)
+            current.summary(drafted=True)
+        with run.stage("route") as current:
+            view, rules, consents = routing_view(db, job, case, idea)
+            suggestions = suggest_partners(view, rules, consents)
+            current.summary(suggestions=len(suggestions))
+        evaluation = {**result, "financialChecks": checks, "followUps": questions, "planDraft": plan, "feedbackDraft": draft,
+                      "routingSuggestions": suggestions}
+        outcome = {"status": "assessed", "evaluation": evaluation, "financialChecks": checks, "followUps": questions, "planDraft": plan}
+        store(db, job, case, outcome)
+        state = state_of(outcome)
+        run.submission_status("UNASSESSABLE" if state == "UNASSESSABLE" else "READY")
+
+    return handle
+
+
+def main():
+    parser = argparse.ArgumentParser(description="PitchPrism pipeline worker (local only)")
+    parser.add_argument("--once", action="store_true", help="Process at most one job, then exit")
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+    db = connect()
+    consumer = Consumer(db, handler_for(db), worker_id=f"worker-{socket.gethostname()}-{os.getpid()}")
+    if args.once:
+        print(consumer.run_once() or "idle")
+        return 0
+    log.info("worker ready; waiting for jobs")
+    consumer.run_forever()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

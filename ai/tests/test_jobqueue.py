@@ -11,7 +11,7 @@ from ai.providers import CapabilityUnavailable
 try:
     from pymongo import MongoClient
     from pymongo.errors import PyMongoError
-    from ai.jobqueue import Consumer, JobQueue, RetryableError, Run, backoff_seconds, now
+    from ai.jobqueue import Consumer, InvalidInput, JobQueue, RetryableError, Run, backoff_seconds, now
 except ImportError:  # pragma: no cover - pymongo not installed
     MongoClient = None
 
@@ -118,6 +118,24 @@ class JobQueueTests(unittest.TestCase):
         self.assertEqual((job["status"], job["error"]["code"], job["error"]["stage"]), ("failed", "capability_unavailable", "read"))
         self.assertNotIn("secret", str(job) + str(list(DB["stageEvents"].find())))
         self.assertEqual(self.status(), "FAILED")
+
+    def test_decided_ideas_keep_their_status(self):
+        DB["submissions"].update_one({"_id": self.submission}, {"$set": {"status": "SHORTLISTED"}})
+        self.enqueue(from_stage="score")
+        self.assertEqual(Consumer(DB, lambda job, run: run.submission_status("READY"), "worker").run_once(), "done")
+        self.assertEqual(self.status(), "SHORTLISTED")
+
+    def test_invalid_input_fails_without_retry(self):
+        self.enqueue()
+
+        def handler(job, run):
+            with run.stage("redact"):
+                raise InvalidInput("unredacted phone number in segment s_1")
+
+        self.assertEqual(Consumer(DB, handler, "worker").run_once(), "failed")
+        job = DB["jobs"].find_one()
+        self.assertEqual((job["error"]["code"], job["error"]["stage"]), ("invalid_input", "redact"))
+        self.assertNotIn("s_1", str(job))
 
     def test_transient_error_is_retried(self):
         self.enqueue()

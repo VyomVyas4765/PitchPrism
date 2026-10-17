@@ -41,6 +41,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-29 | MongoDB job queue and stage-event design (details D-26) | ✅ | Dev 3 |
 | D-30 | Contracts absorb the first role modules' tested conventions | ✅ | Dev 3 |
 | D-31 | Second-review samples, rerun semantics and the tenancy rollout | ✅ | Dev 3 |
+| D-32 | The worker runs real stages; rubrics drive scoring; decided ideas keep their status | ✅ | Dev 3, Dev 2 |
 
 ---
 
@@ -302,7 +303,21 @@ Current register after D-25. The complete answered/partial/open classification i
 **Decision.**
 - A `reviewSamples` contract (`ReviewSample`): one HQ verdict per decision (agrees, the decision HQ would have made, a short note with no personal data). It is tenant-scoped and audited as `decision.second_review`. The sample is stable for a week, about the requested percentage, and has at least one decision per centre.
 - The job idempotency key is submission, start stage, reason, input version and rubric version. It absorbs repeats only while a job is queued or leased. A done, failed or cancelled job frees the key, so a deliberate new request starts a fresh job and the old one keeps its history.
-- `TENANCY_MODE` defaults to `warn`. Dev 3's routes and tests run in `enforce`. `asSystem()` runs an already-authorised helper from another module, such as the consent check, outside request scope. Switch the default to `enforce` once every module passes its tests in enforce mode.
+- `TENANCY_MODE` defaults to `enforce`: every module's queries declare their scope, so an unscoped query on a tenant collection fails a test instead of leaking. `asSystem()` runs an already-authorised helper from another module outside request scope.
 - The SSE stream sends `Cache-Control: no-store, no-transform`, because compressing proxies, including the Next dev proxy, otherwise buffer it until the connection closes.
 
 **Consequences.** 23 stored collections. Rerunning an idea is always possible and always leaves a record. Role owners can see their unscoped call sites by running with `TENANCY_MODE=enforce`.
+
+### D-32 · The worker runs real stages; rubrics drive scoring; decided ideas keep their status ✅
+
+**Context.** A-28 needs each stage published as it finishes, but the centre assessment ran as one synchronous call, published rubric versions did not reach the scorer, and only a replay produced stage events. A rescore or a failed job could also overwrite a reviewer's decision with PROCESSING, FAILED or READY.
+
+**Decision.**
+- `python -m ai.worker` (`pnpm worker`) consumes the queue (D-29) and runs redaction, quality, follow-ups, scoring, narrative, feedback and routing with Dev 2's functions as separate timed stages, writing the centre case in the same shape as the synchronous route. Stages with no local implementation (normalise, similar, local, rank) are recorded as skipped. Intake stages are skipped when evidence is already extracted and fail visibly with `capability_unavailable` when it is not. A missing local model keeps the quality results and fails the score stage visibly.
+- The job's rubric version reaches `ai/intel/scoring.py` as `idea["rubric"]`: domains and weights, bands and pathway thresholds (a validated `PathwayRules` shape). Without a rubric the calculator defaults apply. The default `edp-default` rubric matches those defaults; `skills` and `experience` join the canonical fields.
+- The queue (Node and Python) never changes the status of an idea a reviewer has decided. A rescore versions the evaluation only.
+- W-27 uses a lexical, deterministic layout (TF-IDF, PCA, spherical k-means) labelled as such, until A-19 stores semantic embeddings.
+- Staff password resets follow the invitation pattern: an administrator in scope issues a one-time link (24 hours, fragment token); using it ends every session.
+
+**Consequences.** The centre card fills in live from real work. Dev 1 adds intake stages to the same worker; Dev 2 owns the stage functions it calls. 25 stored collections.
+

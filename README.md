@@ -6,7 +6,7 @@ AI idea screening for Tata STRIVE, built for Code Odyssey 5.0. Entrepreneurs pit
 
 The repository now has a Flutter mobile app (Android + iOS development), Next.js dashboard, Express API, shared auth contracts and a Python worker scaffold. Staff can sign in/out and open protected role workspaces. Entrepreneurs exchange a verified Firebase phone token for an API session. Role, organisation and consent checks run on the server.
 
-Domain contracts v1 are published in [packages/contracts](packages/contracts/README.md): JSON Schemas for all 23 collections, generated TypeScript and Python types, contract-built Mongoose models and synthetic fixtures.
+Domain contracts v1 are published in [packages/contracts](packages/contracts/README.md): JSON Schemas for all 25 collections, generated TypeScript and Python types, contract-built Mongoose models and synthetic fixtures.
 
 The centre assessment slice now accepts redacted, extracted EDP Idea Brief evidence, runs deterministic checks and local-only scoring, and serves a scoped review card, queue, decisions and feedback draft. App PDF extraction, the durable queue, original-file viewer and the rest of the centre workflow remain integration work; see [centre evaluation](docs/centre-evaluation.md). The starter submission endpoint remains read-only for applicant data; no applicant submissions are seeded. Real OTP needs Firebase project configuration. See [local AI setup](ai/README.md) and the [88-requirement implementation matrix](docs/implementation-matrix.md).
 
@@ -20,6 +20,7 @@ pnpm install
 pnpm setup:env          # Creates ignored .env with random secrets; preserves an existing file
 pnpm dev:local          # Persistent local MongoDB + synthetic staff seed + API/dashboard
 pnpm fixtures:load      # Optional: contract fixtures (a submission, evaluation, events...) with fixture.* staff logins
+pnpm worker             # Pipeline worker (python -m ai.worker): runs queued jobs stage by stage; needs ai/.venv
 pnpm pipeline:replay    # Optional, dev only: replays fixture stage timings for queued jobs (live card, SSE) until the worker runs real stages
 ```
 

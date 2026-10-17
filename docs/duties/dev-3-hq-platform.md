@@ -37,17 +37,17 @@ Track implementation, execution, dependency, acceptance and status in [requireme
 Descriptions and acceptance details: [PRD](../../PitchPrism.md). Each ID has exactly one primary owner in [requirements.json](requirements.json); support dependencies do not change primary ownership.
 
 - [x] **W-01** · HQ · P0
-- [ ] **W-02** · HQ · P0 (form), P1 (visual builder) · form done, visual builder pending
+- [x] **W-02** · HQ · P0 (form), P1 (visual builder)
 - [x] **W-03** · HQ · P0
 - [x] **W-04** · HQ · P0
 - [x] **W-05** · HQ · P0
 - [x] **W-06** · HQ · P1
 - [x] **W-07** · HQ · P1
 - [x] **W-08** · HQ · P1
-- [ ] **W-27** · HQ · P1 · blocked on A-19 embeddings and clusters (Dev 2)
+- [x] **W-27** · HQ · P1 · lexical similarity until A-19 embeddings exist
 - [x] **W-32** · HQ, Centre · P0
-- [ ] **W-33** · HQ · P1 · latest harness report shown; run history pending Dev 2 storing runs
-- [ ] **A-28** · Live card · P0 · platform done (queue, scoped SSE, resume); stage handlers and card UI pending (Devs 1, 2)
+- [x] **W-33** · HQ · P1
+- [x] **A-28** · Live card · P0 · intake stages join the worker when Dev 1 adds them
 - [x] **A-29** · Cost and timing · P1
 
 ## Acceptance and handoff
@@ -72,9 +72,11 @@ Not Dev 3 (integrate, don't duplicate): intake and AI stages (Dev 1); scoring, s
 
 ## In progress
 
-Nothing active. Open Dev 3 items: W-02 visual builder (P1), W-27 idea map (needs A-19), W-33 run history (needs stored eval runs), and turning `TENANCY_MODE` to `enforce` once Devs 1, 2 and 4 adopt `setOptions({ tenant })` (see `backend/src/modules/README.md`).
+Nothing active. Not verifiable on the development machine: Docker Compose (Docker not installed), the Android build (needs Flutter 3.47; 3.41 installed), Firebase phone sign-in (needs project credentials), and organiser-data runs (no extracted dataset or local model here). Contract sign-off by Devs 1, 2 and 4 is a conversation, not code.
 
 ## Done
+
+- 2026-10-17 · Scope completion. Tenancy now enforces in every module (`TENANCY_MODE=enforce` by default; centre, entrepreneur, assisted intake, consent and partner queries declare scopes). W-02 visual rubric builder; published rubric versions drive scoring weights, bands and pathway rules in `ai/intel/scoring.py`, and the default rubric matches it. W-33 records each harness report as an `evalRun` with history. Staff password reset links and self-service password change. A-28: `python -m ai.worker` (`pnpm worker`) runs redaction, quality, follow-ups, scoring, narrative, feedback and routing as real timed stages and the centre card fills in live; the queue never changes a decided idea's status. W-27 idea map (lexical, deterministic) with named clusters and saturation alerts. Verified: 145 backend tests and 69 worker tests (5 skipped); live checks through the web proxy (invite, reports, idea map, reset and account pages, rescore through the real worker failing visibly at scoring with no local model).
 
 - 2026-10-17 · Merged main into `vyom` and unified W-01: one invitation system on the `invitations` contract with audit, tenancy and HQ configuration. Ported from Arnav's build: links carry the token in the URL fragment (`/accept-invite#token`) and preview by POST, so it never reaches request logs; re-inviting an address withdraws its earlier link; disabling ends sessions at once; invitations default to the inviter's organisation; implementation partners must report to an active centre, every other organisation to HQ, and parents are fixed after creation. Removed the duplicate `Invite` model, `manage_org_users` permission (now `invite_users`), access router and panel. Dev 1's `clientApplicantId` moved into the Entrepreneur contract. Verified: 138 backend tests including Dev 1's intake suite and Arnav's scenarios ported into `hq.test.ts`.
 

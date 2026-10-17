@@ -471,9 +471,11 @@
       "backend/src/modules/hq/staff.ts",
       "backend/src/modules/hq/admin.ts",
       "frontend/features/hq/TeamPanel.tsx",
-      "frontend/app/accept-invite/page.tsx"
+      "frontend/app/accept-invite/page.tsx",
+      "frontend/app/reset-password/page.tsx",
+      "frontend/app/account/page.tsx"
     ],
-    "notes": "Unifies Arnav's first build (fragment links, re-invite revocation, sessions ended on disable, hub-and-spoke parents, bootstrap-only seed) with the contract-based admin API and audit log. Pending: password reset, email delivery."
+    "notes": "Includes Arnav's first build's ideas, password reset links and self-service password change. Links are passed on by the inviter; no email provider by design."
   },
   "W-02": {
     "owner": "dev-3-hq-platform",
@@ -488,13 +490,13 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate programme/rubric version administration with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "partial",
+    "status": "implemented",
     "evidence": [
       "backend/tests/hq.test.ts",
-      "backend/src/modules/hq/admin.ts",
-      "frontend/features/hq/ConfigPanels.tsx"
+      "ai/tests/test_rubric_scoring.py",
+      "frontend/features/hq/RubricBuilder.tsx"
     ],
-    "notes": "P0 programmes and versioned rubric form implemented (weights total 100, save creates a version, publish archives the previous one); P1 visual builder pending."
+    "notes": "Form and visual builder (prism weights, band scale, pathway rules, completeness, live score preview, diff). Published versions drive scoring in the worker."
   },
   "W-03": {
     "owner": "dev-3-hq-platform",
@@ -946,9 +948,13 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate idea-cluster map with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": [],
-    "notes": "Blocked on A-19 locally computed embeddings, coordinates and clusters (Dev 2)."
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/idea-map.test.ts",
+      "backend/tests/reports.test.ts",
+      "frontend/features/hq/IdeaMapPanel.tsx"
+    ],
+    "notes": "Lexical similarity (TF-IDF, PCA, k-means) until A-19 semantic embeddings exist; then only the vectors change."
   },
   "W-28": {
     "owner": "dev-2-centre-cohort",
@@ -1045,11 +1051,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate model quality/eval reporting with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "partial",
+    "status": "implemented",
     "evidence": [
-      "backend/tests/reports.test.ts"
+      "backend/tests/reports.test.ts",
+      "packages/contracts/schemas/domain/eval-run.json"
     ],
-    "notes": "Shows the latest ai/eval/harness.py report (accuracy, parity, latency); run history and per-model cost pending Dev 2 storing runs."
+    "notes": "Each harness report is recorded once as an evalRun; latest run, history, parity, latency and cost. Numbers appear once Dev 2 runs the harness on the organiser data."
   },
   "W-34": {
     "owner": "dev-2-centre-cohort",
@@ -1540,14 +1547,15 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Events scoped to viewer; reconnect does not lose or invent completed stages",
-    "status": "platform_partial",
+    "status": "implemented",
     "evidence": [
       "backend/tests/pipeline.test.ts",
       "ai/tests/test_jobqueue.py",
-      "backend/src/platform/pipeline.ts",
-      "ai/jobqueue.py"
+      "ai/tests/test_worker.py",
+      "ai/worker.py",
+      "frontend/features/pipeline/LiveStages.tsx"
     ],
-    "notes": "Queue, scoped SSE with Last-Event-ID resume and a replay consumer are implemented and verified through the web proxy; real stage handlers (Devs 1, 2) and the progressive card UI (Dev 2) pending."
+    "notes": "Each stage is published as it finishes and the centre card fills in over SSE (scoped, resumable). Intake stages run when Dev 1 adds them to the worker; until then they are skipped for already-extracted evidence and fail visibly otherwise."
   },
   "A-29": {
     "owner": "dev-3-hq-platform",

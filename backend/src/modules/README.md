@@ -11,8 +11,11 @@ Dev 3 mounts every router in `src/app.ts`. Give each one its own prefix (`/api/v
 | Prefix | Owner | Notes |
 |---|---|---|
 | `/api/v1/invitations/accept` | Dev 3 | Public. `GET /:token` preview, `POST /` creates the account and signs it in |
+| `/api/v1/password-reset` | Dev 3 | Public. `POST /preview`, `POST /` for one-time reset links |
+| `/api/v1/account` | Dev 3 | `POST /password` for signed-in staff |
 | `/api/v1/team` | Dev 3 | `invite_users`: staff list, role and access changes, invitations (own organisation; HQ any) |
 | `/api/v1/hq` | Dev 3 | Organisations, programmes, versioned rubrics, cohorts (centre-scoped), trades, routing rules |
+| `/api/v1/hq/reports` | Dev 3 | HQ only: pipeline, funnel, pipeline health, fairness, second-review sampling, audit log, model quality, idea map |
 | `/api/v1` (pipeline) | Dev 3 | Route-level guards: `POST /submissions/:id/process`, `GET /submissions/:id/pipeline`, `POST /jobs/:id/cancel`, `GET /events` (SSE; `submissionId`, `Last-Event-ID`) |
 | `/api/v1/centre` | Dev 2 | |
 | `/api/v1/partners` | Dev 4 | |

@@ -43,7 +43,8 @@ Consumer(connect(), handle, worker_id="worker-1").run_forever()
 - Raise `CapabilityUnavailable` when a local provider is missing: the job fails visibly with `capability_unavailable` and is not retried. Raise `TimeoutError` or `RetryableError` for transient faults: they are retried with backoff (5 s, 20 s, 80 s) up to `maxAttempts`. Any other exception fails the attempt as `stage_error`.
 - Exception text is never stored, because it may contain prompts or personal data. Staff see fixed messages.
 - A worker that crashes loses its lease after 60 seconds and the job returns to the queue; after `maxAttempts` it fails as `attempts_exhausted`.
-- Until the real handlers exist, `pnpm pipeline:replay` (development only) consumes jobs and replays the fixture's stage timings, marked `replay: true`, so the live card can be built and demonstrated. It never marks an idea assessed unless a stored evaluation already exists.
+- `python -m ai.worker` (`pnpm worker`, `make pipeline`) is the consumer: it runs redaction, quality, follow-ups, scoring, narrative, feedback and routing with the job's published rubric, records the stages it cannot run yet as skipped, and writes the centre case. Dev 1 adds the intake stages (ingest to extract) to `ai/worker.py`.
+- `pnpm pipeline:replay` (development only) consumes jobs and replays the fixture's stage timings, marked `replay: true`, for demonstrations without a local model. It never marks an idea assessed unless a stored evaluation already exists.
 
 
 

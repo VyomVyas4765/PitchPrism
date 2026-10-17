@@ -45,7 +45,7 @@ beforeEach(async () => {
     { name: 'Synthetic centre', type: 'centre' }, { name: 'Synthetic sibling', type: 'centre' },
     { name: 'Synthetic sector', type: 'sector_partner' }, { name: 'Synthetic lender', type: 'funding_partner', fundingMode: 'lender' },
   ]) as [typeof centre, typeof sibling, typeof sector, typeof funding];
-  applicant = await User.create({ displayName: 'Synthetic applicant', role: 'entrepreneur', firebaseUid: 'synthetic-uid' });
+  applicant = await User.create({ displayName: 'Synthetic applicant', role: 'entrepreneur', email: 'synthetic-uid@pitchprism.test' });
   assessor = await staff('centre_assessor');
   applicantProfile = await Entrepreneur.create({ _id: applicant._id, userId: applicant._id, homeOrgId: centre._id, createdVia: 'self',
     personal: vault.seal({ name: 'Synthetic applicant', phone: '+910000000000' }, String(applicant._id)) });

@@ -21,7 +21,6 @@ export type Config = z.infer<typeof configSchema>;
 export function readConfig(): Config {
   const config = configSchema.parse(process.env);
   if (config.NODE_ENV === 'production' && !config.WEB_ORIGIN.startsWith('https://')) throw new Error('Production WEB_ORIGIN must use HTTPS');
-  if (config.NODE_ENV === 'production' && process.env.FIREBASE_AUTH_EMULATOR_HOST) throw new Error('Firebase emulator is forbidden in production');
   if (config.NODE_ENV === 'production' && !config.PII_ENCRYPTION_KEY) throw new Error('Production requires PII_ENCRYPTION_KEY');
   return config;
 }

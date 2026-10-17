@@ -11,6 +11,7 @@ import { AuditLog, Job, Org, Session, Submission, User } from '../src/models.js'
 import { Consent, CONSENT_NOTICE_VERSION, Entrepreneur } from '../src/modules/entrepreneur/models.js';
 import { DocumentChunk, Pitch, PitchDocument } from '../src/modules/entrepreneur/intake-models.js';
 import { readOriginal } from '../src/modules/entrepreneur/storage.js';
+import { setIngestRunner, Transcript, type IngestJob } from '../src/modules/entrepreneur/processing.js';
 
 // Synthetic values only.
 const config = configSchema.parse({ NODE_ENV: 'test', JWT_SECRET: 'test-only-secret-with-more-than-thirty-two-characters', PII_ENCRYPTION_KEY: 'cd'.repeat(32) });
@@ -47,13 +48,13 @@ beforeAll(async () => {
 afterAll(async () => { await mongoose.disconnect(); await mongo?.stop(); });
 beforeEach(async () => {
   await mongoose.connection.db!.dropDatabase();
-  await Promise.all([User, Org, Session, Submission, Entrepreneur, Consent, Pitch, PitchDocument, DocumentChunk].map(model => (model as typeof User).init()));
+  await Promise.all([User, Org, Session, Submission, Entrepreneur, Consent, Pitch, PitchDocument, DocumentChunk, Transcript].map(model => (model as typeof User).init()));
   [centre, sibling, partnerOrg] = await Org.create([
     { name: 'Synthetic Nashik centre', type: 'centre' }, { name: 'Synthetic sibling centre', type: 'centre' },
     { name: 'Synthetic NGO', type: 'implementation_partner' },
   ]) as [typeof centre, typeof sibling, typeof partnerOrg];
-  applicant = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', firebaseUid: 'synthetic-intake-1' });
-  other = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', firebaseUid: 'synthetic-intake-2' });
+  applicant = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', email: 'synthetic-intake-1@pitchprism.test' });
+  other = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', email: 'synthetic-intake-2@pitchprism.test' });
   facilitator = await User.create({ displayName: 'Synthetic facilitator', email: 'fac@pitchprism.test', role: 'facilitator', orgId: centre._id });
   app = createApp(config);
 });
@@ -215,5 +216,77 @@ describe('assisted mode', () => {
     const refused = await request(app).post(`/api/v1/pitches/${pitch.body.id}/submit`).set('Authorization', auth).send({}).expect(409);
     expect(refused.body.error).toContain('not linked to a centre');
     expect(await Submission.countDocuments()).toBe(0);
+  });
+});
+
+describe('processing and transcript review', () => {
+  async function waitFor(auth: string, pitchId: string, wanted: string) {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const response = await request(app).get(`/api/v1/pitches/${pitchId}/transcript`).set('Authorization', auth).expect(200);
+      if (response.body.pipeline === wanted) return response.body;
+      await new Promise(resolve => setTimeout(resolve, 40));
+    }
+    throw new Error(`pipeline never reached ${wanted}`);
+  }
+  async function submittedPitch(auth: string, draft: string) {
+    await consent(auth);
+    const pitch = await request(app).post('/api/v1/pitches').set('Authorization', auth)
+      .send({ clientDraftId: draft, mode: 'guided', language: 'hi', centreId: String(centre._id) }).expect(201);
+    const recording = audio(3000);
+    const doc = await request(app).post(`/api/v1/pitches/${pitch.body.id}/documents`).set('Authorization', auth)
+      .send({ clientFileId: `${draft}-file`, kind: 'audio', bytes: recording.length, sha256: sha(recording), mime: 'audio/mp4', promptStep: 'sell' }).expect(201);
+    await upload(auth, doc.body.id, recording);
+    await request(app).post(`/api/v1/pitches/${pitch.body.id}/submit`).set('Authorization', auth).send({}).expect(201);
+    return { pitchId: pitch.body.id as string, documentId: doc.body.id as string, recording };
+  }
+
+  it('runs the local pipeline after submit, stores version 1 and keeps it when corrections are saved', async () => {
+    const jobs: IngestJob[] = [];
+    setIngestRunner(async job => {
+      jobs.push(job);
+      return { status: 'extracted', transcript: [{ segId: 's_0001', textOriginal: 'मैं पापड़ बेचूँगी', textEn: 'I will sell papad', lang: 'hi',
+        source: { type: 'audio', documentId: job.documents[0]!.documentId, start: 0.4, end: 3.1 } }], extracted: { template: 'edp-idea-brief' } };
+    });
+    const auth = await as(applicant);
+    const { pitchId, documentId, recording } = await submittedPitch(auth, 'draft-process-1');
+    const body = await waitFor(auth, pitchId, 'transcribed');
+    expect(body.transcript).toMatchObject({ version: 1, status: 'extracted', edited: false });
+    expect(jobs[0]).toMatchObject({ language: 'hi', documents: [{ documentId, kind: 'audio', promptStep: 'sell' }] });
+    const saved = await request(app).put(`/api/v1/pitches/${pitchId}/transcript`).set('Authorization', auth)
+      .send({ baseVersion: 1, edits: [{ segId: 's_0001', text: 'मैं पापड़ और अचार बेचूँगी' }] }).expect(200);
+    expect(saved.body.segments[0]).toMatchObject({ textOriginal: 'मैं पापड़ और अचार बेचूँगी', textEn: null, edited: true });
+    await request(app).put(`/api/v1/pitches/${pitchId}/transcript`).set('Authorization', auth)
+      .send({ baseVersion: 1, edits: [{ segId: 's_0001', text: 'stale edit' }] }).expect(409);
+    await request(app).put(`/api/v1/pitches/${pitchId}/transcript`).set('Authorization', auth)
+      .send({ baseVersion: 2, edits: [{ segId: 's_9999', text: 'unknown segment' }] }).expect(400);
+    const original = await Transcript.findOne({ pitchId, version: 1 }).lean();
+    expect((original!.segments[0] as { textOriginal: string }).textOriginal).toBe('मैं पापड़ बेचूँगी');
+    const played = await request(app).get(`/api/v1/documents/${documentId}/original`).set('Authorization', auth).buffer(true)
+      .parse((response, callback) => { const chunks: Buffer[] = []; response.on('data', chunk => chunks.push(chunk)); response.on('end', () => callback(null, Buffer.concat(chunks))); }).expect(200);
+    expect(Buffer.compare(played.body as Buffer, recording)).toBe(0);
+    await request(app).get(`/api/v1/pitches/${pitchId}/transcript`).set('Authorization', await as(other)).expect(404);
+    await request(app).get(`/api/v1/documents/${documentId}/original`).set('Authorization', await as(other)).expect(404);
+  });
+
+  it('keeps a missing local capability pending and lets the owner retry', async () => {
+    let capable = false;
+    setIngestRunner(async () => capable
+      ? { status: 'extracted', transcript: [], extracted: {} }
+      : { status: 'pending', transcript: [], pending: [{ stage: 'translate', reason: 'No approved local translation model.' }] });
+    const auth = await as(applicant);
+    const { pitchId } = await submittedPitch(auth, 'draft-process-2');
+    const pending = await waitFor(auth, pitchId, 'pending_capability');
+    expect(pending.transcript.pending[0].stage).toBe('translate');
+    capable = true;
+    await request(app).post(`/api/v1/pitches/${pitchId}/process`).set('Authorization', auth).send({}).expect(202);
+    await waitFor(auth, pitchId, 'transcribed');
+    await request(app).post(`/api/v1/pitches/${pitchId}/process`).set('Authorization', auth).send({}).expect(409);
+    expect((await Transcript.find({ pitchId }).sort({ version: 1 }).lean()).map(item => [item.version, item.status])).toEqual([[1, 'pending'], [2, 'extracted']]);
+    // A run interrupted by a restart: retry is refused while recent, allowed once stale.
+    await Pitch.collection.updateOne({ _id: new mongoose.Types.ObjectId(pitchId) }, { $set: { pipeline: 'processing', updatedAt: new Date() } });
+    await request(app).post(`/api/v1/pitches/${pitchId}/process`).set('Authorization', auth).send({}).expect(409);
+    await Pitch.collection.updateOne({ _id: new mongoose.Types.ObjectId(pitchId) }, { $set: { updatedAt: new Date(Date.now() - 31 * 60 * 1000) } });
+    await request(app).post(`/api/v1/pitches/${pitchId}/process`).set('Authorization', auth).send({}).expect(202);
+    await waitFor(auth, pitchId, 'transcribed');
   });
 });

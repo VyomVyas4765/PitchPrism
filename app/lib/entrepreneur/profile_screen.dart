@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import '../core/api.dart';
 import 'common.dart';
 
+/// Matches the server's accepted list (entrepreneur module INDIAN_STATES).
+const indianStates = ['Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
+  'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
+  'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Puducherry', 'Chandigarh', 'Andaman and Nicobar Islands', 'Dadra and Nagar Haveli and Daman and Diu', 'Lakshadweep'];
+
 /// M-04 (tap part): name, district or PIN code, trade, optional gender.
 /// Validation mirrors the server; voice entry waits for a validated local STT.
 class ProfileScreen extends StatefulWidget {
@@ -21,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late final _pincode = TextEditingController(text: widget.profile['pincode'] as String?);
   late final _trade = TextEditingController(text: widget.profile['trade'] as String?);
   late String? _gender = widget.profile['gender'] as String?;
+  late String? _state = widget.profile['state'] as String?;
   bool _saving = false;
   String? _error;
 
@@ -47,6 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (pincode.isNotEmpty) 'pincode': pincode,
         'trade': _trade.text.trim(),
         'gender': _gender,
+        if (_state != null) 'state': _state,
       });
       widget.onDone();
     } on ApiException catch (error) {
@@ -90,6 +98,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 8),
           TextFormField(key: const Key('profile-trade'), controller: _trade, decoration: InputDecoration(labelText: t('trade')),
             validator: _required, maxLength: 80),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String?>(
+            key: const Key('profile-state'),
+            initialValue: _state,
+            decoration: InputDecoration(labelText: t('state')),
+            items: [for (final state in indianStates) DropdownMenuItem(value: state, child: Text(state))],
+            onChanged: _saving ? null : (value) => setState(() => _state = value),
+          ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String?>(
             key: const Key('profile-gender'),

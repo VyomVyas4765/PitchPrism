@@ -9,6 +9,7 @@ import 'device.dart';
 import 'outbox.dart';
 import 'record_tile.dart';
 import 'services.dart';
+import 'transcript_screen.dart';
 
 /// Reads a server list, falling back to the copy saved on the phone so the
 /// pitch screens work offline after one successful visit.
@@ -92,7 +93,7 @@ class _PitchScreenState extends State<PitchScreen> {
     final t = widget.ctx.t;
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(t(switch (item.mode) { 'guided' => 'speak', 'typed' => 'type', _ => 'upload' }))),
+      appBar: AppBar(title: Text(t(switch (item.mode) { 'guided' || 'free_talk' => 'speak', 'typed' => 'type', _ => 'upload' }))),
       body: FutureBuilder(
         future: _setup,
         builder: (context, snapshot) {
@@ -118,7 +119,28 @@ class _PitchScreenState extends State<PitchScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-              if (item.mode == 'upload') ...[
+              if (item.mode == 'free_talk') ...[
+                Row(children: [
+                  Expanded(child: Text(t('freeTalkPrompt'), style: theme.textTheme.titleMedium)),
+                  ListenButton(context_: widget.ctx, text: t('freeTalkPrompt')),
+                ]),
+                const SizedBox(height: 12),
+                RecordTile(
+                  key: const Key('tile-free-talk'),
+                  ctx: widget.ctx,
+                  recorder: widget.services.recorder(),
+                  directory: widget.services.directory,
+                  fileStem: '${item.clientDraftId}-free',
+                  maxSeconds: 300,
+                  existing: item.files.firstOrNull,
+                  onRecorded: (file) {
+                    setState(() => item.files
+                      ..clear()
+                      ..add(file));
+                    _save();
+                  },
+                ),
+              ] else if (item.mode == 'upload') ...[
                 for (final file in item.files)
                   ListTile(leading: Icon(file.kind == 'pdf' ? Icons.picture_as_pdf : Icons.image), title: Text(file.path.split(Platform.pathSeparator).last)),
                 OutlinedButton.icon(key: const Key('pitch-pick'), onPressed: _pick, icon: const Icon(Icons.upload_file), label: Text(t('chooseFile'))),
@@ -244,7 +266,7 @@ class _OutboxScreenState extends State<OutboxScreen> {
                   }),
                   title: Text([
                     if (item.applicant != null) item.applicant!.fields['name'] as String,
-                    t(switch (item.mode) { 'guided' => 'speak', 'typed' => 'type', _ => 'upload' }),
+                    t(switch (item.mode) { 'guided' || 'free_talk' => 'speak', 'typed' => 'type', _ => 'upload' }),
                   ].join(' · ')),
                   subtitle: Text([
                     t(switch (item.status) { 'sent' => 'itemSent', 'failed' => 'itemFailed', 'queued' => 'itemQueued', _ => 'itemDraft' }),
@@ -256,7 +278,10 @@ class _OutboxScreenState extends State<OutboxScreen> {
                             builder: (_) => PitchScreen(ctx: widget.ctx, services: widget.services, item: item)));
                           if (mounted) setState(() => _items = widget.services.store.load());
                         }
-                      : null,
+                      : item.status == 'sent' && item.pitchId != null
+                          ? () => Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => TranscriptScreen(ctx: widget.ctx, services: widget.services, item: item)))
+                          : null,
                 ),
             ],
           );

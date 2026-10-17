@@ -40,5 +40,5 @@ try {
     }
     console.log('SEED_DEMO_STAFF=true: synthetic demo staff ready (development only).');
   }
-  console.log('Entrepreneur accounts are created after verified Firebase phone sign-in.');
+  console.log('Entrepreneurs create their own accounts with email and password in the app.');
 } finally { await mongoose.disconnect(); }

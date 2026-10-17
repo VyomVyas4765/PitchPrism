@@ -9,12 +9,17 @@ import 'package:pitchprism_app/facilitator/applicant_screen.dart';
 import 'package:pitchprism_app/intake/device.dart';
 import 'package:pitchprism_app/intake/outbox.dart';
 import 'package:pitchprism_app/intake/services.dart';
+import 'package:pitchprism_app/intake/transcript_screen.dart';
 import 'package:pitchprism_app/l10n/strings.dart';
 
 import 'outbox_test.dart' show FakeServer, MemoryStore;
 
 /// Adds the read endpoints the screens need to the outbox fake server.
 class ScreenServer extends FakeServer {
+  Map<String, dynamic> transcriptResponse = {'pipeline': 'processing', 'transcript': null};
+  final transcriptPuts = <Map<String, dynamic>>[];
+  int processCalls = 0;
+
   @override
   Future<Map<String, dynamic>> request(String path, {Map<String, dynamic>? body, String? method}) async {
     if (path == '/pitch-prompts') {
@@ -24,6 +29,15 @@ class ScreenServer extends FakeServer {
       ]};
     }
     if (path == '/centres') return {'centres': [{'id': 'centre1', 'name': 'Synthetic centre'}]};
+    if (path.endsWith('/transcript') && method == 'PUT') {
+      transcriptPuts.add(body!);
+      return {'version': 2};
+    }
+    if (path.endsWith('/transcript')) return transcriptResponse;
+    if (path.endsWith('/process')) {
+      processCalls++;
+      return {'pipeline': 'pending_queue'};
+    }
     if (path == '/me') {
       return {'id': 'entrepreneur1', 'language': 'en', 'noticeVersion': consentNoticeVersion, 'profileComplete': true,
         'profile': {}, 'consents': {'processing': {'id': 'c1'}, 'sharing': {'sector_partner': null, 'funding_partner': null}}};
@@ -122,6 +136,8 @@ void main() {
       await openHome(tester);
       await tester.tap(find.byKey(const Key('home-speak')));
       await settle(tester);
+      await tester.tap(find.byKey(const Key('speak-guided')));
+      await settle(tester);
       final draft = (await store.load()).single.clientDraftId;
       Future<void> takeOne() async {
         await tester.tap(find.byKey(Key('record-$draft-sell')));
@@ -166,5 +182,54 @@ void main() {
     expect(item.applicant!.fields, {'language': 'en', 'name': 'Synthetic Applicant', 'trade': 'Tailoring', 'district': 'Nashik'});
     expect(item.applicant!.consentRecording.bytes, 4000);
     expect(item.mode, 'typed');
+  });
+
+  testWidgets('free talk records one take of up to five minutes from the Speak choice', (tester) async {
+    await openHome(tester);
+    await tester.tap(find.byKey(const Key('home-speak')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('speak-free')));
+    await settle(tester);
+    expect(find.text(tr('en', 'freeTalkPrompt')), findsOneWidget);
+    final draft = (await store.load()).single;
+    expect(draft.mode, 'free_talk');
+    await tester.tap(find.byKey(Key('record-${draft.clientDraftId}-free')));
+    await settle(tester);
+    expect(find.text('5:00'), findsOneWidget);
+    await tester.tap(find.byKey(Key('stop-${draft.clientDraftId}-free')));
+    await settle(tester);
+    final item = (await store.load()).single;
+    expect((item.files.single.promptStep, item.files.single.bytes), (null, 4000));
+  });
+
+  testWidgets('the transcript shows original and English, saves a correction as a new version, and retries pending reads', (tester) async {
+    tallScreen(tester);
+    server.transcriptResponse = {'pipeline': 'transcribed', 'transcript': {'version': 1, 'status': 'extracted', 'edited': false, 'segments': [
+      {'segId': 's_0001', 'textOriginal': 'मैं पापड़ बेचूँगी', 'textEn': 'I will sell papad', 'lang': 'hi',
+        'source': {'type': 'audio', 'documentId': 'doc1', 'start': 0.4, 'end': 3.1}},
+    ]}};
+    final item = OutboxItem(clientDraftId: 'draft-sent-0001', mode: 'guided', language: 'hi', status: 'sent', pitchId: 'pitch1');
+    final ctx = EntrepreneurContext(api: server, speech: SilentSpeech(), language: 'hi');
+    await tester.pumpWidget(MaterialApp(home: TranscriptScreen(ctx: ctx, services: services, item: item)));
+    await settle(tester);
+    expect(find.text('मैं पापड़ बेचूँगी'), findsOneWidget);
+    expect(find.text('I will sell papad'), findsOneWidget);
+    expect(find.byKey(const Key('play-s_0001')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('segment-s_0001')));
+    await settle(tester);
+    await tester.enterText(find.byKey(const Key('transcript-edit-field')), 'मैं पापड़ और अचार बेचूँगी');
+    await tester.tap(find.byKey(const Key('transcript-edit-ok')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('transcript-save')));
+    await settle(tester);
+    expect(server.transcriptPuts.single, {'baseVersion': 1, 'edits': [{'segId': 's_0001', 'text': 'मैं पापड़ और अचार बेचूँगी'}]});
+
+    server.transcriptResponse = {'pipeline': 'pending_capability', 'transcript': {'version': 1, 'status': 'pending', 'segments': [], 'pending': []}};
+    await tester.pumpWidget(const SizedBox()); // a fresh screen, not the previous state reused
+    await tester.pumpWidget(MaterialApp(home: TranscriptScreen(ctx: ctx, services: services, item: item)));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('transcript-retry')));
+    await settle(tester);
+    expect(server.processCalls, 1);
   });
 }

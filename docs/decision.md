@@ -36,14 +36,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-24 | Full scope, local-only AI; lean Android; explicit cost/capability evidence | ✅ | All |
 | D-25 | Reconcile answered, superseded and still-open PRD questions | ✅ | All |
 | D-26 | Remove Redis; persistent local MongoDB; add iOS development target | ✅ | Dev 1, Dev 3 |
-| D-27 | Staff invitations by one-time copyable link | ✅ | Dev 3 |
-| D-28 | Contracts v1: one bundle drives TypeScript, Python, models and fixtures | ✅ | Dev 3 |
-| D-29 | MongoDB job queue and stage-event design (details D-26) | ✅ | Dev 3 |
-| D-30 | Contracts absorb the first role modules' tested conventions | ✅ | Dev 3 |
-| D-31 | Second-review samples, rerun semantics and the tenancy rollout | ✅ | Dev 3 |
-| D-32 | The worker runs real stages; rubrics drive scoring; decided ideas keep their status | ✅ | Dev 3, Dev 2 |
-| D-33 | AI pitch review: text pitch, gaps, follow-up questions until complete, then evaluation | ✅ | All (AI focus) |
-| D-34 | Groq's hosted API for text reasoning, replacing local Ollama by default (amends D-24) | ✅ | All (AI focus) |
+| D-27 | Email-only sign-in; iOS-only build target for now | ✅ | Dev 1, Dev 3 |
 
 ---
 
@@ -251,106 +244,11 @@ Current register after D-25. The complete answered/partial/open classification i
 
 **Build networking.** The Mac's global Git HTTPS→SSH rewrite can hang public Swift-package downloads on a restricted network. `GIT_CONFIG_GLOBAL=/dev/null` is scoped to the Flutter build process; global Git settings are not modified.
 
-### D-27 · Staff invitations by one-time copyable link ✅
 
-**Context.** W-01 needs HQ (and centres or partners, for their own users) to invite staff. There is no email or SMS service in the ₹0 budget, and the scaffold deliberately has no public sign-up.
+### D-27 · Email-only sign-in and iOS-only build target ✅
 
-**Decision.** An invitation is a random token stored only as a hash, with an expiry (72 hours by default), single use, and bound to the role and organisation the inviter chose. The server checks that the inviter is allowed to grant that role in that organisation; the client never chooses its own grant. The inviter copies the link and shares it themselves; the invitee sets their name and password. Expired, revoked or reused tokens are rejected. An email sender can be added later behind the same endpoint without changing the flow.
+**Context.** 17 October 2026, team direction (Arnav): remove phone OTP, SMS and other non-email sign-in; build only for iOS for now.
 
-### D-28 · Contracts v1: one bundle drives TypeScript, Python, models and fixtures ✅
+**Decision.** Every role signs in with email and password. Entrepreneurs self-register (`POST /auth/register`) and are always entrepreneurs; staff, including facilitators, join only through scoped invitations (W-01). Firebase phone OTP, its verifier, `firebase-admin`, the Flutter Firebase packages and `User.firebaseUid` are removed. This supersedes D-21's Firebase OTP for entrepreneurs and PRD M-02's "phone number login with OTP". The Flutter app is built and tested for iPhone only; the Android project stays in the repository but is not built or tested. This supersedes D-20/D-26's Android-first performance target for the current build; the PRD's low-cost Android audience is deferred, not dropped.
 
-**Context.** D-03 chose JSON Schema generated into TypeScript and Pydantic. The worker already validates with `jsonschema` and has no Pydantic dependency (D-24 keeps it lean), and hand-written Mongoose models would drift from the schemas.
-
-**Decision.** This refines D-03. `packages/contracts/schemas/domain/` holds one JSON Schema per domain type (22 stored collections plus embedded types). `pnpm contracts:generate` bundles them into one schema and writes TypeScript types, storage types for the backend, and a Python module of TypedDicts with `validate()` over the same bundle, so the worker needs no new dependency. The backend builds every Mongoose model from the bundle at startup (`backend/src/models/schema.ts`), adding only storage concerns such as indexes and hidden fields. Unknown fields are rejected (`strict: 'throw'`). `fixtures/synthetic.json` holds a valid example per collection; backend and Python tests check those fixtures against the schemas and the models, so the three cannot disagree silently.
-
-**Modelling choices.**
-- **The applicant is an `Entrepreneur` record, separate from sign-in `User`s** (for phone sign-in its _id equals the User _id). Personal details are sealed in `personal` by the entrepreneur PII vault, bound to the record ID, with keyed contact hashes for duplicate matching and placeholder detection.
-- **Partner access reads active entries in `Submission.shares`**, so scope stays a single query filter; consent and share services keep it in step with `consents` and `shares`.
-- **Scope is combined with route filters via `scoped()` (`$and`), never by object spread.** A spread let a route's `_id` override the "match nothing" scope during development; the access tests now guard it.
-- **The status lifecycle follows `docs/flow.md` §1.2.** Funding lenders see SHORTLISTED or SHARED ideas.
-
-**Consequences.** Contracts v1 is published for review by Devs 1, 2 and 4; changes go through Dev 3 and regenerate all outputs. One secret, `PII_ENCRYPTION_KEY`, seals personal data and keys contact hashes; `pnpm setup:env` adds missing secrets to an existing `.env`. Q-08 (several programmes per entrepreneur) is still open, so no uniqueness rule ties an entrepreneur to one programme yet.
-
-### D-29 · MongoDB job queue and stage-event design ✅
-
-**Context.** D-05 chose BullMQ on Redis, but its Python consumer was never validated (Q-14). D-24 runs one local worker job at a time, and Redis has no other use in the system. Local development runs MongoDB as a single server, so change streams (which need a replica set) are not available there.
-
-**Decision.** This supersedes D-05 and details the MongoDB jobs and events that D-26 selected.
-
-- **Jobs.** A `jobs` collection holds each `JobPayload` with `status` (queued, leased, done, failed, cancelled), `attempts`, `maxAttempts`, `availableAt`, `leaseUntil`, `workerId` and `error`. The API enqueues with an idempotency key (submission, from-stage, reason, input version), so a double click cannot create two jobs.
-- **Claiming.** The worker claims one job with an atomic `findOneAndUpdate` (queued, or leased with an expired lease, and `availableAt` reached → leased, `attempts + 1`). It extends the lease while working, then marks the job done or failed. A crashed worker's job returns to the queue when its lease expires. After `maxAttempts` the job is failed and stays visible; nothing is retried silently forever.
-- **Events.** The worker writes each `StageEvent` to a capped `stageEvents` collection and records timing and model use in the uncapped `pipelineRuns` collection (A-29). The API follows `stageEvents` with a tailable cursor and streams them over SSE, filtered by the viewer's organisation scope. A reconnecting client sends `Last-Event-ID`, and the API replays what it missed from persisted events, so reconnects neither lose nor invent completed stages (A-28 acceptance). Tailable cursors work on both the local single server and Atlas.
-
-**Refined in D-31.** The key also includes the rubric version, and it absorbs repeats only while a job is queued or running.
-
-**Consequences.** The `JobPayload` and `StageEvent` contracts keep their fields; only the transport changes. Q-14 becomes a test obligation: prove enqueue, claim, lease expiry, retry, terminal failure and SSE reconnect, with Dev 1 owning the Python consumer. Polling at about one second is enough for pilot volume and a single worker; revisit if several workers or much higher volume arrive.
-
-### D-30 · Contracts absorb the first role modules' tested conventions ✅
-
-**Context.** Devs 1, 2 and 4 built their first slices in parallel with contracts v1, against the starter models: Dev 1 defined its own `Entrepreneur` and `Consent` models with a sealed `personal` field and `PII_ENCRYPTION_KEY`; Dev 2 added decision statuses; Dev 4 and Dev 1 read and write `Submission.shares` and a plaintext `applicant`. Two models with one name crash the API, and forcing three tested modules onto different shapes mid-build would cost more than it gains.
-
-**Decision.** The shared contracts adopt the conventions those modules already test, and every model is defined once in `backend/src/models/` from the contracts (role modules re-export them).
-- `Entrepreneur` and `Consent` follow Dev 1's design: sealed `personal` bound to the record ID, append-only consents with one active consent per purpose and scope, and Entrepreneur _id equal to the User _id for phone sign-in, so entrepreneur scope is `entrepreneurId: user.id`.
-- One secret: `PII_ENCRYPTION_KEY` (64 hex). The contact-hash key derives from it; `DATA_ENCRYPTION_KEY` from contracts v1 is dropped.
-- `Submission.shares` keeps its name, with a generated `_id` per entry (the Idea Passport's shareId); missing fields on an entry simply never grant access. Status gains `MORE_INFO`.
-- `Submission.applicant` (plaintext name and phone) stays as a **deprecated, transitional** field so the starter flows and their tests keep working. Reads prefer the sealed profile. Remove it when assisted intake writes sealed profiles; until then it holds synthetic data only.
-- Dev 4's partner router is mounted at `/api/v1/partners` behind the shared session middleware, as its handoff requested.
-
-**Consequences.** All 104 backend tests (all four roles) and 49 worker tests pass on the shared models. Role routes still compose scope by object spread in places; that is safe while no scope uses `_id`, but new code should use `scoped()`. Follow-ups: remove `applicant` (Dev 1, Dev 3), and route partner and consent writes through one share service when partner actions land (Devs 1, 4).
-
-### D-31 · Second-review samples, rerun semantics and the tenancy rollout ✅
-
-**Context.** W-06 needs HQ verdicts on sampled centre decisions, and no contract held them. D-29's idempotency key made any finished job block a deliberate rerun with the same inputs, for example after a model change. The tenancy guard (PRD §19) would break the role modules that still build scopes by object spread if it enforced from day one.
-
-**Decision.**
-- A `reviewSamples` contract (`ReviewSample`): one HQ verdict per decision (agrees, the decision HQ would have made, a short note with no personal data). It is tenant-scoped and audited as `decision.second_review`. The sample is stable for a week, about the requested percentage, and has at least one decision per centre.
-- The job idempotency key is submission, start stage, reason, input version and rubric version. It absorbs repeats only while a job is queued or leased. A done, failed or cancelled job frees the key, so a deliberate new request starts a fresh job and the old one keeps its history.
-- `TENANCY_MODE` defaults to `enforce`: every module's queries declare their scope, so an unscoped query on a tenant collection fails a test instead of leaking. `asSystem()` runs an already-authorised helper from another module outside request scope.
-- The SSE stream sends `Cache-Control: no-store, no-transform`, because compressing proxies, including the Next dev proxy, otherwise buffer it until the connection closes.
-
-**Consequences.** 23 stored collections. Rerunning an idea is always possible and always leaves a record. Role owners can see their unscoped call sites by running with `TENANCY_MODE=enforce`.
-
-### D-32 · The worker runs real stages; rubrics drive scoring; decided ideas keep their status ✅
-
-**Context.** A-28 needs each stage published as it finishes, but the centre assessment ran as one synchronous call, published rubric versions did not reach the scorer, and only a replay produced stage events. A rescore or a failed job could also overwrite a reviewer's decision with PROCESSING, FAILED or READY.
-
-**Decision.**
-- `python -m ai.worker` (`pnpm worker`) consumes the queue (D-29) and runs redaction, quality, follow-ups, scoring, narrative, feedback and routing with Dev 2's functions as separate timed stages, writing the centre case in the same shape as the synchronous route. Stages with no local implementation (normalise, similar, local, rank) are recorded as skipped. Intake stages are skipped when evidence is already extracted and fail visibly with `capability_unavailable` when it is not. A missing local model keeps the quality results and fails the score stage visibly.
-- The job's rubric version reaches `ai/intel/scoring.py` as `idea["rubric"]`: domains and weights, bands and pathway thresholds (a validated `PathwayRules` shape). Without a rubric the calculator defaults apply. The default `edp-default` rubric matches those defaults; `skills` and `experience` join the canonical fields.
-- The queue (Node and Python) never changes the status of an idea a reviewer has decided. A rescore versions the evaluation only.
-- W-27 uses a lexical, deterministic layout (TF-IDF, PCA, spherical k-means) labelled as such, until A-19 stores semantic embeddings.
-- Staff password resets follow the invitation pattern: an administrator in scope issues a one-time link (24 hours, fragment token); using it ends every session.
-
-**Consequences.** The centre card fills in live from real work. Dev 1 adds intake stages to the same worker; Dev 2 owns the stage functions it calls. 25 stored collections.
-
-### D-33 · AI pitch review: gaps and follow-up questions until the pitch is complete ✅
-
-**Context.** From 17 October the team works on the AI across the old role split. The entrepreneur's pitch arrives as plain text. The AI must find missing or weak information, ask follow-up questions, and evaluate only a pitch that is complete (PRD section 5: "the entrepreneur and the AI pass the idea back and forth until it is complete").
-
-**Decision.**
-- **Local model only** (D-24): Ollama on the worker host. Small, schema-constrained calls (three extraction groups, one judge, one question call per round) so a 3B model on a CPU-only laptop copes; `LOCAL_LLM_NUM_CTX` and `LOCAL_LLM_NUM_PREDICT` set the budget.
-- **Read:** the text is redacted (`ai/ingest/pii`) and split into numbered lines; every extracted topic must cite real lines, and places and amounts must appear in the cited line, or they are dropped (D-09).
-- **Judge:** code rules first (topic absent, no amount in rupees, no district and state, too brief, sums that disagree via `check_finances`), then each topic's checklist from the question bank (`review.checks`), applied by the model.
-- **Ask:** at most three questions a round, highest impact first, plain English, one topic each, referring to what was said. Code refuses questions that ask for personal details or lead the answer and falls back to the bank's wording.
-- **Until complete, and always ending:** a topic is resolved when it meets its checklist or the entrepreneur says they have not decided. That is recorded as *declined*, shown to assessors and scored as missing evidence (D-11). A topic is asked at most three times, the last time with "or say if you have not decided"; still unclear, it is scored as written and flagged.
-- **Flow:** the worker reviews a submitted text pitch and ends the job with `NEEDS_INPUT` while questions are open (not a failure). The app answers all open questions together (`/me` or `/assisted/submissions/:id/follow-ups`); answers are private originals in an inbox; a `followup` job reviews again. When complete, the centre case input is written and scoring runs as before. One `reviewSessions` record per submission keeps rounds, verdicts, questions, redacted answers, prompt versions and call timings. Centre staff read it on the card.
-- **English only for now**; other languages and voice follow.
-
-**Consequences.** `ai/eval/review_harness.py` measures gap recall and precision, wasted and rule-breaking questions, rounds and completeness on 15 synthetic text pitches with a simulated entrepreneur. Targets with the chosen local model: gap recall ≥ 0.85, no personal-data questions, median rounds ≤ 3. Organiser files are PDFs and audio, so they reach this loop once intake can turn them into text.
-
-### D-34 · Groq's hosted API for text reasoning (amends D-24) ✅
-
-**Context.** D-24 kept all AI local. On the team's CPU-only laptops the local models are either too slow or too weak: a live run with `qwen3:0.6b` drove the review loop correctly but questioned a complete pitch eight times. The team chose Groq's hosted API instead (18 October).
-
-**Decision.**
-- `AI_RUNTIME=groq` (with `AI_HOSTED_APIS_ENABLED=true`) uses `ai/llm/groq.py`. The default model is `openai/gpt-oss-120b`, called with a JSON schema and low reasoning effort. It is a drop-in for the local adapter (`complete_json(prompt, schema)`), so the pitch review and scoring did not change. `ai/llm/factory.make_adapter()` picks the adapter; `AI_RUNTIME=local` keeps Ollama available.
-- **Privacy stays as D-13:** every prompt is checked for phone numbers, emails and ID numbers before it leaves the machine, and pitch text is redacted first. Only redacted text reaches Groq. The key lives only in the ignored `.env` (`GROQ_API_KEY`) and never appears in logs or errors.
-- **Reliability:** a rate limit or brief outage is retried (honouring `Retry-After`) and, if it persists, the job is requeued with backoff instead of failing. A rejected key fails visibly. Output that breaks the schema is retried once, then fails visibly.
-- Audio (Whisper on Groq) and other providers are not part of this decision.
-
-**Consequences.**
-- Answers take seconds, not minutes.
-- Pitch text (redacted) is processed by a third party under Groq's terms; tell partners this.
-- `pipelineRuns.hostedCostInr` stays 0 on Groq's free tier. A paid tier needs cost tracking from the token counts already recorded.
-- On the 15 synthetic pitches, see `ai/eval/review_harness.py` and the Dev log for the measured gap recall and rounds.
-
+**Consequences.** Email addresses are not verified (no mail provider is configured), and there is no password reset yet; an administrator must help with a lost password. Entrepreneurs without an email address cannot self-register; facilitators register them in assisted mode instead. M-16 SMS fallback and M-21 WhatsApp are notification/intake channels, not sign-in, and keep their PRD priorities. Spoken prompts use the iPhone's own voices with per-language availability checks (Marathi, Telugu, Odia and Bengali voices may be missing on a given device).

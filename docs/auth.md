@@ -8,7 +8,7 @@ The first milestone implements login, expiring/revocable sessions and protected 
 | --- | --- | --- |
 | `GET /health` | Public | Process health after database startup |
 | `POST /auth/login` | Public, rate limited | `{email,password,client?:"web"|"mobile"}`; returns `{user}` and HttpOnly cookie for web, or `{user,accessToken}` for native |
-| `POST /auth/otp/verify` | Public, rate limited | `{idToken}` from Firebase phone sign-in; verifies via Admin SDK with revocation checks, creates/reuses entrepreneur only; returns `{user,accessToken}` |
+| `POST /auth/register` | Public, rate limited | `{email, password (12–128), client?}` → creates an **entrepreneur** account and signs in; role/organisation fields are rejected; an existing email gets 409 |
 | `GET /auth/me` | Session | Current user, role and organisation from database |
 | `POST /auth/logout` | Session | Revokes that session and clears cookie; 204 |
 | `GET /workspaces/:role` | Same role | Starter workspace and coarse capability keys |
@@ -56,6 +56,6 @@ Partners receive an explicit minimal projection. Applicant name/phone appear onl
 
 ## Configuration and remaining setup
 
-`pnpm setup:env` creates a private `.env` with random secrets and seed password, without overwriting an existing file. `pnpm seed` is development-only and idempotent; it does not reset existing users. Firebase remains unavailable (503) until `FIREBASE_PROJECT_ID` and Application Default Credentials are configured; tokens from non-phone providers are rejected. The API stores the Firebase UID for authentication and does not duplicate the verified phone number in its auth collection. Production startup rejects the Firebase emulator and non-HTTPS browser origins.
+`pnpm setup:env` creates a private `.env` with random secrets and seed password, without overwriting an existing file. `pnpm seed` is development-only and idempotent; it does not reset existing users. Production startup rejects non-HTTPS browser origins and a missing `PII_ENCRYPTION_KEY`.
 
-Full phone/device integration steps are in [app/README.md](../app/README.md). Firebase token-verification behavior follows the [official Admin SDK guidance](https://firebase.google.com/docs/auth/admin/verify-id-tokens). Entrepreneur personal fields are sealed by the entrepreneur module (`PII_ENCRYPTION_KEY`). Password reset, complete domain contracts, distributed rate limiting, an audit log of access changes (W-08) and production deployment are follow-up duties.
+Sign-in is email and password for every role (D-27); there is no phone, OTP or SMS sign-in and no Firebase dependency. Email addresses are not verified (no mail provider), so a wrong address cannot be recovered without an administrator.

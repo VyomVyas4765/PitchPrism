@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { ROLE_LABELS, ROLE_PERMISSIONS, ROLES } from '@pitchprism/contracts';
 import type { Config } from './config.js';
 import { errorHandler, HttpError } from './errors.js';
-import { Org, Session, Submission, User } from './models.js';
+import { AuditEvent, Org, Session, Submission, User } from './models.js';
 import { sessionService, userContext, SESSION_COOKIE } from './auth/session.js';
 import { firebasePhoneVerifier, type VerifyPhoneToken } from './auth/firebase.js';
 import { hashPassword, verifyPassword } from './auth/password.js';
@@ -16,6 +16,7 @@ import type { AssessmentResult } from './modules/centre/runner.js';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { entrepreneurRouter } from './modules/entrepreneur/index.js';
 import { accessRouter, inviteAcceptRouter } from './modules/hq/router.js';
+import { hqAdminRouter } from './modules/hq/admin-router.js';
 
 const loginInput = z.object({ email: z.email().max(254).transform(value => value.toLowerCase()), password: z.string().min(1).max(128), client: z.enum(['web', 'mobile']).default('web') }).strict();
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
@@ -77,7 +78,22 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
   });
   app.use('/api/v1/centre', centreRouter(options.assessIdea));
   app.get('/api/v1/admin/overview', requirePermission('manage_platform'), async (_req, res) => {
-    res.json({ organisations: await Org.countDocuments(), users: await User.countDocuments() });
+    const [organisations, activeOrganisations, users, activeUsers, submissions, byStatus, byOrganisation] = await Promise.all([
+      Org.countDocuments(), Org.countDocuments({ active: true }), User.countDocuments({ role: { $ne: 'entrepreneur' } }),
+      User.countDocuments({ role: { $ne: 'entrepreneur' }, disabled: { $ne: true } }), Submission.countDocuments(),
+      Submission.aggregate<{ _id: string; count: number }>([{ $group: { _id: '$status', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
+      Submission.aggregate<{ name: string; type: string; submissions: number }>([
+        { $group: { _id: '$ownerOrgId', submissions: { $sum: 1 } } },
+        { $lookup: { from: 'orgs', localField: '_id', foreignField: '_id', as: 'org' } },
+        { $unwind: '$org' }, { $project: { _id: 0, name: '$org.name', type: '$org.type', submissions: 1 } },
+        { $sort: { submissions: -1, name: 1 } }, { $limit: 100 },
+      ]),
+    ]);
+    res.json({
+      organisations, activeOrganisations, users, activeUsers, submissions,
+      byStatus: byStatus.map(item => ({ status: item._id, count: item.count })),
+      byOrganisation: byOrganisation.map(item => ({ name: item.name, type: item.type, submissions: item.submissions })),
+    });
   });
   app.get('/api/v1/orgs/:id/workspace', async (req, res) => {
     const id = objectId.parse(req.params.id);
@@ -91,6 +107,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
     const id = objectId.parse(req.params.id);
     const submission = await Submission.findOne({ ...submissionScope(req.auth!), _id: id }).lean();
     if (!submission) throw new HttpError(404, 'Submission not found.');
+    await AuditEvent.create({ actorUserId: req.auth!.user.id, action: 'view', resourceType: 'Submission', resourceId: String(submission._id) });
     const user = req.auth!.user;
     const partner = user.role === 'sector_partner' || user.role === 'funding_partner';
     const contactAccepted = submission.shares?.some(share => String(share.orgId) === user.orgId && share.active && share.partnerType === user.role && share.contactAccepted);
@@ -100,6 +117,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
   });
   app.use('/api/v1', entrepreneurRouter(config));
   app.use('/api/v1', accessRouter(config));
+  app.use('/api/v1', hqAdminRouter());
   app.use((_req, res) => { res.status(404).json({ error: 'Endpoint not found.' }); });
   app.use(errorHandler);
   return app;

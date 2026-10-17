@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import { HttpError } from '../../errors.js';
-import { Org, Submission } from '../../models.js';
+import { Job, Org, Submission } from '../../models.js';
 import { requirePermission } from '../../auth/authorization.js';
 import { hasProcessingConsent } from './consent.js';
 import { Entrepreneur, LANGUAGES } from './models.js';
@@ -197,11 +197,12 @@ export function intakeRouter() {
       }, { upsert: true });
     }
     const submission = await Submission.create({ title: 'Pitch in progress', ownerOrgId: pitch.centreId, sourceOrgId: pitch.sourceOrgId,
-      entrepreneurId: pitch.entrepreneurId, createdByUserId: pitch.createdByUserId, status: 'DRAFT' });
+      entrepreneurId: pitch.entrepreneurId, createdByUserId: pitch.createdByUserId, language: pitch.language, inputFormat: pitch.mode === 'typed' ? 'text' : pitch.mode === 'upload' ? 'file' : 'audio', status: 'DRAFT' });
     // A concurrent submit loses this status guard and removes its own Submission: one draft, one Submission.
     const updated = await Pitch.findOneAndUpdate({ _id: pitch._id, status: 'DRAFT' },
       { $set: { status: 'SUBMITTED', submissionId: submission._id, pipeline: 'pending_queue', submittedAt: new Date() } }, { returnDocument: 'after' });
     if (!updated) { await Submission.deleteOne({ _id: submission._id }); throw new HttpError(409, 'This pitch was already submitted.'); }
+    await Job.create({ type: 'submission.process', payload: { submissionId: String(submission._id), pitchId: String(pitch._id) } });
     res.status(201).json(pitchView(updated, await PitchDocument.find({ pitchId: pitch._id })));
   });
 

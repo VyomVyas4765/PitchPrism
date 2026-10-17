@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { HttpError } from '../../errors.js';
 import { requirePermission, submissionScope } from '../../auth/authorization.js';
-import { Submission } from '../../models.js';
+import { AuditEvent, Submission } from '../../models.js';
 import { CentreCase } from './model.js';
 import { assessLocally, type AssessmentResult } from './runner.js';
 
@@ -81,6 +81,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     if (result.status === 'assessed' && ['DRAFT', 'READY', 'UNASSESSABLE'].includes(submission.status)) {
       submission.status = state === 'UNASSESSABLE' ? 'UNASSESSABLE' : 'READY'; await submission.save();
     }
+    await AuditEvent.create({ actorUserId: req.auth!.user.id, action: 'score', resourceType: 'Submission', resourceId: String(submission._id), metadata: { state } });
     res.status(previous ? 200 : 201).json({ submissionId, state: record!.state, evaluation: record!.evaluation,
       quality: record!.quality, financialChecks: record!.financialChecks, followUps: record!.followUps,
       planDraft: record!.planDraft, reason: record!.reason });
@@ -119,6 +120,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     await item.save();
     submission.status = input.decision === 'shortlist' ? 'SHORTLISTED' : input.decision === 'not_yet' ? 'NOT_YET' : 'MORE_INFO';
     await submission.save();
+    await AuditEvent.create({ actorUserId: req.auth!.user.id, action: 'decision', resourceType: 'Submission', resourceId: String(submission._id), metadata: { decision: input.decision, override: !!(override || bandOverride) } });
     res.json({ decision: item.decision, status: submission.status });
   });
 

@@ -1,10 +1,14 @@
 'use client';
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ROLE_LABELS, type AuthResponse, type SessionUser, type Workspace } from '@pitchprism/contracts';
+import { type AuthResponse, type SessionUser, type Workspace } from '@pitchprism/contracts';
 import { api, ApiError } from '../../../lib/api';
 import CentreWorkspace from '../../../features/centre/CentreWorkspace';
 import AccessAdmin from '../../../features/hq/AccessAdmin';
+import DashboardShell from '../../../features/shell/DashboardShell';
+import HqWorkspace from '../../../features/hq/HqWorkspace';
+import HqAdminTools from '../../../features/hq/HqAdminTools';
+import HqOperations from '../../../features/hq/HqOperations';
 
 export default function Dashboard({ params }: { params: Promise<{ role: string }> }) {
   const { role } = use(params);
@@ -40,14 +44,18 @@ export default function Dashboard({ params }: { params: Promise<{ role: string }
     }
   }
   if (!user || !workspace) return <main className="workspace"><h1>PitchPrism</h1><p role={error ? 'alert' : 'status'}>{error || 'Opening your workspace…'}</p>{error && <a href="/">Return to sign in</a>}</main>;
-  return <main className="workspace">
-    <header className="workspace-header"><div><span className="eyebrow">Tata STRIVE</span><h1>PitchPrism</h1></div><button className="secondary" onClick={logout} disabled={busy}>{busy ? 'Signing out…' : 'Sign out'}</button></header>
-    <div className="spectrum" aria-hidden="true" />
-    <section className="workspace-body"><span className="eyebrow">{ROLE_LABELS[user.role]}</span><h2>Welcome, {user.displayName}.</h2><p>Your sign-in is complete. This workspace is ready for your role’s features.</p>
-      <dl><dt>Organisation</dt><dd>{user.orgType ? user.orgType.replaceAll('_', ' ') : 'Personal account'}</dd><dt>Access</dt><dd>{workspace.permissions.map(permission => permission.replaceAll('_', ' ')).join(' · ')}</dd></dl>
-      {error && <p className="error" role="alert">{error}</p>}
-    </section>
-    {(user.role === 'centre_assessor' || user.role === 'cohort_lead') && <CentreWorkspace />}
-    {workspace.permissions.includes('manage_org_users') && <AccessAdmin isHq={user.role === 'hq_admin'} selfId={user.id} />}
-  </main>;
+  return <DashboardShell user={user} workspace={workspace} onLogout={logout} busy={busy}>
+    <main className="dashboard-page">
+      <section className="dashboard-overview" id="overview">
+        <div><span className="eyebrow">Your workspace</span><h2>Keep the next decision moving.</h2><p>Review evidence, follow progress, and take the next action for your organisation.</p></div>
+        <div className="overview-meta"><span>Organisation</span><strong>{user.orgType ? user.orgType.replaceAll('_', ' ') : 'Personal account'}</strong><span>Access</span><strong>{workspace.permissions.length} permissions</strong></div>
+      </section>
+      {error && <p className="error dashboard-error" role="alert">{error}</p>}
+      {(user.role === 'centre_assessor' || user.role === 'cohort_lead') && <CentreWorkspace />}
+      {user.role === 'hq_admin' && <HqWorkspace />}
+      {user.role === 'hq_admin' && <HqAdminTools />}
+      {user.role === 'hq_admin' && <HqOperations />}
+      {workspace.permissions.includes('manage_org_users') && <AccessAdmin isHq={user.role === 'hq_admin'} selfId={user.id} />}
+    </main>
+  </DashboardShell>;
 }

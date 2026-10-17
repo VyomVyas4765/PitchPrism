@@ -22,6 +22,8 @@ const submissionSchema = new Schema({
   title: { type: String, required: true }, ownerOrgId: { type: Schema.Types.ObjectId, required: true },
   sourceOrgId: Schema.Types.ObjectId, entrepreneurId: { type: Schema.Types.ObjectId, required: true },
   createdByUserId: { type: Schema.Types.ObjectId, required: true },
+  cohortId: Schema.Types.ObjectId, language: String, inputFormat: String, gender: String,
+  district: String, trade: String, sector: String, band: String, pathway: String, score: Number,
   status: { type: String, enum: ['DRAFT', 'READY', 'SHORTLISTED', 'NOT_YET', 'MORE_INFO', 'UNASSESSABLE'], default: 'DRAFT' },
   fundingReady: { type: Boolean, default: false },
   applicant: { name: String, phone: String },
@@ -45,3 +47,63 @@ export const User = mongoose.model('User', userSchema);
 export const Session = mongoose.model('Session', sessionSchema);
 export const Invite = mongoose.model('Invite', inviteSchema);
 export const Submission = mongoose.model('Submission', submissionSchema);
+
+const versionedSchema = new Schema({
+  name: { type: String, required: true }, version: { type: Number, required: true },
+  status: { type: String, enum: ['draft', 'published', 'archived'], default: 'draft' },
+  definition: { type: Schema.Types.Mixed, required: true }, createdByUserId: Schema.Types.ObjectId,
+}, { timestamps: true });
+versionedSchema.index({ name: 1, version: -1 }, { unique: true });
+const routingRuleSchema = new Schema({
+  partnerOrgId: { type: Schema.Types.ObjectId, ref: 'Org', required: true },
+  trades: [String], sectors: [String], districts: [String], active: { type: Boolean, default: true },
+  createdByUserId: Schema.Types.ObjectId,
+}, { timestamps: true });
+const cohortSchema = new Schema({
+  name: { type: String, required: true }, orgId: { type: Schema.Types.ObjectId, ref: 'Org', required: true },
+  programmeId: Schema.Types.ObjectId, startsAt: Date, endsAt: Date, active: { type: Boolean, default: true },
+}, { timestamps: true });
+const tradeSchema = new Schema({
+  name: { type: String, required: true }, synonyms: [String], osmTags: [String], active: { type: Boolean, default: true },
+}, { timestamps: true });
+const auditEventSchema = new Schema({
+  actorUserId: Schema.Types.ObjectId, action: { type: String, required: true },
+  resourceType: { type: String, required: true }, resourceId: String, metadata: Schema.Types.Mixed,
+}, { timestamps: true });
+const evaluationRunSchema = new Schema({
+  promptVersion: String, rubricVersionId: Schema.Types.ObjectId, models: [String],
+  metrics: Schema.Types.Mixed, perFile: Schema.Types.Mixed, createdAt: { type: Date, default: Date.now },
+});
+const stageEventSchema = new Schema({
+  submissionId: Schema.Types.ObjectId, stage: { type: String, required: true },
+  status: { type: String, enum: ['started', 'completed', 'failed'], required: true },
+  durationMs: Number, model: String, tokens: Number, cost: Number, detail: Schema.Types.Mixed,
+}, { timestamps: true });
+const jobSchema = new Schema({
+  type: { type: String, required: true }, payload: { type: Schema.Types.Mixed, required: true },
+  state: { type: String, enum: ['queued', 'leased', 'completed', 'failed'], default: 'queued' },
+  attempts: { type: Number, default: 0 }, leaseUntil: Date, workerId: String, error: String,
+  availableAt: { type: Date, default: Date.now }, completedAt: Date,
+}, { timestamps: true });
+jobSchema.index({ state: 1, availableAt: 1, leaseUntil: 1 });
+const reviewSampleSchema = new Schema({
+  submissionId: { type: Schema.Types.ObjectId, required: true, unique: true },
+  reason: { type: String, required: true }, sampledAt: { type: Date, default: Date.now },
+  reviewerUserId: Schema.Types.ObjectId, override: Schema.Types.Mixed, status: { type: String, enum: ['pending', 'reviewed'], default: 'pending' },
+}, { timestamps: true });
+const clusterPointSchema = new Schema({
+  submissionId: { type: Schema.Types.ObjectId, required: true, unique: true },
+  x: { type: Number, required: true }, y: { type: Number, required: true },
+  cluster: { type: String, required: true }, method: { type: String, required: true }, generatedAt: { type: Date, default: Date.now },
+});
+export const Programme = mongoose.model('Programme', versionedSchema);
+export const Rubric = mongoose.model('Rubric', versionedSchema);
+export const RoutingRule = mongoose.model('RoutingRule', routingRuleSchema);
+export const Cohort = mongoose.model('Cohort', cohortSchema);
+export const Trade = mongoose.model('Trade', tradeSchema);
+export const AuditEvent = mongoose.model('AuditEvent', auditEventSchema);
+export const EvaluationRun = mongoose.model('EvaluationRun', evaluationRunSchema);
+export const StageEvent = mongoose.model('StageEvent', stageEventSchema);
+export const Job = mongoose.model('Job', jobSchema);
+export const ReviewSample = mongoose.model('ReviewSample', reviewSampleSchema);
+export const ClusterPoint = mongoose.model('ClusterPoint', clusterPointSchema);

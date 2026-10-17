@@ -78,7 +78,7 @@
       "Local worker capabilities where required"
     ],
     "cost_exposure": "No hosted AI calls; MongoDB profile storage and iOS device costs remain. No SMS/OTP sign-in (D-27).",
-    "acceptance_test": "After language, email sign-in and consent, iOS form asks only for contact, background and location; it validates and saves once, blocks repeat and cross-user writes, seals private details, and marks onboarding complete without a trade. Verify on device and review draft translations; voice input and trade or skill capture in the pitch flow remain pending.",
+    "acceptance_test": "After language, email sign-in and consent, iOS form asks only for contact, background and location; mobile input is limited to ten Indian digits, long state names fit without overflow, and the keyboard can be dismissed. It validates and saves once, blocks repeat and cross-user writes, seals private details, and marks onboarding complete without a trade. Verify on device and review draft translations; voice input and trade or skill capture in the pitch flow remain pending.",
     "status": "client_partial",
     "evidence": [
       "backend/src/modules/entrepreneur/README.md",
@@ -101,7 +101,7 @@
       "Local worker capabilities where required"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
-    "acceptance_test": "Each source format reaches the same submission pipeline",
+    "acceptance_test": "Each source format reaches the same submission pipeline; typed pitch fields scroll and allow keyboard dismissal on iPhone",
     "status": "device_pending",
     "evidence": [
       "docs/duties/dev-1-intake-proposal.md",

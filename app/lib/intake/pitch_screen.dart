@@ -94,7 +94,7 @@ class _PitchScreenState extends State<PitchScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(t(switch (item.mode) { 'guided' || 'free_talk' => 'speak', 'typed' => 'type', _ => 'upload' }))),
-      body: FutureBuilder(
+      body: Column(children: [Expanded(child: FutureBuilder(
         future: _setup,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
@@ -104,14 +104,17 @@ class _PitchScreenState extends State<PitchScreen> {
           final (prompts, centres) = snapshot.data!;
           final steps = (prompts['steps'] as List).cast<Map<String, dynamic>>();
           return ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.all(16),
             children: [
               if (item.applicant == null) ...[
                 DropdownButtonFormField<String>(
                   key: const Key('pitch-centre'),
                   initialValue: item.centreId,
+                  isExpanded: true,
                   decoration: InputDecoration(labelText: t('centre')),
-                  items: [for (final centre in centres) DropdownMenuItem(value: centre['id'] as String, child: Text(centre['name'] as String))],
+                  items: [for (final centre in centres) DropdownMenuItem(value: centre['id'] as String,
+                    child: Text(centre['name'] as String, overflow: TextOverflow.ellipsis, maxLines: 1))],
                   onChanged: (value) {
                     setState(() => item.centreId = value);
                     _save();
@@ -164,8 +167,14 @@ class _PitchScreenState extends State<PitchScreen> {
                               maxLines: null,
                               maxLength: 4000,
                               onChanged: (value) => item.answers[step['key'] as String] = value,
-                              onEditingComplete: _save,
-                              onTapOutside: (_) => _save(),
+                              onEditingComplete: () {
+                                FocusScope.of(context).unfocus();
+                                _save();
+                              },
+                              onTapOutside: (_) {
+                                FocusScope.of(context).unfocus();
+                                _save();
+                              },
                             )
                           else
                             RecordTile(
@@ -204,7 +213,7 @@ class _PitchScreenState extends State<PitchScreen> {
             ],
           );
         },
-      ),
+      )), KeyboardDismissBar(label: t('hideKeyboard'), onDismiss: () { _save(); })]),
     );
   }
 }

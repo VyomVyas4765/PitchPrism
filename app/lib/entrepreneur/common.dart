@@ -72,5 +72,32 @@ class ListenButton extends StatelessWidget {
   );
 }
 
+/// A visible way to close iOS number pads, which have no native Done key.
+class KeyboardDismissBar extends StatelessWidget {
+  const KeyboardDismissBar({super.key, required this.label, this.onDismiss});
+  final String label;
+  final VoidCallback? onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.viewInsetsOf(context).bottom == 0) return const SizedBox.shrink();
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      child: SizedBox(height: 48, child: Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          key: const Key('keyboard-dismiss'),
+          onPressed: () {
+            FocusScope.of(context).unfocus();
+            onDismiss?.call();
+          },
+          icon: const Icon(Icons.keyboard_hide),
+          label: Text(label),
+        ),
+      )),
+    );
+  }
+}
+
 void showMessage(BuildContext context, String message) =>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));

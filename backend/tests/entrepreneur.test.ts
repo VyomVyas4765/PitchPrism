@@ -91,6 +91,8 @@ describe('language and profile', () => {
     await request(app).post('/api/v1/me/onboarding').set('Authorization', auth)
       .send({ ...onboarding, mobile: '----------' }).expect(400);
     await request(app).post('/api/v1/me/onboarding').set('Authorization', auth)
+      .send({ ...onboarding, mobile: '91234567890123456789' }).expect(400);
+    await request(app).post('/api/v1/me/onboarding').set('Authorization', auth)
       .send({ ...onboarding, entrepreneurId: String(other._id) }).expect(400);
     await request(app).post('/api/v1/me/onboarding').set('Authorization', auth)
       .send({ ...onboarding, trade: 'Tailoring' }).expect(400);

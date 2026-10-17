@@ -8,12 +8,14 @@ import type { AuthContext, sessionService } from '../../auth/session.js';
 import { userContext } from '../../auth/session.js';
 import type { Config } from '../../config.js';
 import { HttpError } from '../../errors.js';
-import { Invitation, Org, User } from '../../models.js';
+import { Invitation, Org, Session, User } from '../../models.js';
 import { recordAudit } from '../../platform/audit.js';
 import { canGrant, objectId } from '../../platform/validation.js';
 
 // W-01 staff administration and one-time invitations (D-27). Every staff role with invite_users manages its
-// own organisation; HQ manages any. The raw invitation token exists only in the response that creates it.
+// own organisation; HQ manages any. The raw invitation token exists only in the response that creates it, inside
+// a link fragment (#token), which browsers never send to servers or proxies, so it stays out of request logs.
+// Fragment links, re-invite revocation and ending sessions on disable come from Arnav's first W-01 build.
 const INVITE_HOURS = 72;
 const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
 const userView = (user: { _id: unknown; displayName: string; email?: string | null; role: string; orgId?: unknown; disabled?: boolean; createdAt?: Date }) => ({
@@ -56,6 +58,7 @@ export function staffRouter(config: Config) {
     if (input.role && !canGrant(req.auth!, input.role, String(org._id), org.type)) throw new HttpError(403, 'That role cannot be given in this organisation.');
     if (target.role === 'hq_admin' && req.auth!.user.role !== 'hq_admin') throw new HttpError(403, 'Only HQ can change HQ accounts.');
     const updated = await User.findByIdAndUpdate(id, { $set: input }, { returnDocument: 'after', runValidators: true }).lean();
+    if (input.disabled) await Session.deleteMany({ userId: id }); // also refused on the next request; this ends sessions now
     await recordAudit(req.auth, input.role ? 'user.role_change' : 'user.access_change', { type: 'user', id, orgId: String(org._id) },
       { ...(input.role ? { role: input.role } : {}), ...(input.disabled !== undefined ? { disabled: input.disabled } : {}) });
     res.json({ user: userView(updated!) });
@@ -70,19 +73,23 @@ export function staffRouter(config: Config) {
 
   router.post('/invitations', async (req, res) => {
     const input = z.object({
-      orgId: objectId, role: z.enum(ROLES), email: z.email().max(254).optional(), displayName: z.string().trim().min(1).max(120).optional(),
+      orgId: objectId.optional(), role: z.enum(ROLES), email: z.email().max(254).optional(), displayName: z.string().trim().min(1).max(120).optional(),
     }).strict().parse(req.body);
-    const org = await Org.findById(input.orgId).lean();
+    const orgId = input.orgId ?? req.auth!.user.orgId; // default: the inviter's own organisation
+    if (!orgId) throw new HttpError(400, 'Choose an organisation.');
+    const org = await Org.findById(orgId).lean();
     if (!org || !org.active) throw new HttpError(404, 'Organisation not found or inactive.');
-    manageableOrg(req.auth!, input.orgId);
-    if (!canGrant(req.auth!, input.role as Role, input.orgId, org.type)) throw new HttpError(403, 'That role cannot be given in this organisation.');
+    manageableOrg(req.auth!, orgId);
+    if (!canGrant(req.auth!, input.role as Role, orgId, org.type)) throw new HttpError(403, 'That role cannot be given in this organisation.');
     if (input.email && await User.exists({ email: input.email.toLowerCase() })) throw new HttpError(409, 'An account with this email already exists.');
+    // Inviting the same address again withdraws its earlier pending link.
+    if (input.email) await Invitation.updateMany({ email: input.email.toLowerCase(), acceptedAt: { $exists: false }, revokedAt: { $exists: false } }, { $set: { revokedAt: new Date() } });
     const token = randomBytes(32).toString('base64url');
-    const invitation = await Invitation.create({ ...input, tokenHash: tokenHash(token), invitedByUserId: req.auth!.user.id,
+    const invitation = await Invitation.create({ ...input, orgId, tokenHash: tokenHash(token), invitedByUserId: req.auth!.user.id,
       expiresAt: new Date(Date.now() + INVITE_HOURS * 3600 * 1000) });
-    await recordAudit(req.auth, 'user.invite', { type: 'invitation', id: String(invitation._id), orgId: input.orgId }, { role: input.role });
+    await recordAudit(req.auth, 'user.invite', { type: 'invitation', id: String(invitation._id), orgId }, { role: input.role });
     // The link is shown once; only its hash is stored.
-    res.status(201).json({ invitation: invitationView(invitation.toObject()), link: `${config.WEB_ORIGIN}/invite/${token}` });
+    res.status(201).json({ invitation: invitationView(invitation.toObject()), link: `${config.WEB_ORIGIN}/accept-invite#${token}` });
   });
 
   router.post('/invitations/:id/revoke', async (req, res) => {
@@ -110,8 +117,9 @@ export function invitationAcceptRouter(sessions: ReturnType<typeof sessionServic
     if (!org || !org.active) throw new HttpError(410, 'This invitation is no longer valid.');
     return { invitation, org };
   }
-  router.get('/:token', limiter, async (req, res) => {
-    const { invitation, org } = await open(String(req.params.token));
+  // POST, not GET /:token: the token stays in the body, never in a URL that servers or proxies log.
+  router.post('/preview', limiter, async (req, res) => {
+    const { invitation, org } = await open(z.object({ token: z.string() }).strict().parse(req.body).token);
     res.json({ organisation: org.name, orgType: org.type, role: invitation.role, email: invitation.email ?? null,
       displayName: invitation.displayName ?? null, expiresAt: invitation.expiresAt });
   });

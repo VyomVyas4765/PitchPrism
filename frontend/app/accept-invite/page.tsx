@@ -1,26 +1,31 @@
 'use client';
-import { use, useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { ROLE_LABELS, type AuthResponse, type Role } from '@pitchprism/contracts';
-import { api } from '../../../lib/api';
+import { api } from '../../lib/api';
 
 type Preview = { organisation: string; orgType: string; role: Role; email: string | null; displayName: string | null; expiresAt: string };
 
-// Staff sign-up: the only way to create a staff account is a one-time invitation link (D-27).
-export default function AcceptInvite({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = use(params);
+// Staff sign-up: the only way to create a staff account is a one-time invitation link (D-27). The token travels
+// in the URL fragment, which browsers never send to servers or proxies, and is wiped from the address bar on read.
+export default function AcceptInvite() {
   const router = useRouter();
+  const [token, setToken] = useState('');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let active = true;
-    api<Preview>(`/invitations/accept/${encodeURIComponent(token)}`)
+    const value = window.location.hash.slice(1);
+    window.history.replaceState(null, '', window.location.pathname);
+    if (!/^[A-Za-z0-9_-]{43}$/.test(value)) { setError('This invitation link is incomplete. Copy the whole link you were sent.'); return; }
+    setToken(value);
+    api<Preview>('/invitations/accept/preview', { method: 'POST', body: JSON.stringify({ token: value }) })
       .then(result => { if (active) setPreview(result); })
       .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'This invitation could not be opened.'); });
     return () => { active = false; };
-  }, [token]);
+  }, []);
   async function accept(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -37,7 +42,7 @@ export default function AcceptInvite({ params }: { params: Promise<{ token: stri
     <section className="login-grid">
       <div className="intro"><span className="eyebrow">An invitation</span>
         {preview ? <><h2>Join <em>{preview.organisation}</em><br />as {ROLE_LABELS[preview.role].toLowerCase()}.</h2>
-          <p>Create your staff account to start reviewing ideas. This link works once and expires on {new Date(preview.expiresAt).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' })}.</p></>
+          <p>Your role and organisation were chosen by the person who invited you. This link works once and expires on {new Date(preview.expiresAt).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' })}.</p></>
           : <><h2>Every idea deserves<br /><em>a careful reading.</em></h2><p>Staff accounts are created from an invitation sent by your organisation or Tata STRIVE HQ.</p></>}
         <p className="caption">Entrepreneurs: use the mobile app to sign in with your phone.</p>
       </div>

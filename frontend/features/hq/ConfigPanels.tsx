@@ -47,18 +47,18 @@ export function OrganisationsPanel() {
     const { districts, ...input } = formData(form);
     if (await action.run(() => mutate('/hq/orgs', 'POST', { ...input, type, districts: list(districts) }))) form.reset();
   }
-  const parents = orgs.data?.organisations.filter(org => org.type === 'centre' || org.type === 'hq') ?? [];
+  const parents = orgs.data?.organisations.filter(org => org.type === 'centre' && org.active) ?? [];
   return <section className={styles.section} aria-labelledby="orgs-title">
     <h3 id="orgs-title">Organisations</h3>
-    <p className={styles.lede}>Centres, implementation partners, sector partners and funders. Deactivating an organisation signs its staff out on their next request and stops new invitations.</p>
+    <p className={styles.lede}>Centres, implementation partners, sector partners and funders. Implementation partners report to a centre; everything else reports to HQ. Deactivating an organisation signs its staff out on their next request and stops new invitations.</p>
     <form className={styles.form} onSubmit={create} aria-label="Add an organisation">
       <div><label htmlFor="org-name">Name</label><input id="org-name" name="name" required maxLength={160} /></div>
       <div><label htmlFor="org-type">Type</label><select id="org-type" value={type} onChange={event => setType(event.target.value as OrgType)}>
         {ORG_TYPES.map(item => <option key={item} value={item}>{label(item)}</option>)}</select></div>
       {type === 'funding_partner' && <div><label htmlFor="org-mode">Funding mode</label><select id="org-mode" name="fundingMode" required>
         <option value="lender">Lender (sees loan-ready shortlist)</option><option value="csr">CSR funder (aggregate impact only)</option></select></div>}
-      {type === 'implementation_partner' && <div><label htmlFor="org-parent">Linked centre</label><select id="org-parent" name="parentOrgId">
-        <option value="">None</option>{parents.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}</select></div>}
+      {type === 'implementation_partner' && <div><label htmlFor="org-parent">Reports to centre</label><select id="org-parent" name="parentOrgId" required>
+        <option value="">Choose…</option>{parents.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}</select></div>}
       <div><label htmlFor="org-state">State</label><input id="org-state" name="state" maxLength={80} /></div>
       <div><label htmlFor="org-districts">Districts (comma separated)</label><input id="org-districts" name="districts" /></div>
       <div><button type="submit" disabled={action.busy}>Add organisation</button></div>

@@ -156,6 +156,7 @@ Entrepreneur = TypedDict("Entrepreneur", {
     "education": str,
     "createdVia": Required[Literal["self", "assisted", "import"]],
     "facilitatorId": ObjectId,
+    "clientApplicantId": str,
     "homeOrgId": ObjectId,
     "createdAt": DateTime,
     "updatedAt": DateTime,

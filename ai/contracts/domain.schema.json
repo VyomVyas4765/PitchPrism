@@ -826,6 +826,11 @@
         "facilitatorId": {
           "$ref": "#/definitions/ObjectId"
         },
+        "clientApplicantId": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Assisted mode: the facilitator device's ID for this applicant, so an offline retry does not register them twice (Dev 1)."
+        },
         "homeOrgId": {
           "$ref": "#/definitions/ObjectId",
           "description": "Centre that owns the relationship, once assigned."

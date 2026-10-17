@@ -77,19 +77,25 @@ export function hqRouter() {
     if (input.type === 'hq') throw new HttpError(400, 'There is one HQ organisation; create centres and partners instead.');
     if (input.type === 'funding_partner' && !input.fundingMode) throw new HttpError(400, 'Choose whether the funding partner is a lender or CSR funder.');
     if (input.type !== 'funding_partner' && input.fundingMode) throw new HttpError(400, 'Only funding partners have a funding mode.');
-    if (input.parentOrgId && !await Org.exists({ _id: input.parentOrgId })) throw new HttpError(400, 'The parent organisation does not exist.');
-    const org = await Org.create(input);
+    // Hub and spoke (PRD section 5): implementation partners report to a centre; every other organisation to HQ.
+    let parentOrgId = req.auth!.user.orgId!;
+    if (input.type === 'implementation_partner') {
+      const parent = input.parentOrgId ? await Org.findOne({ _id: input.parentOrgId, active: true }).lean() : null;
+      if (!parent || parent.type !== 'centre') throw new HttpError(400, 'Choose the active centre this implementation partner reports to.');
+      parentOrgId = String(parent._id);
+    } else if (input.parentOrgId) throw new HttpError(400, 'This organisation type reports to HQ.');
+    const org = await Org.create({ ...input, parentOrgId });
     await recordAudit(req.auth, 'org.create', { type: 'org', id: String(org._id), orgId: String(org._id) }, { orgType: org.type });
     res.status(201).json({ organisation: { ...org.toObject(), id: String(org._id) } });
   });
   router.patch('/orgs/:id', requirePermission('manage_orgs'), async (req, res) => {
     const id = objectId.parse(req.params.id);
-    const input = orgInput.omit({ type: true }).partial().strict().parse(req.body);
+    // Type and parent are fixed at creation: re-parenting would move an organisation's data between hubs.
+    const input = orgInput.omit({ type: true, parentOrgId: true }).partial().strict().parse(req.body);
     const org = await Org.findById(id);
     if (!org) throw new HttpError(404, 'Organisation not found.');
     if (org.type === 'hq' && input.active === false) throw new HttpError(400, 'The HQ organisation cannot be deactivated.');
     if (input.fundingMode && org.type !== 'funding_partner') throw new HttpError(400, 'Only funding partners have a funding mode.');
-    if (input.parentOrgId === id) throw new HttpError(400, 'An organisation cannot be its own parent.');
     org.set(input);
     await org.save();
     await recordAudit(req.auth, input.active === false ? 'org.deactivate' : 'org.update', { type: 'org', id, orgId: id }, changed(input));

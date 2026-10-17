@@ -11,8 +11,9 @@ const id = z.string().regex(/^[a-f\d]{24}$/i);
 const segment = z.object({ segId: z.string().min(1).max(80), textEn: z.string().max(2000), textOriginal: z.string().max(2000).optional(),
   lang: z.string().max(12), confidence: z.number().min(0).max(1).optional(), struck: z.boolean().optional(),
   supersededBy: z.string().max(80).optional(),
-  source: z.object({ type: z.enum(['pdf', 'text', 'profile']), documentId: z.string().max(80).optional(),
-    page: z.number().int().min(1).max(50).optional(), bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]).optional() }).strict(),
+  source: z.object({ type: z.enum(['pdf', 'text', 'profile', 'audio']), documentId: z.string().max(80).optional(),
+    page: z.number().int().min(1).max(50).optional(), bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]).optional(),
+    chunkId: z.string().max(80).optional(), start: z.number().finite().nonnegative().optional(), end: z.number().finite().nonnegative().optional() }).strict(),
 }).strict();
 const field = z.object({ state: z.enum(['answered', 'missing', 'not_asked', 'irrelevant', 'unreadable']),
   evidence: z.array(z.string().min(1).max(80)).max(8) }).strict();

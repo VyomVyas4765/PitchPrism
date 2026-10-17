@@ -7,7 +7,7 @@ import { hashPassword } from '../src/auth/password.js';
 import { sessionService } from '../src/auth/session.js';
 import { configSchema } from '../src/config.js';
 import { connectDatabase } from '../src/database.js';
-import { ALL_MODELS, AuditLog, Invitation, Org, Programme, Rubric, Submission, User } from '../src/models.js';
+import { ALL_MODELS, AuditLog, Invitation, Org, Programme, Rubric, Session, Submission, User } from '../src/models.js';
 import { setTenancyMode, tenancyContext, UnscopedQueryError } from '../src/platform/tenancy.js';
 import type { Role } from '@pitchprism/contracts';
 
@@ -33,7 +33,8 @@ const domains = (weights: number[]) => weights.map((weight, index) => ({
 }));
 const rubric = (weights = [40, 35, 25]) => ({ rubricKey: 'synthetic', name: 'Synthetic rubric', domains: domains(weights),
   bands: { strong: 75, promising: 55, minCoverage: 60 } });
-const tokenOf = (link: string) => link.split('/invite/')[1]!;
+const tokenOf = (link: string) => link.split('#')[1]!;
+const preview = (token: string) => request(app).post('/api/v1/invitations/accept/preview').send({ token });
 
 beforeAll(async () => {
   mongo = await MongoMemoryServer.create();
@@ -58,13 +59,13 @@ describe('invitations (D-27)', () => {
     const created = await request(app).post('/api/v1/team/invitations').set('Authorization', await bearer(admin))
       .send({ orgId: String(centre._id), role: 'cohort_lead', email: 'Lead@PitchPrism.test' }).expect(201);
     const token = tokenOf(created.body.link);
-    expect(created.body.link.startsWith(`${config.WEB_ORIGIN}/invite/`)).toBe(true);
+    expect(created.body.link).toMatch(/^http:\/\/localhost:3000\/accept-invite#[A-Za-z0-9_-]{43}$/);
     const stored = await Invitation.findById(created.body.invitation.id).lean();
     expect(stored!.tokenHash).not.toContain(token);
     expect(JSON.stringify(stored)).not.toContain(token);
 
-    const preview = await request(app).get(`/api/v1/invitations/accept/${token}`).expect(200);
-    expect(preview.body).toMatchObject({ organisation: 'Synthetic centre', role: 'cohort_lead', email: 'lead@pitchprism.test' });
+    const shown = await preview(token).expect(200);
+    expect(shown.body).toMatchObject({ organisation: 'Synthetic centre', role: 'cohort_lead', email: 'lead@pitchprism.test' });
     await request(app).post('/api/v1/invitations/accept').send({ token, displayName: 'New lead', email: 'other@pitchprism.test', password }).expect(400);
     const accepted = await request(app).post('/api/v1/invitations/accept')
       .send({ token, displayName: 'New lead', email: 'lead@pitchprism.test', password }).expect(201);
@@ -75,7 +76,7 @@ describe('invitations (D-27)', () => {
 
     // Single use: a second accept and a second preview both fail.
     await request(app).post('/api/v1/invitations/accept').send({ token, displayName: 'Again', email: 'lead@pitchprism.test', password }).expect(410);
-    await request(app).get(`/api/v1/invitations/accept/${token}`).expect(410);
+    await preview(token).expect(410);
     const list = await request(app).get('/api/v1/team/invitations').set('Authorization', await bearer(admin)).expect(200);
     expect(list.body.invitations[0].status).toBe('accepted');
     expect(await AuditLog.countDocuments({ action: { $in: ['user.invite', 'user.invite_accept'] } })).toBe(2);
@@ -90,6 +91,14 @@ describe('invitations (D-27)', () => {
     await invite({ orgId: String(centre._id), role: 'sector_partner' }).expect(403);
     await invite({ orgId: String(centre._id), role: 'entrepreneur' }).expect(403);
     await invite({ orgId: String(centre._id), role: 'facilitator', extra: true }).expect(400);
+    const defaulted = await invite({ role: 'cohort_lead' }).expect(201); // no orgId: the inviter's own organisation
+    expect(defaulted.body.invitation.orgId).toBe(String(centre._id));
+    const ngo = await Org.create({ name: 'Synthetic NGO', type: 'implementation_partner', parentOrgId: centre._id });
+    const ngoLead = await bearer(await staff('implementation_partner', ngo._id));
+    await request(app).post('/api/v1/team/invitations').set('Authorization', ngoLead).send({ role: 'facilitator' }).expect(201);
+    await request(app).post('/api/v1/team/invitations').set('Authorization', ngoLead).send({ role: 'centre_assessor' }).expect(403);
+    const facilitator = await bearer(await staff('facilitator', centre._id, 'field-facilitator'));
+    await request(app).post('/api/v1/team/invitations').set('Authorization', facilitator).send({ role: 'facilitator' }).expect(403);
     const partner = await staff('sector_partner', sector._id);
     await request(app).post('/api/v1/team/invitations').set('Authorization', await bearer(partner))
       .send({ orgId: String(sector._id), role: 'sector_partner' }).expect(201);
@@ -98,7 +107,7 @@ describe('invitations (D-27)', () => {
     // Staff lists stay inside the caller's organisation.
     await staff('facilitator', sibling._id, 'sibling-facilitator');
     const list = await request(app).get('/api/v1/team/staff').set('Authorization', auth).expect(200);
-    expect(list.body.users.map((user: { orgId: string }) => user.orgId)).toEqual([String(centre._id)]);
+    expect(new Set(list.body.users.map((user: { orgId: string }) => user.orgId))).toEqual(new Set([String(centre._id)]));
     await request(app).get(`/api/v1/team/staff?orgId=${sibling._id}`).set('Authorization', auth).expect(403);
   });
 
@@ -106,13 +115,19 @@ describe('invitations (D-27)', () => {
     const created = await request(app).post('/api/v1/team/invitations').set('Authorization', await bearer(admin))
       .send({ orgId: String(centre._id), role: 'facilitator' }).expect(201);
     await request(app).post(`/api/v1/team/invitations/${created.body.invitation.id}/revoke`).set('Authorization', await bearer(assessor)).expect(200);
-    await request(app).get(`/api/v1/invitations/accept/${tokenOf(created.body.link)}`).expect(410);
+    await preview(tokenOf(created.body.link)).expect(410);
     const second = await request(app).post('/api/v1/team/invitations').set('Authorization', await bearer(admin))
       .send({ orgId: String(centre._id), role: 'facilitator' }).expect(201);
     await Invitation.updateOne({ _id: second.body.invitation.id }, { $set: { expiresAt: new Date(Date.now() - 1000) } });
     await request(app).post('/api/v1/invitations/accept')
       .send({ token: tokenOf(second.body.link), displayName: 'Late', email: 'late@pitchprism.test', password }).expect(410);
-    await request(app).get('/api/v1/invitations/accept/not-a-token').expect(400);
+    await preview('not-a-token').expect(400);
+    await request(app).post('/api/v1/invitations/accept/preview').send({ token: { $ne: 1 } }).expect(400);
+    // Inviting the same address again withdraws the earlier link.
+    const auth = await bearer(admin);
+    const first = await request(app).post('/api/v1/team/invitations').set('Authorization', auth).send({ orgId: String(centre._id), role: 'facilitator', email: 'twice@pitchprism.test' }).expect(201);
+    await request(app).post('/api/v1/team/invitations').set('Authorization', auth).send({ orgId: String(centre._id), role: 'facilitator', email: 'twice@pitchprism.test' }).expect(201);
+    await preview(tokenOf(first.body.link)).expect(410);
     // An invitation for a sibling centre cannot be revoked by this centre.
     const foreign = await request(app).post('/api/v1/team/invitations').set('Authorization', await bearer(admin))
       .send({ orgId: String(sibling._id), role: 'facilitator' }).expect(201);
@@ -128,6 +143,7 @@ describe('staff administration', () => {
     await request(app).patch(`/api/v1/team/staff/${colleague._id}`).set('Authorization', auth).send({ role: 'cohort_lead' }).expect(200);
     await request(app).patch(`/api/v1/team/staff/${colleague._id}`).set('Authorization', auth).send({ disabled: true }).expect(200);
     await request(app).get('/api/v1/auth/me').set('Authorization', colleagueAuth).expect(401);
+    expect(await Session.countDocuments({ userId: colleague._id })).toBe(0);
     await request(app).patch(`/api/v1/team/staff/${assessor._id}`).set('Authorization', auth).send({ disabled: true }).expect(400);
     await request(app).patch(`/api/v1/team/staff/${admin._id}`).set('Authorization', auth).send({ disabled: true }).expect(403);
     const foreign = await staff('facilitator', sibling._id, 'foreign');
@@ -143,6 +159,15 @@ describe('HQ configuration', () => {
     await request(app).post('/api/v1/hq/orgs').set('Authorization', await bearer(assessor)).send({ name: 'X', type: 'centre' }).expect(403);
     await request(app).post('/api/v1/hq/orgs').set('Authorization', auth).send({ name: 'Second HQ', type: 'hq' }).expect(400);
     await request(app).post('/api/v1/hq/orgs').set('Authorization', auth).send({ name: 'Lender', type: 'funding_partner' }).expect(400);
+    // Hub and spoke: centres report to HQ; implementation partners to an active centre, never to HQ.
+    const pune = await request(app).post('/api/v1/hq/orgs').set('Authorization', auth).send({ name: 'Synthetic Pune centre', type: 'centre' }).expect(201);
+    expect(pune.body.organisation.parentOrgId).toBe(String(hq._id));
+    await request(app).post('/api/v1/hq/orgs').set('Authorization', auth).send({ name: 'Synthetic NGO', type: 'implementation_partner' }).expect(400);
+    await request(app).post('/api/v1/hq/orgs').set('Authorization', auth).send({ name: 'Synthetic NGO', type: 'implementation_partner', parentOrgId: String(hq._id) }).expect(400);
+    const ngo = await request(app).post('/api/v1/hq/orgs').set('Authorization', auth).send({ name: 'Synthetic NGO', type: 'implementation_partner', parentOrgId: String(centre._id) }).expect(201);
+    expect(ngo.body.organisation.parentOrgId).toBe(String(centre._id));
+    await request(app).post('/api/v1/hq/orgs').set('Authorization', auth).send({ name: 'Synthetic lab', type: 'sector_partner', parentOrgId: String(centre._id) }).expect(400);
+    await request(app).patch(`/api/v1/hq/orgs/${ngo.body.organisation.id}`).set('Authorization', auth).send({ parentOrgId: String(sibling._id) }).expect(400);
     const lender = await request(app).post('/api/v1/hq/orgs').set('Authorization', auth)
       .send({ name: 'Lender', type: 'funding_partner', fundingMode: 'lender', languages: ['hi'] }).expect(201);
     await request(app).patch(`/api/v1/hq/orgs/${lender.body.organisation.id}`).set('Authorization', auth).send({ active: false }).expect(200);

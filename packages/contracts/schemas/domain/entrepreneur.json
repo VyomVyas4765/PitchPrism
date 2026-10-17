@@ -18,6 +18,7 @@
     "education": { "type": "string", "maxLength": 120 },
     "createdVia": { "type": "string", "enum": ["self", "assisted", "import"] },
     "facilitatorId": { "$ref": "common.json#/definitions/ObjectId" },
+    "clientApplicantId": { "type": "string", "maxLength": 80, "description": "Assisted mode: the facilitator device's ID for this applicant, so an offline retry does not register them twice (Dev 1)." },
     "homeOrgId": { "$ref": "common.json#/definitions/ObjectId", "description": "Centre that owns the relationship, once assigned." },
     "createdAt": { "$ref": "common.json#/definitions/DateTime" },
     "updatedAt": { "$ref": "common.json#/definitions/DateTime" }

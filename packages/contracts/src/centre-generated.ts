@@ -35,8 +35,11 @@ export interface CentreExtractedInput {
       struck?: boolean;
       supersededBy?: string;
       source: {
-        type: "pdf" | "text" | "profile";
+        type: "pdf" | "text" | "profile" | "audio";
         documentId?: string;
+        chunkId?: string;
+        start?: number;
+        end?: number;
         page?: number;
         /**
          * @minItems 4
@@ -54,8 +57,11 @@ export interface CentreExtractedInput {
       struck?: boolean;
       supersededBy?: string;
       source: {
-        type: "pdf" | "text" | "profile";
+        type: "pdf" | "text" | "profile" | "audio";
         documentId?: string;
+        chunkId?: string;
+        start?: number;
+        end?: number;
         page?: number;
         /**
          * @minItems 4

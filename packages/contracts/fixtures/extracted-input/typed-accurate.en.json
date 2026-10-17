@@ -1,0 +1,179 @@
+{
+  "template": "edp-idea-brief",
+  "context": {
+    "plannedBusinessLocation": {
+      "village": "Sinnar",
+      "district": "Nashik",
+      "state": "Maharashtra",
+      "pincode": "422103",
+      "source": "confirmed_by_user",
+      "evidence": [
+        "s_0001"
+      ]
+    }
+  },
+  "segments": [
+    {
+      "segId": "s_0001",
+      "textEn": "Near the weekly market in Sinnar, Nashik 422103",
+      "textOriginal": "Near the weekly market in Sinnar, Nashik 422103",
+      "lang": "en",
+      "source": {
+        "type": "text",
+        "documentId": "doc_typed_1"
+      }
+    },
+    {
+      "segId": "s_0002",
+      "textEn": "Mobile phone repair: screens, batteries, charging ports, and second-hand phones",
+      "textOriginal": "Mobile phone repair: screens, batteries, charging ports, and second-hand phones",
+      "lang": "en",
+      "source": {
+        "type": "text",
+        "documentId": "doc_typed_1"
+      }
+    },
+    {
+      "segId": "s_0003",
+      "textEn": "Farmers and students from 12 nearby villages, mostly aged 18 to 45, men and women",
+      "textOriginal": "Farmers and students from 12 nearby villages, mostly aged 18 to 45, men and women",
+      "lang": "en",
+      "source": {
+        "type": "text",
+        "documentId": "doc_typed_1"
+      }
+    },
+    {
+      "segId": "s_0004",
+      "textEn": "I asked 40 people on two market days; 31 said they travel 25 km to town for repairs and wait 3 days",
+      "textOriginal": "I asked 40 people on two market days; 31 said they travel 25 km to town for repairs and wait 3 days",
+      "lang": "en",
+      "source": {
+        "type": "text",
+        "documentId": "doc_typed_1"
+      }
+    },
+    {
+      "segId": "s_0005",
+      "textEn": "Spare screens, batteries, charging ports, soldering supplies",
+      "textOriginal": "Spare screens, batteries, charging ports, soldering supplies",
+      "lang": "en",
+      "source": {
+        "type": "text",
+        "documentId": "doc_typed_1"
+      }
+    },
+    {
+      "segId": "s_0006",
+      "textEn": "Two wholesale spare-part dealers in Nashik city",
+      "textOriginal": "Two wholesale spare-part dealers in Nashik city",
+      "lang": "en",
+      "source": {
+        "type": "text",
+        "documentId": "doc_typed_1"
+      }
+    },
+    {
+      "segId": "s_0007",
+      "textEn": "₹20,000 own savings and a ₹45,000 loan; I have repaired phones for 3 years and have a training certificate",
+      "textOriginal": "₹20,000 own savings and a ₹45,000 loan; I have repaired phones for 3 years and have a training certificate",
+      "lang": "en",
+      "source": {
+        "type": "text",
+        "documentId": "doc_typed_1"
+      }
+    },
+    {
+      "segId": "s_0008",
+      "textEn": "One shop in town; nobody in the villages; they charge ₹400 for a screen",
+      "textOriginal": "One shop in town; nobody in the villages; they charge ₹400 for a screen",
+      "lang": "en",
+      "source": {
+        "type": "text",
+        "documentId": "doc_typed_1"
+      }
+    },
+    {
+      "segId": "s_0009",
+      "textEn": "₹350 for a screen fitting, plus the part",
+      "textOriginal": "₹350 for a screen fitting, plus the part",
+      "lang": "en",
+      "source": {
+        "type": "text",
+        "documentId": "doc_typed_1"
+      }
+    },
+    {
+      "segId": "s_0010",
+      "textEn": "₹18,000 a month",
+      "textOriginal": "₹18,000 a month",
+      "lang": "en",
+      "source": {
+        "type": "text",
+        "documentId": "doc_typed_1"
+      }
+    }
+  ],
+  "fields": {
+    "location": {
+      "state": "answered",
+      "evidence": [
+        "s_0001"
+      ]
+    },
+    "offering": {
+      "state": "answered",
+      "evidence": [
+        "s_0002"
+      ]
+    },
+    "customers": {
+      "state": "answered",
+      "evidence": [
+        "s_0003"
+      ]
+    },
+    "market_research": {
+      "state": "answered",
+      "evidence": [
+        "s_0004"
+      ]
+    },
+    "raw_materials": {
+      "state": "answered",
+      "evidence": [
+        "s_0005"
+      ]
+    },
+    "suppliers": {
+      "state": "answered",
+      "evidence": [
+        "s_0006"
+      ]
+    },
+    "funding": {
+      "state": "answered",
+      "evidence": [
+        "s_0007"
+      ]
+    },
+    "competition": {
+      "state": "answered",
+      "evidence": [
+        "s_0008"
+      ]
+    },
+    "unit_price": {
+      "state": "answered",
+      "evidence": [
+        "s_0009"
+      ]
+    },
+    "monthly_revenue": {
+      "state": "answered",
+      "evidence": [
+        "s_0010"
+      ]
+    }
+  }
+}

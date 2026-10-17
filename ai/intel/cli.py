@@ -14,13 +14,17 @@ from ai.providers import CapabilityUnavailable
 
 
 def main():
+    # The API decodes this pipe as UTF-8; Windows would otherwise default to a legacy code page and
+    # fail on ₹ or Indic text, which surfaced as a misleading "invalid input".
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
     try:
         raw = sys.stdin.buffer.read(1024 * 1024 + 1)
         if len(raw) > 1024 * 1024:
             raise ValueError("input_too_large")
         idea = json.loads(raw)
         schema_path = Path(__file__).resolve().parents[2] / "packages/contracts/schemas/centre-extracted-input.json"
-        Draft202012Validator(json.loads(schema_path.read_text())).validate(idea)
+        Draft202012Validator(json.loads(schema_path.read_text(encoding="utf-8"))).validate(idea)
         _, _, valid_ids = prepare_input(idea)
         checks = check_finances(idea.get("financials", {}), valid_ids)
         try:

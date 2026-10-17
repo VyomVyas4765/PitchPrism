@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Guided pitch steps and assisted spoken consent (M-06, M-17). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="PitchPrism"
         android:allowBackup="false"

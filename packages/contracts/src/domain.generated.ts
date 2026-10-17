@@ -326,6 +326,10 @@ export interface Entrepreneur {
   education?: string;
   createdVia: "self" | "assisted" | "import";
   facilitatorId?: ObjectId;
+  /**
+   * Assisted mode: the facilitator device's ID for this applicant, so an offline retry does not register them twice (Dev 1).
+   */
+  clientApplicantId?: string;
   homeOrgId?: ObjectId;
   createdAt?: DateTime;
   updatedAt?: DateTime;

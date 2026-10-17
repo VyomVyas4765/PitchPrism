@@ -2,19 +2,20 @@ import json
 from pathlib import Path
 import unittest
 
+from ai.intel.scoring import FIELDS as CORE
+
 ROOT = Path(__file__).resolve().parents[2]
 BANK = json.loads((ROOT / "data" / "seed" / "question-bank.json").read_text(encoding="utf-8"))
-CONTRACT = json.loads((ROOT / "packages" / "contracts" / "schemas" / "drafts" / "ingest-output.v0.json").read_text(encoding="utf-8"))
-CANONICAL = CONTRACT["$defs"]["CanonicalField"]["enum"]
-CORE = CANONICAL[:10]
-LANGUAGES = CONTRACT["$defs"]["Language"]["enum"][:-1]  # without "und"
+MANIFEST = json.loads((ROOT / "datasets" / "manifest.json").read_text(encoding="utf-8"))
+LANGUAGES = ["hi", "mr", "te", "or", "bn", "en"]
 
 
 class QuestionBankTests(unittest.TestCase):
-    def test_fields_match_the_canonical_contract(self):
-        self.assertEqual([key for key, field in BANK["fields"].items() if field["core"]], CORE)
+    def test_core_fields_match_the_scorer_and_the_dataset_manifest(self):
+        self.assertEqual(tuple(key for key, field in BANK["fields"].items() if field["core"]), CORE)
+        self.assertEqual(tuple(MANIFEST["canonicalFields"]), CORE)
         for key, field in BANK["fields"].items():
-            self.assertIn(key, CANONICAL)
+            self.assertRegex(key, r"^[a-z_]+$")
             self.assertTrue(field["wordings"]["en"], key)
 
     def test_guided_steps_cover_every_core_field_once_within_two_minutes(self):

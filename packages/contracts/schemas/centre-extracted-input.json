@@ -32,8 +32,11 @@
         "supersededBy": { "type": "string" },
         "source": { "type": "object", "additionalProperties": false,
           "required": ["type"], "properties": {
-            "type": { "enum": ["pdf", "text", "profile"] },
+            "type": { "enum": ["pdf", "text", "profile", "audio"] },
             "documentId": { "type": "string" },
+            "chunkId": { "type": "string" },
+            "start": { "type": "number", "minimum": 0 },
+            "end": { "type": "number", "minimum": 0 },
             "page": { "type": "integer", "minimum": 1 },
             "bbox": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "number" } }
           }

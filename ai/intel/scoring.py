@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import json
-import re
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Callable
 
+from ai.ingest.pii import find_pii
 from ai.llm.adapter import LocalJsonAdapter
 
 FIELDS = (
@@ -29,8 +29,6 @@ DOMAINS = {
 }
 RUBRIC_VERSION = "edp-draft-v1"
 PROMPT_VERSION = "edp-score-v1"
-EMAIL = re.compile(r"\b[^\s@]+@[^\s@]+\.[^\s@]+\b")
-PHONE = re.compile(r"(?<!\d)(?:\+?91[-\s]?)?[6-9]\d{9}(?!\d)")
 
 
 class InvalidEvidence(ValueError):
@@ -55,7 +53,8 @@ def prepare_input(idea: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any],
         raise InvalidEvidence("Segment IDs must be unique and nonempty.")
     for segment in segments:
         for text in (segment.get("textEn", ""), segment.get("textOriginal", "")):
-            if not isinstance(text, str) or EMAIL.search(text) or PHONE.search(text):
+            # Shared A-10 detector: spaced/international numbers, Indic digits, emails and ID numbers.
+            if not isinstance(text, str) or find_pii(text):
                 raise InvalidEvidence("Segments are not safely redacted for scoring.")
     valid = set(ids)
     active_ids = {segment["segId"] for segment in segments if not segment.get("struck", False)}

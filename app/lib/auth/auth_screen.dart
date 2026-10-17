@@ -6,6 +6,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/speech.dart';
+import '../entrepreneur/common.dart';
+import '../entrepreneur/entrepreneur_shell.dart';
+import '../facilitator/facilitator_home.dart';
+import '../intake/services.dart';
 
 bool get _phoneSignInConfigured =>
     const String.fromEnvironment('FIREBASE_PROJECT_ID').isNotEmpty &&
@@ -14,7 +19,10 @@ bool get _phoneSignInConfigured =>
     const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID').isNotEmpty;
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.language = 'en', this.speech, this.onChangeLanguage});
+  final String language;
+  final Speech? speech;
+  final VoidCallback? onChangeLanguage;
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
@@ -31,6 +39,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _facilitator = !_phoneSignInConfigured;
   bool _loading = true;
   bool _exchanging = false;
+  late final Speech _speech = widget.speech ?? SystemSpeech();
 
   @override
   void initState() {
@@ -234,7 +243,30 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final user = _user;
+    if (user != null && user['role'] == 'entrepreneur') {
+      return EntrepreneurShell(
+        api: _api,
+        speech: _speech,
+        language: widget.language,
+        onChangeLanguage: widget.onChangeLanguage ?? () {},
+        onSignOut: _signOut,
+      );
+    }
+    if (user != null && user['role'] == 'facilitator') {
+      return FacilitatorHome(
+        ctx: EntrepreneurContext(api: _api, speech: _speech, language: widget.language),
+        displayName: user['displayName'] as String,
+        onSignOut: _signOut,
+        // One outbox per account keeps each facilitator's queue apart on a shared phone.
+        services: IntakeServices.device(_api, user['id'] as String),
+      );
+    }
+    return _signIn(context);
+  }
+
+  Widget _signIn(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('PitchPrism')),
     body: SafeArea(
       child: SingleChildScrollView(
@@ -267,20 +299,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                   ),
-                if (_user != null) ...[
-                  Text(
-                    'Signed in as ${(_user!['role'] as String).replaceAll('_', ' ')}.',
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Your workspace is ready. Pitching and assisted workflows come next.',
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _loading ? null : _signOut,
-                    child: const Text('Sign out'),
-                  ),
-                ] else if (_facilitator) ...[
+                if (_facilitator) ...[
                   TextField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,

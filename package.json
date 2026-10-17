@@ -9,6 +9,7 @@
     "db:check": "pnpm --filter @pitchprism/backend db:check",
     "db:local": "node backend/scripts/local-mongo.mjs",
     "dev:local": "node backend/scripts/dev-local.mjs",
+    "worker": "pnpm --filter @pitchprism/backend worker",
     "ios": "node scripts/run-ios.mjs",
     "matrix:generate": "node scripts/generate-matrix.mjs",
     "dev": "pnpm --filter @pitchprism/contracts build && pnpm --parallel --filter @pitchprism/backend --filter @pitchprism/frontend dev",

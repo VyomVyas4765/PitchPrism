@@ -22,17 +22,9 @@ pnpm dev:local          # Persistent local MongoDB + synthetic staff seed + API/
 pnpm fixtures:load      # Optional: contract fixtures (a submission, evaluation, events...) with fixture.* staff logins
 ```
 
-Open http://localhost:3000. The API is at http://localhost:4000/api/v1. `pnpm dev:local` overrides the database URI for its child processes only; the private Atlas URI in `.env` is preserved. Local files live in ignored `local/mongodb/` and survive restarts. Ctrl+C stops the launcher without deleting data. Redis is removed. For a separately managed/Atlas database, use `pnpm seed` and `pnpm dev` after configuring a resolvable URI. Use a seeded email below and the `SEED_PASSWORD` value in your local `.env`. There are no committed credentials or public staff-registration endpoint. Re-running the seed preserves existing credentials/roles and never resets accounts. If `.env` already exists, compare it with `.env.example` and supply missing values yourself.
+Open http://localhost:3000. The API is at http://localhost:4000/api/v1. `pnpm dev:local` overrides the database URI for its child processes only; the private Atlas URI in `.env` is preserved. Local files live in ignored `local/mongodb/` and survive restarts. Ctrl+C stops the launcher without deleting data. Redis is removed. For a separately managed/Atlas database, use `pnpm seed` and `pnpm dev` after configuring a resolvable URI. Sign in as the bootstrap HQ admin (`SEED_ADMIN_EMAIL`, default `hq_admin@pitchprism.test`) with the `SEED_PASSWORD` value from your local `.env`. Re-running the seed preserves existing credentials/roles and never resets accounts. If `.env` already exists, compare it with `.env.example` and supply missing values yourself.
 
-| Staff role | Seeded email | Developer |
-| --- | --- | --- |
-| HQ admin | `hq_admin@pitchprism.test` | Dev 3 |
-| Centre assessor | `centre_assessor@pitchprism.test` | Dev 2 |
-| Cohort lead | `cohort_lead@pitchprism.test` | Dev 2 |
-| Field facilitator | `facilitator@pitchprism.test` | Dev 1 |
-| Implementation partner | `implementation_partner@pitchprism.test` | Dev 4 |
-| Sector partner | `sector_partner@pitchprism.test` | Dev 4 |
-| Funding partner (lender) | `funding_partner@pitchprism.test` | Dev 4 |
+**Staff join by invitation only** (W-01): there is no public staff sign-up and no role chooser. Under **People and access** on the dashboard, HQ creates organisations (centres and sector/funding partners report to HQ; implementation partners to a centre) and invites anyone; centre staff invite assessors, cohort leads and facilitators to their own centre; partners invite their own organisation's users. The inviter copies the one-time link (it expires after 72 hours) and sends it themselves; the invitee opens it, sees the role and organisation, and sets their own name and password. Admins can change roles within their scope and disable accounts, which takes effect on the next request. For a local demo only, `SEED_DEMO_STAFF=true` also seeds one synthetic account per staff role (`<role>@pitchprism.test`). See [authentication](docs/auth.md).
 
 Entrepreneurs are created only after verified Firebase phone sign-in; see [mobile setup](app/README.md). Cohort lead has the centre's permissions. Funding CSR mode is aggregate-only; the starter individual-record API denies it.
 

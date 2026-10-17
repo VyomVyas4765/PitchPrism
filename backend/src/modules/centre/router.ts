@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { HttpError } from '../../errors.js';
 import { requirePermission, submissionScope } from '../../auth/authorization.js';
-import { Submission } from '../../models.js';
+import { AuditEvent, Submission } from '../../models.js';
 import { CentreCase } from './model.js';
 import { assessLocally, type AssessmentResult } from './runner.js';
 
@@ -11,8 +11,9 @@ const id = z.string().regex(/^[a-f\d]{24}$/i);
 const segment = z.object({ segId: z.string().min(1).max(80), textEn: z.string().max(2000), textOriginal: z.string().max(2000).optional(),
   lang: z.string().max(12), confidence: z.number().min(0).max(1).optional(), struck: z.boolean().optional(),
   supersededBy: z.string().max(80).optional(),
-  source: z.object({ type: z.enum(['pdf', 'text', 'profile']), documentId: z.string().max(80).optional(),
-    page: z.number().int().min(1).max(50).optional(), bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]).optional() }).strict(),
+  source: z.object({ type: z.enum(['pdf', 'text', 'profile', 'audio']), documentId: z.string().max(80).optional(),
+    page: z.number().int().min(1).max(50).optional(), bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]).optional(),
+    chunkId: z.string().max(80).optional(), start: z.number().finite().nonnegative().optional(), end: z.number().finite().nonnegative().optional() }).strict(),
 }).strict();
 const field = z.object({ state: z.enum(['answered', 'missing', 'not_asked', 'irrelevant', 'unreadable']),
   evidence: z.array(z.string().min(1).max(80)).max(8) }).strict();
@@ -80,6 +81,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     if (result.status === 'assessed' && ['DRAFT', 'READY', 'UNASSESSABLE'].includes(submission.status)) {
       submission.status = state === 'UNASSESSABLE' ? 'UNASSESSABLE' : 'READY'; await submission.save();
     }
+    await AuditEvent.create({ actorUserId: req.auth!.user.id, action: 'score', resourceType: 'Submission', resourceId: String(submission._id), metadata: { state } });
     res.status(previous ? 200 : 201).json({ submissionId, state: record!.state, evaluation: record!.evaluation,
       quality: record!.quality, financialChecks: record!.financialChecks, followUps: record!.followUps,
       planDraft: record!.planDraft, reason: record!.reason });
@@ -118,6 +120,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     await item.save();
     submission.status = input.decision === 'shortlist' ? 'SHORTLISTED' : input.decision === 'not_yet' ? 'NOT_YET' : 'MORE_INFO';
     await submission.save();
+    await AuditEvent.create({ actorUserId: req.auth!.user.id, action: 'decision', resourceType: 'Submission', resourceId: String(submission._id), metadata: { decision: input.decision, override: !!(override || bandOverride) } });
     res.json({ decision: item.decision, status: submission.status });
   });
 

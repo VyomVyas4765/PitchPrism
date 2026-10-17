@@ -1,6 +1,6 @@
 # Authentication foundation
 
-The first milestone implements login, expiring/revocable sessions and protected role entry points. It does not implement role-specific business workflows or a user invitation/password-reset system. All API routes use `/api/v1`.
+The first milestone implements login, expiring/revocable sessions and protected role entry points. It does not implement role-specific business workflows or password reset; staff invitations are described below. All API routes use `/api/v1`.
 
 ## Interfaces
 
@@ -15,6 +15,15 @@ The first milestone implements login, expiring/revocable sessions and protected 
 | `GET /admin/overview` | HQ platform permission | Counts of organisations/users |
 | `GET /orgs/:id/workspace` | Own organisation or HQ | Minimal organisation metadata |
 | `GET /submissions/:id` | Scoped resource access | Read-only starter record with safe projection; missing/inaccessible records return 404 |
+| `POST /auth/invites/preview` | Public, rate limited | `{token}` → invited email, role, organisation and expiry; invalid, used, revoked or expired links all return the same 404 |
+| `POST /auth/invites/accept` | Public, rate limited | `{token, displayName, password (12–128), client?}` → creates the staff user with the invite's role and organisation and signs them in; single use |
+| `GET /access/options` | `manage_org_users` | Organisations in the caller's scope and the roles the caller may assign in each |
+| `GET /orgs` | `manage_org_users` | All organisations for HQ; the caller's own organisation otherwise |
+| `POST /orgs`, `PATCH /orgs/:id` | HQ (`manage_platform`) | Create centres/partners (implementation partners need a parent centre; funding partners need lender/CSR mode); rename, set region/languages, deactivate/reactivate |
+| `POST /invites`, `GET /invites`, `POST /invites/:id/revoke` | `manage_org_users`, scoped | Create a one-time link (returned once, token in the URL fragment), list and revoke |
+| `GET /users`, `PATCH /users/:id` | `manage_org_users`, scoped | List staff; change role or disable (disabling also deletes their sessions); never your own account |
+
+**Staff onboarding (W-01).** Staff accounts exist only through invitations. Who may invite whom follows PRD §4: HQ admins invite any staff role into any organisation; centre assessors and cohort leads invite centre assessors, cohort leads and facilitators to their own centre; implementation partners invite their own reviewers and facilitators; sector and funding partners invite their own reviewers. Every role must also fit the organisation type (the same table the session check uses). The invite stores only a sha256 of a 256-bit token; re-inviting an address revokes its earlier pending link; links expire after 72 hours. The accepting person chooses only their name and password; client-supplied role, organisation or status fields are rejected. Links are shown to the inviter rather than emailed, so no mail provider is needed.
 
 Browser requests use the Next.js same-origin proxy; tokens are never put in browser local storage. Native requests send `Authorization: Bearer <accessToken>` from secure device storage. Input schemas reject client-supplied role/org fields; there is no public staff signup. Future administrative invitations must use reviewed, scoped endpoints.
 
@@ -47,4 +56,4 @@ Partners receive an explicit minimal projection. Applicant name/phone appear onl
 
 `pnpm setup:env` creates a private `.env` with random secrets and seed password, without overwriting an existing file. `pnpm seed` is development-only and idempotent; it does not reset existing users. Firebase remains unavailable (503) until `FIREBASE_PROJECT_ID` and Application Default Credentials are configured; tokens from non-phone providers are rejected. The API stores the Firebase UID for authentication and does not duplicate the verified phone number in its auth collection. Production startup rejects the Firebase emulator and non-HTTPS browser origins.
 
-Full phone/device integration steps are in [app/README.md](../app/README.md). Firebase token-verification behavior follows the [official Admin SDK guidance](https://firebase.google.com/docs/auth/admin/verify-id-tokens). Full encrypted applicant-profile storage, complete domain contracts, invitation/reset flows, distributed rate limiting and production deployment are follow-up duties.
+Full phone/device integration steps are in [app/README.md](../app/README.md). Firebase token-verification behavior follows the [official Admin SDK guidance](https://firebase.google.com/docs/auth/admin/verify-id-tokens). Entrepreneur personal fields are sealed by the entrepreneur module (`PII_ENCRYPTION_KEY`). Password reset, complete domain contracts, distributed rate limiting, an audit log of access changes (W-08) and production deployment are follow-up duties.

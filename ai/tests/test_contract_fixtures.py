@@ -5,57 +5,41 @@ import unittest
 from jsonschema import Draft202012Validator
 
 from ai.ingest.pii import ensure_redacted
+from ai.intel.scoring import prepare_input
 
 CONTRACTS = Path(__file__).resolve().parents[2] / "packages" / "contracts"
-SCHEMA = json.loads((CONTRACTS / "schemas" / "drafts" / "ingest-output.v0.json").read_text(encoding="utf-8"))
-FIXTURES = sorted((CONTRACTS / "fixtures" / "ingest").glob("*.json"))
+SCHEMA = json.loads((CONTRACTS / "schemas" / "centre-extracted-input.json").read_text(encoding="utf-8"))
+FIXTURES = sorted((CONTRACTS / "fixtures" / "extracted-input").glob("*.json"))
 
 
-class IngestFixtureTests(unittest.TestCase):
-    """The published Dev 2 fixtures must obey the draft contract and the evidence rules it cannot express."""
+class ExtractedInputFixtureTests(unittest.TestCase):
+    """Dev 1's published extraction fixtures must satisfy the one shared Dev 1 → Dev 2 contract."""
 
-    def test_fixtures_exist(self):
-        self.assertGreaterEqual(len(FIXTURES), 3)
-        Draft202012Validator.check_schema(SCHEMA)
+    def test_fixtures_cover_text_audio_and_pdf_sources(self):
+        kinds = {segment["source"]["type"] for path in FIXTURES
+                 for segment in json.loads(path.read_text(encoding="utf-8"))["segments"]}
+        self.assertTrue({"text", "audio", "pdf"} <= kinds)
 
-    def test_each_fixture_is_valid_cited_and_redacted(self):
+    def test_each_fixture_is_valid_redacted_and_accepted_by_the_scorer(self):
         validator = Draft202012Validator(SCHEMA)
         for path in FIXTURES:
             with self.subTest(fixture=path.name):
                 data = json.loads(path.read_text(encoding="utf-8"))
                 validator.validate(data)
+                prepare_input(data)  # Dev 2's fail-closed citation and redaction checks
                 segments = {segment["segId"]: segment for segment in data["segments"]}
-                self.assertEqual(len(segments), len(data["segments"]), "segIds must be unique")
                 for segment in segments.values():
-                    ensure_redacted(segment["text"])
-                    ensure_redacted(segment["textEn"] or "")
-                    source = segment["source"]
-                    if source["type"] == "text" and "⟨" not in segment["text"]:
-                        self.assertEqual(source["charEnd"] - source["charStart"], len(segment["text"]))
-                    if source["type"] == "audio":
-                        self.assertLess(source["start"], source["end"])
-                    if segment["struck"]:
+                    ensure_redacted(segment["textEn"])
+                    ensure_redacted(segment.get("textOriginal", ""))
+                    if segment.get("struck"):
                         self.assertIn(segment["supersededBy"], segments)
-                cited = [*data["fields"].values(), *(item for item in (data["summary"], data["problemAddressed"]) if item)]
-                for value in cited:
-                    ensure_redacted(value["value"])
-                    for seg_id in value["segIds"]:
-                        self.assertIn(seg_id, segments)
-                        self.assertFalse(segments[seg_id]["struck"], "struck values are history, never evidence")
-                for qa in data["qa"]:
-                    for seg_id in qa["answerSegIds"]:
-                        self.assertIn(seg_id, segments)
-                    if qa["state"] == "answered":
-                        self.assertTrue(qa["answerSegIds"])
-                    if qa["state"] in ("missing", "not_asked"):
-                        self.assertEqual(qa["answerSegIds"], [])
-                        self.assertNotIn(qa["canonicalField"], data["fields"], "missing answers are never filled in")
-                    if qa["state"] == "not_asked":
-                        self.assertIsNone(qa["question"])
-                    for overwrite in qa["overwrites"]:
-                        self.assertTrue(segments[overwrite["fromSegId"]]["struck"])
-                        self.assertEqual(segments[overwrite["fromSegId"]]["supersededBy"], overwrite["toSegId"])
-                        self.assertIn(overwrite["toSegId"], qa["answerSegIds"])
+                    if segment["source"]["type"] == "audio":
+                        self.assertLess(segment["source"]["start"], segment["source"]["end"])
+                for field in data["fields"].values():
+                    if field["state"] in ("missing", "not_asked"):
+                        self.assertEqual(field["evidence"], [], "missing answers are never filled in")
+                    for seg_id in field["evidence"]:
+                        self.assertFalse(segments[seg_id].get("struck"), "struck values are history, never evidence")
 
 
 if __name__ == "__main__":

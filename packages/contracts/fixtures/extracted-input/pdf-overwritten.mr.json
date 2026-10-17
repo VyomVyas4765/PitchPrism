@@ -1,0 +1,161 @@
+{
+  "template": "edp-idea-brief",
+  "context": {
+    "plannedBusinessLocation": {
+      "village": "Yeola",
+      "district": "Nashik",
+      "state": "Maharashtra",
+      "pincode": "423401",
+      "source": "pdf",
+      "evidence": [
+        "s_0003"
+      ]
+    }
+  },
+  "segments": [
+    {
+      "segId": "s_0001",
+      "textEn": "Tailoring centre: blouses, dresses and school uniforms",
+      "textOriginal": "शिलाई केंद्र: ब्लाउज, ड्रेस आणि शाळेचे गणवेश",
+      "lang": "mr",
+      "source": {
+        "type": "pdf",
+        "documentId": "doc_pdf_1",
+        "page": 1,
+        "bbox": [
+          72,
+          140,
+          520,
+          162
+        ]
+      },
+      "confidence": 0.97
+    },
+    {
+      "segId": "s_0002",
+      "textEn": "Women in the village and two schools",
+      "textOriginal": "गावातील महिला आणि दोन शाळा",
+      "lang": "mr",
+      "source": {
+        "type": "pdf",
+        "documentId": "doc_pdf_1",
+        "page": 1,
+        "bbox": [
+          72,
+          196,
+          520,
+          218
+        ]
+      },
+      "confidence": 0.96
+    },
+    {
+      "segId": "s_0003",
+      "textEn": "Yeola, Nashik 423401",
+      "textOriginal": "येवला, नाशिक 423401",
+      "lang": "mr",
+      "source": {
+        "type": "pdf",
+        "documentId": "doc_pdf_1",
+        "page": 1,
+        "bbox": [
+          72,
+          252,
+          520,
+          274
+        ]
+      },
+      "confidence": 0.98
+    },
+    {
+      "segId": "s_0004",
+      "textEn": "₹20,000",
+      "textOriginal": "₹२०,०००",
+      "lang": "mr",
+      "source": {
+        "type": "pdf",
+        "documentId": "doc_pdf_1",
+        "page": 2,
+        "bbox": [
+          72,
+          96,
+          300,
+          118
+        ]
+      },
+      "confidence": 0.95,
+      "struck": true,
+      "supersededBy": "s_0005"
+    },
+    {
+      "segId": "s_0005",
+      "textEn": "₹12,000 per month",
+      "textOriginal": "₹१२,००० दरमहा",
+      "lang": "mr",
+      "source": {
+        "type": "pdf",
+        "documentId": "doc_pdf_1",
+        "page": 2,
+        "bbox": [
+          310,
+          96,
+          520,
+          118
+        ]
+      },
+      "confidence": 0.95
+    },
+    {
+      "segId": "s_0006",
+      "textEn": "[Left Blank]",
+      "textOriginal": "[Left Blank]",
+      "lang": "und",
+      "source": {
+        "type": "pdf",
+        "documentId": "doc_pdf_1",
+        "page": 2,
+        "bbox": [
+          72,
+          150,
+          520,
+          172
+        ]
+      },
+      "confidence": 0.99
+    }
+  ],
+  "fields": {
+    "offering": {
+      "state": "answered",
+      "evidence": [
+        "s_0001"
+      ]
+    },
+    "customers": {
+      "state": "answered",
+      "evidence": [
+        "s_0002"
+      ]
+    },
+    "location": {
+      "state": "answered",
+      "evidence": [
+        "s_0003"
+      ]
+    },
+    "monthly_revenue": {
+      "state": "answered",
+      "evidence": [
+        "s_0005"
+      ]
+    },
+    "suppliers": {
+      "state": "missing",
+      "evidence": []
+    },
+    "market_research": {
+      "state": "not_asked",
+      "evidence": []
+    }
+  }
+}

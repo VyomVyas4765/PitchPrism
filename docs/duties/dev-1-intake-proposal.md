@@ -1,6 +1,6 @@
 # Intake contract proposal · Dev 1 → Dev 3
 
-**Status:** proposal, 2026-10-17. No submission writes land until Dev 3 agrees the contract (AGENTS.md). Dev 2 reviews the shared `documents`/A-01 parts (bulk import, W-19); Dev 4 reviews the reuse in W-16. Nothing here changes the PRD; it fills the gaps between PRD §19–20, flow §1.2–1.4 and the read-only starter model.
+**Status:** implemented inside the entrepreneur module on 2026-10-17 at the team's request (see the [module README](../../backend/src/modules/entrepreneur/README.md)), without changing the shared Submission schema: drafts and documents are module collections, originals use a private GridFS bucket, and one Submission is created only at submit. Decisions taken locally and still open for Dev 3 review: GridFS storage, entrepreneur-chosen centre (Q-08), `pipeline: pending_queue` until the D-26 job queue exists, and `parentOrgId` for implementation-partner facilitators. The original proposal follows.
 
 **Unblocks:** M-05/M-06/M-07 intake, M-08 transcript edits, M-11 offline resume, M-17/M-18 assisted mode, A-01 originals and the first job.
 

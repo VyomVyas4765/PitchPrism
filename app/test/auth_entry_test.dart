@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pitchprism_app/main.dart';
 
 void main() {
-  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+  setUp(() => FlutterSecureStorage.setMockInitialValues({'language': 'en'}));
 
   testWidgets('unconfigured Firebase opens real facilitator password login', (
     tester,

@@ -2,7 +2,11 @@
 
 How a submission moves through PitchPrism, who owns each step, and what the four of us hand to each other during the 30 hours. Read this with [decision.md](decision.md); contracts named here live in `packages/contracts`.
 
-**Owners:** Dev 1 = AI ingestion (Python) · Dev 2 = AI intelligence and eval (Python) · Dev 3 = API, data and mobile (Node, Flutter) · Dev 4 = Web dashboard (Next.js)
+**Current ownership (D-23):** Dev 1 = entrepreneur/facilitator + ingestion/language · Dev 2 = centre/cohort + intelligence/eval · Dev 3 = HQ + auth/contracts/platform · Dev 4 = partner types + shared web shell/UI. Every developer owns UI, API, data and integration for their roles. See [the duty index](duties/README.md).
+
+**Local AI update (D-24):** every AI task uses a validated local provider; no hosted inference or automatic fallback. Mobile records offline and queues uploads; heavy compute stays on the worker. Missing capabilities remain pending/failed explicitly. See [local AI setup](../ai/README.md) and [the implementation matrix](implementation-matrix.md).
+
+**Phase:** the scaffold/auth foundation is implemented first. Business flow below is the target architecture, not a claim that the queue, AI pipeline, SSE or review features already exist. Older 30-hour scheduling/Dev-number handoff references below are historical; the new role duty briefs and D-23 supersede their staffing assignments.
 
 ---
 
@@ -13,9 +17,9 @@ How a submission moves through PitchPrism, who owns each step, and what the four
 ```mermaid
 flowchart LR
     subgraph IN["Ways in"]
-        M["Mobile pitch<br/>(Dev 3)"]
-        B["Bulk import<br/>(Dev 4 UI · Dev 3 API)"]
-        F["Facilitator queue<br/>(Dev 3)"]
+        M["Mobile pitch<br/>(Dev 1)"]
+        B["Bulk import<br/>(Dev 2 · shared platform Dev 3)"]
+        F["Facilitator queue<br/>(Dev 1)"]
     end
     API["Node API<br/>(Dev 3)"]
     Q[["BullMQ"]]
@@ -24,7 +28,7 @@ flowchart LR
         I["Check · compare · locate · score · narrate · rank<br/>(Dev 2)"]
     end
     DB[("MongoDB")]
-    WEB["Dashboard<br/>(Dev 4)"]
+    WEB["Dashboard<br/>(Role owners · shared shell Dev 4)"]
     M --> API
     B --> API
     F --> API
@@ -124,7 +128,7 @@ SSE event names on `GET /events`: `stage`, `submission.status`, `import.progress
 ```mermaid
 sequenceDiagram
     actor A as Assessor
-    participant WEB as Dashboard (Dev 4)
+    participant WEB as Centre dashboard (Dev 2)
     participant API as API (Dev 3)
     participant S3 as Storage
     participant WK as Worker (Dev 1 → Dev 2)
@@ -147,7 +151,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor E as Entrepreneur
-    participant APP as App (Dev 3)
+    participant APP as App (Dev 1)
     participant API as API (Dev 3)
     participant WK as Worker
     E->>APP: Pick Marathi, consent by voice, answer prompt cards
@@ -172,7 +176,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor M as Assessor
-    participant WEB as Dashboard (Dev 4)
+    participant WEB as Centre dashboard (Dev 2)
     participant API as API (Dev 3)
     participant WK as Worker (Dev 2)
     actor P as Sector partner

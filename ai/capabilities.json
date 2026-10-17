@@ -1,0 +1,14 @@
+{
+  "languages": ["hi", "mr", "te", "or", "bn", "en"],
+  "policy": "Local inference only; no downloads or hosted fallback. Availability is not language-quality validation.",
+  "tasks": {
+    "transcribe": { "execution": "worker; optional device only after offline/locale checks", "provider": null, "status": "not_implemented" },
+    "ocr": { "execution": "worker", "provider": null, "status": "not_implemented" },
+    "translate": { "execution": "worker", "provider": null, "status": "not_implemented" },
+    "transliterate": { "execution": "worker", "provider": null, "status": "not_implemented" },
+    "embed": { "execution": "worker", "provider": null, "status": "not_implemented" },
+    "generate_json": { "execution": "worker", "provider": "ollama-local", "status": "adapter_only_unvalidated" },
+    "synthesize": { "execution": "Android system TTS after locale/offline check; local worker fallback", "provider": null, "status": "not_implemented" }
+  },
+  "language_validation": { "hi": "not_evaluated", "mr": "not_evaluated", "te": "not_evaluated", "or": "not_evaluated", "bn": "not_evaluated", "en": "not_evaluated" }
+}

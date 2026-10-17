@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-17",
+  "status": "synthetic_runtime_smoke_only",
+  "host": { "cpu": "Apple M2", "physical_cpu_cores": 8, "total_memory_bytes": 8589934592 },
+  "runtime": "local Ollama",
+  "installed_model": "llama3.2:latest",
+  "model_file_bytes": 2019393189,
+  "test": "Synthetic English JSON object constrained by JSON Schema; no applicant data",
+  "result": { "schema_valid": true, "duration_ms": 10045, "input_tokens": 47, "output_tokens": 7, "hosted_ai_api_cost_inr": 0 },
+  "not_validated": ["model licence", "peak RAM", "Android installed size/memory", "six-language quality", "handwriting/OCR", "translation", "embeddings", "assessment accuracy", "55-file organiser evaluation", "pipeline latency"],
+  "selection": "Not automatically selected as a pipeline provider; model choices require evaluation"
+}

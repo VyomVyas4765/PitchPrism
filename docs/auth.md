@@ -1,0 +1,46 @@
+# Authentication foundation
+
+The first milestone implements login, expiring/revocable sessions and protected role entry points. It does not implement role-specific business workflows or a user invitation/password-reset system. All API routes use `/api/v1`.
+
+## Interfaces
+
+| Method/path | Access | Behavior |
+| --- | --- | --- |
+| `GET /health` | Public | Process health after database startup |
+| `POST /auth/login` | Public, rate limited | `{email,password,client?:"web"|"mobile"}`; returns `{user}` and HttpOnly cookie for web, or `{user,accessToken}` for native |
+| `POST /auth/otp/verify` | Public, rate limited | `{idToken}` from Firebase phone sign-in; verifies via Admin SDK with revocation checks, creates/reuses entrepreneur only; returns `{user,accessToken}` |
+| `GET /auth/me` | Session | Current user, role and organisation from database |
+| `POST /auth/logout` | Session | Revokes that session and clears cookie; 204 |
+| `GET /workspaces/:role` | Same role | Starter workspace and coarse capability keys |
+| `GET /admin/overview` | HQ platform permission | Counts of organisations/users |
+| `GET /orgs/:id/workspace` | Own organisation or HQ | Minimal organisation metadata |
+| `GET /submissions/:id` | Scoped resource access | Read-only starter record with safe projection; missing/inaccessible records return 404 |
+
+Browser requests use the Next.js same-origin proxy; tokens are never put in browser local storage. Native requests send `Authorization: Bearer <accessToken>` from secure device storage. Input schemas reject client-supplied role/org fields; there is no public staff signup. Future administrative invitations must use reviewed, scoped endpoints.
+
+Session lifetime is eight hours. JWT contains the subject and session ID; every request verifies its signature/issuer/audience/expiry, active Mongo session, current user and current organisation. Logout invalidates the token in Mongo immediately; database TTL cleanup is not relied on for expiry. Role changes, account disablement and inactive organisations are checked on every request. Role-to-org-type mismatches are denied.
+
+Cookies are HttpOnly, SameSite=Lax, and Secure in production. Mutation origins must match `WEB_ORIGIN`; cookie-authenticated mutations also require that Origin. Native bearer requests do not require a browser Origin. Sign-in uses salted scrypt password hashes and a per-process IP limiter (10 attempts / 15 minutes, shared across password/phone exchange). A multi-instance deployment needs a shared limiter store and explicit reverse-proxy configuration.
+
+## Resource access
+
+| Role | Starter submission scope |
+| --- | --- |
+| Entrepreneur | Its own entrepreneur ID |
+| Facilitator | Submissions created by that user |
+| Centre assessor / cohort lead | Owning centre equals its organisation |
+| HQ admin | All submissions |
+| Implementation partner | Source organisation equals its organisation |
+| Sector partner | Active sector share for its organisation |
+| Funding lender | Active funding share, SHORTLISTED status and funding-ready flag |
+| Funding CSR | No individual submissions; aggregate reports are future work |
+
+Partners receive an explicit minimal projection. Applicant name/phone appear only after contact acceptance on the current active share. Shares/internal ownership identifiers never appear in that partner response. Revoking the share removes access on the next request. Consent/contact write endpoints remain assigned work; tests change synthetic share state directly to verify the read boundary. The prototype stores no real applicant fixtures, and the seed creates only synthetic orgs/staff.
+
+`backend/src/auth/authorization.ts` is the shared scope/permission integration point. Every future resource route must include its scope and safe projection. The starter capability list is deliberately coarse; implement each full PRD action with its specific permission and scope. Client redirects/navigation are convenience, never the access boundary.
+
+## Configuration and remaining setup
+
+`pnpm setup:env` creates a private `.env` with random secrets and seed password, without overwriting an existing file. `pnpm seed` is development-only and idempotent; it does not reset existing users. Firebase remains unavailable (503) until `FIREBASE_PROJECT_ID` and Application Default Credentials are configured; tokens from non-phone providers are rejected. The API stores the Firebase UID for authentication and does not duplicate the verified phone number in its auth collection. Production startup rejects the Firebase emulator and non-HTTPS browser origins.
+
+Full phone/device integration steps are in [app/README.md](../app/README.md). Firebase token-verification behavior follows the [official Admin SDK guidance](https://firebase.google.com/docs/auth/admin/verify-id-tokens). Full encrypted applicant-profile storage, complete domain contracts, invitation/reset flows, distributed rate limiting and production deployment are follow-up duties.

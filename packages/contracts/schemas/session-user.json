@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SessionUser",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "displayName", "email", "role", "orgId", "orgType"],
+  "properties": {
+    "id": { "type": "string" },
+    "displayName": { "type": "string" },
+    "email": { "type": ["string", "null"] },
+    "role": { "$ref": "#/definitions/Role" },
+    "orgId": { "type": ["string", "null"] },
+    "orgType": { "anyOf": [{ "$ref": "#/definitions/OrgType" }, { "type": "null" }] }
+  },
+  "definitions": {
+    "Role": { "type": "string", "enum": ["entrepreneur", "facilitator", "centre_assessor", "cohort_lead", "hq_admin", "implementation_partner", "sector_partner", "funding_partner"] },
+    "OrgType": { "type": "string", "enum": ["hq", "centre", "implementation_partner", "sector_partner", "funding_partner"] }
+  }
+}

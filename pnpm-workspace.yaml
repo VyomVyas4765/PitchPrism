@@ -1,0 +1,8 @@
+packages:
+  - frontend
+  - backend
+  - packages/*
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - mongodb-memory-server

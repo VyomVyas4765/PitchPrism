@@ -47,6 +47,7 @@ venv/
 .flutter-plugins-dependencies
 .packages
 apps/mobile/build/
+app/build/
 *.iml
 .gradle/
 local.properties
@@ -56,6 +57,8 @@ local.properties
 # Worker caches and eval output
 services/worker/.cache/
 services/worker/eval/reports/
+ai/.cache/
+ai/eval/reports/
 
 # Editors and OS
 .vscode/*

@@ -1,0 +1,6 @@
+{
+  "name": "@pitchprism/frontend", "private": true, "type": "module",
+  "scripts": { "dev": "next dev", "build": "next build", "start": "next start", "typecheck": "next typegen && tsc --noEmit" },
+  "dependencies": { "@pitchprism/contracts": "workspace:*", "next": "16.4.2", "react": "19.3.1", "react-dom": "19.3.1" },
+  "devDependencies": { "@types/node": "^22.19.0", "@types/react": "^19.2.7", "@types/react-dom": "^19.2.3", "typescript": "^5.9.3" }
+}

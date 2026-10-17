@@ -1,66 +1,99 @@
 # PitchPrism
 
-**AI idea screening for Tata STRIVE.** Entrepreneurs pitch a business idea by voice, text, form or handwritten PDF in their own language. PitchPrism reads it, translates it, checks it, compares it with other ideas and the local market, and gives assessors a scored, evidence-linked English idea card with a suggested next step.
+AI idea screening for Tata STRIVE, built for Code Odyssey 5.0. Entrepreneurs pitch in their own language; assessors review evidence-linked idea cards. The full product is defined in [PitchPrism.md](PitchPrism.md).
 
-Built for **Code Odyssey 5.0** (Tata STRIVE problem statement: AI-powered business idea screening and assessment).
+## First milestone: authentication and access
+
+The repository now has a Flutter Android app, Next.js dashboard, Express API, shared auth contracts and a Python worker scaffold. Staff can sign in/out and open protected role workspaces. Entrepreneurs exchange a verified Firebase phone token for an API session. Role, organisation and consent checks run on the server.
+
+Business workflows, domain-contract expansion, AI stages, queue consumers and SSE are still assigned work. The starter submission endpoint is read-only and exists to exercise access boundaries; no applicant submissions are seeded. Real OTP needs Firebase project configuration. The revised AI direction is local-only with no hosted API fallback; see [local AI setup](ai/README.md) and the [88-requirement implementation matrix](docs/implementation-matrix.md).
+
+## Quick start
+
+Requirements: Node 22 (see `.nvmrc`), pnpm 10.17.1, and Docker Compose. Flutter 3.47+/Dart 3.13+ for Android; Python 3.11+ for the worker scaffold.
+
+```bash
+pnpm install
+pnpm setup:env          # Creates ignored .env with random secrets; preserves an existing file
+# Start Docker Desktop / your Docker daemon first.
+docker compose up -d --wait
+pnpm seed               # Synthetic organisations + one staff account for each role below
+pnpm dev                # Dashboard :3000, API :4000
+```
+
+Open http://localhost:3000. Use a seeded email below and the `SEED_PASSWORD` value in your local `.env`. There are no committed credentials or public staff-registration endpoint. Re-running the seed preserves existing credentials/roles and never resets accounts. If `.env` already exists, compare it with `.env.example` and supply missing values yourself.
+
+| Staff role | Seeded email | Developer |
+| --- | --- | --- |
+| HQ admin | `hq_admin@pitchprism.test` | Dev 3 |
+| Centre assessor | `centre_assessor@pitchprism.test` | Dev 2 |
+| Cohort lead | `cohort_lead@pitchprism.test` | Dev 2 |
+| Field facilitator | `facilitator@pitchprism.test` | Dev 1 |
+| Implementation partner | `implementation_partner@pitchprism.test` | Dev 4 |
+| Sector partner | `sector_partner@pitchprism.test` | Dev 4 |
+| Funding partner (lender) | `funding_partner@pitchprism.test` | Dev 4 |
+
+Entrepreneurs are created only after verified Firebase phone sign-in; see [mobile setup](app/README.md). Cohort lead has the centre's permissions. Funding CSR mode is aggregate-only; the starter individual-record API denies it.
+
+```bash
+# Mobile: Android emulator uses 10.0.2.2 to reach the API.
+cd app
+flutter pub get
+flutter run
+```
+
+From the repository root, `make worker-setup && make worker` runs the Python capability report. `make worker-check` inspects the local runtime and installed models; `make worker-test` checks local-only policies and structured output. No model is selected/downloaded automatically, and no queue consumer or full AI stages are claimed. MongoDB and Redis persist in named local Docker volumes. Local containers bind to loopback and are development services.
+
+## MongoDB on restricted networks
+
+Put the current Atlas driver URI in the ignored **root `.env`**, then run `pnpm db:check`. The API does not read credentials from `.env.example`. The diagnostic distinguishes missing DNS records, network reachability, TLS and authentication without printing your URI. API startup and seed share IPv4/timeouts and an optional process-only DNS override; TLS remains verified and databases are never switched automatically. See [MongoDB troubleshooting](docs/mongodb.md) for Atlas/network and explicit local-development options.
+
+## Repository layout and ownership
+
+```text
+app/                   Flutter entrepreneur / facilitator entry point       Dev 1
+frontend/              Next.js role features                                Role owners; shell Dev 4
+backend/               Express role modules                                 Role owners; auth/platform Dev 3
+ai/ingest/             Reading, redaction, language and extraction            Dev 1
+ai/intel/              Quality, finance, scoring and context                  Dev 2
+ai/eval/               Organiser-dataset evaluation                           Dev 2
+ai/llm/                Shared provider adapter                                Dev 1; Dev 2 reviews
+packages/contracts/    Auth schema, generated TS types and permission keys    Dev 3
+data/seed/            Synthetic seed notes and future seed data              Assigned owners
+datasets/              Private raw files (ignored) and existing catalogue
+docs/                 Decisions, flows, design, role duties
+```
+
+See [role duties](docs/duties/README.md) for the four assignments and all 88 PRD requirement owners. Each owner delivers their complete role workflows across UI, API, data, AI integration and tests. Shared services are implemented once and reused.
+
+## Checks and production build
+
+```bash
+pnpm typecheck
+pnpm test               # Access tests use a temporary real MongoDB; no Docker/Firebase credentials
+pnpm duties:check
+pnpm matrix:generate    # After updating implementation/cost/acceptance records
+pnpm contracts:generate # After changing the auth schema; commit generated source
+pnpm build
+# In app/: flutter analyze
+# From root: make worker-test && make worker-check
+```
+
+`pnpm build` produces the contracts, API and web build. Start the API with `pnpm --filter @pitchprism/backend start`, and the dashboard with `pnpm --filter @pitchprism/frontend start`. Configure `NODE_ENV=production`, a random `JWT_SECRET`, HTTPS `WEB_ORIGIN`, and the real database. Set `API_PROXY_TARGET` in `frontend/.env.local` (see its example) when the API is not at the default address. Configure the actual proxy chain explicitly before deployment; the API does not blindly trust forwarded client IPs.
+
+Auth roles come from `packages/contracts/schemas/session-user.json`; generated TypeScript output is committed. The Python AI worker does not handle authentication; domain schemas and Pydantic generation remain a shared-platform duty under D-03.
 
 ## Read these first
 
-| Doc | What it's for |
-| --- | --- |
-| [PitchPrism.md](PitchPrism.md) | The PRD (v2): every requirement, with IDs (M-, W-, A-) |
-| [docs/decision.md](docs/decision.md) | Decisions made, why, and what's still open |
-| [docs/flow.md](docs/flow.md) | How a submission moves through the system, and the 30-hour build plan |
-| [docs/design.md](docs/design.md) | "The Broadsheet" design direction |
-| [docs/duties/](docs/duties/) | One brief per developer |
-| [PitchPrism.v1.md](PitchPrism.v1.md) | The original PRD, kept for reference |
+- [PRD](PitchPrism.md): product roles, permissions and all requirement details.
+- [Decisions](docs/decision.md): D-23 records the current layout and developer split.
+- [Flow](docs/flow.md): submission lifecycle, stage handoffs and integration flow.
+- [Design](docs/design.md): the Broadsheet dashboard / Radio mobile direction.
+- [Authentication](docs/auth.md): routes, session and access rules, configuration and limitations.
+- [Agent instructions](AGENTS.md): check other agents' work before adding logic.
 
-## Team
+## Working agreements and privacy
 
-| Role | Brief | Owns |
-| --- | --- | --- |
-| Dev 1 · AI ingestion (Python) | [dev-1-ai-ingestion.md](docs/duties/dev-1-ai-ingestion.md) | Reading audio, PDFs and handwriting; translation; PII redaction |
-| Dev 2 · AI intelligence and eval (Python) | [dev-2-ai-intelligence.md](docs/duties/dev-2-ai-intelligence.md) | Quality checks, scoring, similar ideas, local market, eval harness |
-| Dev 3 · API, data and mobile (Node, Flutter) | [dev-3-api-data-mobile.md](docs/duties/dev-3-api-data-mobile.md) | Contracts, database, queue, live events, the mobile app |
-| Dev 4 · Web dashboard (Next.js) | [dev-4-web-dashboard.md](docs/duties/dev-4-web-dashboard.md) | Idea card, bulk import, cohort and trade views |
+Other AI agents may be working concurrently. Before logic changes, inspect Git status/diffs, search for existing code, and read owner progress notes. Record tasks in your own duty brief. Coordinate shared-interface changes with their owner. Use scoped branches/commits and preserve others' edits.
 
-## Repository layout
-
-The planned layout (docs/decision.md D-02). Folders appear as each developer starts their part.
-
-```
-apps/web/           Next.js dashboard              Dev 4
-apps/mobile/        Flutter app                    Dev 3
-services/api/       Node + Express + Mongoose      Dev 3
-services/worker/    Python AI worker               Dev 1, Dev 2
-packages/contracts/ JSON Schemas + generated types Dev 3 (all review)
-data/seed/          Orgs, cohorts, trades, rubric, schemes, question bank
-datasets/           Organiser files (not in git) + manifest.json
-docs/               Decisions, flow, design, duties
-local/              Your private scratch space (not in git)
-```
-
-## Getting started
-
-Setup commands will land here at kickoff (H0–H2). Expected:
-
-```bash
-docker compose up -d     # MongoDB + Redis
-pnpm install && pnpm dev # API + dashboard
-make worker              # Python AI worker
-```
-
-## Datasets and privacy
-
-The organiser datasets are **not committed**. Some files are scans of real applicants' handwritten plans with their names, phone numbers and emails (see [D-19](docs/decision.md)). Get them from the team drive and extract into `datasets/raw/`; the catalogue of all 55 files and their expected behaviour is committed at [datasets/manifest.json](datasets/manifest.json).
-
-- Keep this repository **private**.
-- Never paste personal details from those files into code, prompts, fixtures, issues or screenshots.
-- Put anything personal or experimental in `local/`, which git ignores.
-
-## Working agreements
-
-- Branch per task (`dev1/pdf-reader`, `dev4/idea-card`), PR into `main`, one reviewer.
-- Reference requirement IDs in commits and PRs (`A-08: detect struck-through spans`).
-- Contracts change only through `packages/contracts` (D-03).
-- When you finish something, add a line to the "Done" log in your duty file.
+Keep this repository private. Organiser data contains real applicants' personal details and stays in ignored `datasets/raw/`; put private scratch work in ignored `local/`. Never copy personal details into code, fixtures, prompts, logs, screenshots or issues. The catalogue is at `datasets/manifest.json`; raw files come from the team drive. The original PRD remains at [PitchPrism.v1.md](PitchPrism.v1.md).

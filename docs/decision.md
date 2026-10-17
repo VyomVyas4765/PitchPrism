@@ -4,7 +4,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 
 **Status key:** ✅ Decided · 🟡 Default (holds until someone objects with a reason) · ❓ Open
 
-**Current implementation:** D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD.
+**Current implementation:** D-26 now removes Redis and includes iOS development builds; earlier queue/platform entries are historical.  D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD.
 
 ## Index
 
@@ -35,6 +35,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-23 | Auth-first foundation; role-based duties and requested folder names | ✅ | All |
 | D-24 | Full scope, local-only AI; lean Android; explicit cost/capability evidence | ✅ | All |
 | D-25 | Reconcile answered, superseded and still-open PRD questions | ✅ | All |
+| D-26 | Remove Redis; persistent local MongoDB; add iOS development target | ✅ | Dev 1, Dev 3 |
 
 ---
 
@@ -179,7 +180,7 @@ Current register after D-25. The complete answered/partial/open classification i
 | Q-08 | Confirm simultaneous application and centre-assignment policy | Before domain-contract freeze | Team, with organiser input if needed; one active submission/programme is provisional |
 | Q-12 | Verify applicable data-protection rules and consent timelines | Before pitch/pilot compliance claims | Team obtains authoritative review; no new legal conclusion recorded |
 | Q-13 | Confirm production hosts, actual regions, resources and operating budget | Before deployment/residency claims | Dev 3 / team; local development exists, India production target unverified |
-| Q-14 | Validate BullMQ Python handoff or select Redis Streams fallback | H4 | Dev 3 with Devs 1/2; consumer/retry/progress behavior not yet tested |
+| Q-14 | Implement and validate MongoDB job leasing, retries, progress and recovery | Before worker integration; historical H4 gate | Dev 3 with Devs 1/2; D-26 removes Redis; MongoDB consumer/event flow remains pending |
 | Q-15 | Confirm required Tata STRIVE system integrations | Before integration scope is locked | Organisers / Tata STRIVE; link out is only the default |
 | Q-16 | Confirm judging criteria and weights | Before final pitch priorities | Organisers; equal weights are provisional |
 | Q-19 | Confirm application-platform export/API availability | Before promising automated integration | Organisers; manual/bulk upload baseline |
@@ -226,3 +227,18 @@ Current register after D-25. The complete answered/partial/open classification i
 **Still open.** Preserve Q-05, Q-08, Q-12, Q-14, Q-15, Q-16 and Q-19–Q-23. Do not convert working defaults into organiser approvals, use a local JSON smoke test to approve multilingual/vision models, or treat Redis availability as a BullMQ compatibility test. Retain Q-04's original H14 first-eval gate and Q-14's H4 checkpoint; benchmark locally early. These are planned checkpoints, not results. No legal review, organiser contact, person-to-role assignment or new runtime implementation occurred in this documentation update.
 
 **Consequences.** PRD §23 now describes the current role split with named assignments explicitly unfilled. PRD §24 separates the confirmed five-minute mentor review from the assumed eight-minute final script. PRD §26 contains seven settled/superseded items and 16 genuinely pending questions, mirrored in the current register above. Original question IDs and earlier decision entries remain intact for traceability.
+
+
+### D-26 · Redis removed, persistent local database and iOS development builds ✅
+
+**Context.** The team requested a working database despite the college-network/Atlas issue, removal of Redis, a wireless build on the paired iPhone and deferral of Firebase project setup.
+
+**Decision.** Remove Redis from Compose and environment configuration. No Redis/BullMQ client was implemented. Future pipeline work uses a MongoDB-backed job collection with atomic leasing, retry/recovery and durable stage events relayed through authorised SSE; these behaviors still require implementation and Q-14 validation. This supersedes D-05 and its Redis Streams fallback, not the requirement for reliable background processing.
+
+**Database.** `pnpm dev:local` starts an actual MongoDB 7.0.24 process with WiredTiger data in ignored `local/mongodb/`, then seeds synthetic staff and starts the API/dashboard. It uses the existing development launcher dependency and cached/downloaded binary, with a fixed loopback port and exclusive launcher lock. Restart persistence is verified. Local mode overrides the child-process URI explicitly and preserves the private Atlas URI; local and Atlas data are separate. Mongo-only Docker remains an alternative. The current Atlas hostname remains unresolved and is not claimed fixed by starting local MongoDB.
+
+**iOS.** Add an iOS development target to the existing Flutter app and use the paired wireless iPhone for installation/testing. This supersedes D-20's Android-only build restriction. Android 8+/2 GB remains the primary performance target; an iPhone auth build does not establish full iOS parity. Configure automatic signing, Keychain session storage and Debug-only local HTTP/Bonjour permissions. Wireless pairing does not publish the development API: the phone must reach the Mac over LAN, or use a separately deployed HTTPS API.
+
+**Firebase.** Keep the existing integration lazy until the team supplies Firebase configuration. Without it, open facilitator password sign-in and show phone sign-in as unavailable; do not introduce a fake OTP or role bypass. Native Firebase libraries may still be needed to build the integrated app.
+
+**Build networking.** The Mac's global Git HTTPS→SSH rewrite can hang public Swift-package downloads on a restricted network. `GIT_CONFIG_GLOBAL=/dev/null` is scoped to the Flutter build process; global Git settings are not modified.

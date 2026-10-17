@@ -6,6 +6,8 @@ How a submission moves through PitchPrism, who owns each step, and what the four
 
 **Local AI update (D-24):** every AI task uses a validated local provider; no hosted inference or automatic fallback. Mobile records offline and queues uploads; heavy compute stays on the worker. Missing capabilities remain pending/failed explicitly. See [local AI setup](../ai/README.md) and [the implementation matrix](implementation-matrix.md).
 
+**Runtime update (D-26):** Redis/BullMQ/Redis Streams are removed. MongoDB jobs with atomic leases and durable stage events are the planned queue replacement; no queue consumer is claimed. `pnpm dev:local` provides a persistent database plus seeded API/dashboard now. iOS development builds are included alongside the primary Android target; Firebase configuration remains pending.
+
 **Phase:** the scaffold/auth foundation is implemented first. Business flow below is the target architecture, not a claim that the queue, AI pipeline, SSE or review features already exist. Older 30-hour scheduling/Dev-number handoff references below are historical; the new role duty briefs and D-23 supersede their staffing assignments.
 
 ---
@@ -22,7 +24,7 @@ flowchart LR
         F["Facilitator queue<br/>(Dev 1)"]
     end
     API["Node API<br/>(Dev 3)"]
-    Q[["BullMQ"]]
+    Q[["MongoDB jobs · planned"]]
     subgraph W["Python worker"]
         R["Read · structure · redact · translate · extract<br/>(Dev 1)"]
         I["Check · compare · locate · score · narrate · rank<br/>(Dev 2)"]
@@ -105,7 +107,7 @@ These are summaries; the JSON Schemas in `packages/contracts/schemas/` are autho
 // JobPayload — API → worker (queue "pipeline")
 { "jobId": "uuid", "submissionId": "ObjectId", "fromStage": "ingest", "reason": "new|followup|rescore|retry", "rubricVersionId": "ObjectId", "requestedBy": "userId|entrepreneurId" }
 
-// StageEvent — worker → API (Redis channel "stage-events") → SSE event "stage"
+// StageEvent — worker → API (persisted MongoDB stage events) → SSE event "stage"
 { "submissionId": "ObjectId", "ownerOrgId": "ObjectId", "stage": "translate", "status": "started|done|skipped|failed", "at": "ISO", "ms": 812, "summary": { "segments": 24, "languages": ["te", "en"] } }
 
 // Segment — the unit every claim points to
@@ -204,7 +206,7 @@ Everyone stops for 10 minutes at each checkpoint: show what runs, name what is b
 
 | Hour | Milestone | Proof it's done |
 | --- | --- | --- |
-| H0–H2 | **Kickoff.** Repo, contracts v1, seed data, Docker for Mongo and Redis, demo script agreed | `pnpm dev` and `make worker` both start; schemas generate types |
+| H0–H2 | **Kickoff.** Repo, contracts v1, seed data, persistent local MongoDB or Mongo-only Docker, demo script agreed | `pnpm dev` and `make worker` both start; schemas generate types |
 | H2 | ✅ **M1 · Contracts frozen** | `packages/contracts` tagged v1 |
 | H8 | ✅ **M2 · Walking skeleton** | Upload one English Idea Brief PDF in the dashboard → worker reads, extracts, scores with a stub → card renders with live stage events |
 | H14 | ✅ **M3 · Every format reads** | All three sets go through: digital PDF, handwritten scan, audio. First eval run published. Mobile records and uploads a pitch |

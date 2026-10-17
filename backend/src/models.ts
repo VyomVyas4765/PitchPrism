@@ -19,7 +19,7 @@ const submissionSchema = new Schema({
   title: { type: String, required: true }, ownerOrgId: { type: Schema.Types.ObjectId, required: true },
   sourceOrgId: Schema.Types.ObjectId, entrepreneurId: { type: Schema.Types.ObjectId, required: true },
   createdByUserId: { type: Schema.Types.ObjectId, required: true },
-  status: { type: String, enum: ['DRAFT', 'READY', 'SHORTLISTED'], default: 'DRAFT' },
+  status: { type: String, enum: ['DRAFT', 'READY', 'SHORTLISTED', 'NOT_YET', 'MORE_INFO', 'UNASSESSABLE'], default: 'DRAFT' },
   fundingReady: { type: Boolean, default: false },
   applicant: { name: String, phone: String },
   shares: [{ orgId: Schema.Types.ObjectId, partnerType: { type: String, enum: ['sector_partner', 'funding_partner'] }, active: Boolean, contactAccepted: Boolean }],

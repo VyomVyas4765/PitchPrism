@@ -1,8 +1,17 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+
+bool get _phoneSignInConfigured =>
+    const String.fromEnvironment('FIREBASE_PROJECT_ID').isNotEmpty &&
+    const String.fromEnvironment('FIREBASE_API_KEY').isNotEmpty &&
+    const String.fromEnvironment('FIREBASE_APP_ID').isNotEmpty &&
+    const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID').isNotEmpty;
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -19,18 +28,31 @@ class _AuthScreenState extends State<AuthScreen> {
   Map<String, dynamic>? _user;
   String? _verificationId;
   String? _error;
-  bool _facilitator = false;
+  bool _facilitator = !_phoneSignInConfigured;
   bool _loading = true;
   bool _exchanging = false;
 
   @override
   void initState() {
     super.initState();
+    if (kDebugMode) {
+      unawaited(
+        _api
+            .request('/health')
+            .then<void>((_) {
+              debugPrint('PitchPrism development API: reachable');
+            })
+            .catchError((Object _) {
+              debugPrint('PitchPrism development API: unavailable');
+            }),
+      );
+    }
     _restore();
   }
 
   Future<void> _restore() async {
     try {
+      if (!await _api.hasSession()) return;
       final response = await _api.request('/auth/me');
       final user = response['user'] as Map<String, dynamic>;
       if (!['entrepreneur', 'facilitator'].contains(user['role'])) {
@@ -66,7 +88,7 @@ class _AuthScreenState extends State<AuthScreen> {
     const senderId = String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
     if ([projectId, apiKey, appId, senderId].any((value) => value.isEmpty)) {
       throw const ApiException(
-        'Phone sign-in needs your team’s Firebase configuration. See app/README.md.',
+        'Phone sign-in is not available yet. Please use facilitator sign-in.',
         503,
       );
     }
@@ -291,6 +313,10 @@ class _AuthScreenState extends State<AuthScreen> {
                             );
                           }),
                     child: const Text('Sign in'),
+                  ),
+                ] else if (!_phoneSignInConfigured) ...[
+                  const Text(
+                    'Phone sign-in is not available yet. Field facilitators can sign in with their email and password.',
                   ),
                 ] else ...[
                   const Text(

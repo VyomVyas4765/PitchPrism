@@ -27,7 +27,7 @@ export default function Login() {
   return <main className="login-page">
     <header className="masthead"><span className="eyebrow">Tata STRIVE · Entrepreneurship Development</span><h1>PitchPrism</h1><div className="spectrum" aria-hidden="true" /></header>
     <section className="login-grid">
-      <div className="intro"><span className="eyebrow">The assessment desk</span><h2>Every idea deserves<br /><em>a careful reading.</em></h2><p>One place to review business ideas, understand the evidence, and help entrepreneurs take their next step.</p><p className="caption">Entrepreneurs: use the mobile app to sign in with your phone.</p></div>
+      <div className="intro"><span className="eyebrow">The assessment desk</span><h2>Every idea deserves<br /><em>a careful reading.</em></h2><p>One place to review business ideas, understand the evidence, and help entrepreneurs take their next step.</p><p className="caption">Entrepreneurs: use the mobile app to sign in with your phone.<br />New staff: open the invitation link you were sent to create your account.</p></div>
       <div className="login-panel"><h2>Staff sign in</h2><p>Use the account provided by your organisation.</p>
         {checking ? <p role="status">Checking your session…</p> : <form onSubmit={login}>
           <label htmlFor="email">Email address</label><input id="email" name="email" type="email" autoComplete="username" required maxLength={254} />

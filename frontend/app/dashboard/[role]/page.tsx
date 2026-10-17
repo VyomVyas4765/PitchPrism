@@ -4,6 +4,10 @@ import { useRouter } from 'next/navigation';
 import { ROLE_LABELS, type AuthResponse, type SessionUser, type Workspace } from '@pitchprism/contracts';
 import { api, ApiError } from '../../../lib/api';
 import CentreWorkspace from '../../../features/centre/CentreWorkspace';
+import HqWorkspace from '../../../features/hq/HqWorkspace';
+import TeamPanel from '../../../features/hq/TeamPanel';
+import { ProgrammesPanel } from '../../../features/hq/ConfigPanels';
+import { PartnerWorkspace } from '../../../features/partners/partner-workspace';
 
 export default function Dashboard({ params }: { params: Promise<{ role: string }> }) {
   const { role } = use(params);
@@ -47,5 +51,10 @@ export default function Dashboard({ params }: { params: Promise<{ role: string }
       {error && <p className="error" role="alert">{error}</p>}
     </section>
     {(user.role === 'centre_assessor' || user.role === 'cohort_lead') && <CentreWorkspace />}
+    {user.role === 'hq_admin' && <HqWorkspace user={user} />}
+    {['implementation_partner', 'sector_partner', 'funding_partner'].includes(user.role) && <PartnerWorkspace />}
+    {(user.role === 'centre_assessor' || user.role === 'cohort_lead') && <section className="centre-workspace"><ProgrammesPanel user={user} /></section>}
+    {/* Staff of every organisation invite and manage their own colleagues; HQ does this inside its desk. */}
+    {workspace.permissions.includes('invite_users') && user.role !== 'hq_admin' && <section className="centre-workspace"><TeamPanel user={user} /></section>}
   </main>;
 }

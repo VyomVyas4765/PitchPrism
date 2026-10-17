@@ -156,7 +156,8 @@ describe('HQ configuration', () => {
 
   it('versions rubrics: weights must sum to 100, saves add versions and publishing archives the previous one', async () => {
     const auth = await bearer(admin);
-    await request(app).post('/api/v1/hq/rubrics').set('Authorization', auth).send(rubric([40, 40, 10])).expect(400);
+    const uneven = await request(app).post('/api/v1/hq/rubrics').set('Authorization', auth).send(rubric([40, 40, 10])).expect(400);
+    expect(uneven.body.error).toBe('Domain weights must add up to 100 (now 90).');
     await request(app).post('/api/v1/hq/rubrics').set('Authorization', await bearer(assessor)).send(rubric()).expect(403);
     const first = await request(app).post('/api/v1/hq/rubrics').set('Authorization', auth).send(rubric()).expect(201);
     expect(first.body.rubric).toMatchObject({ version: 1, status: 'draft' });

@@ -80,6 +80,11 @@ class QuestionRuleTests(unittest.TestCase):
                     "Who buys? Where are they?", "Tell me about customers."):
             self.assertFalse(ask.acceptable(bad), bad)
 
+    def test_every_fallback_question_follows_the_rules(self):
+        from ai.review.criteria import FALLBACK_QUESTION
+        for field, question in FALLBACK_QUESTION.items():
+            self.assertTrue(ask.acceptable(question), field)
+
     def test_fallback_wording_and_the_last_chance_note(self):
         bad_model = lambda step, prompt, schema: {"questions": [{"key": "customers", "question": "What is your phone number?"}]}
         verdicts = {"customers": {"verdict": "missing", "reason": "The pitch does not say."}}

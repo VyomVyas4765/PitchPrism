@@ -17,6 +17,7 @@ import { centreRouter } from './modules/centre/router.js';
 import type { AssessmentResult } from './modules/centre/runner.js';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { entrepreneurRouter } from './modules/entrepreneur/index.js';
+import { followupRouter } from './modules/entrepreneur/followup-router.js';
 import { partnerRouter } from './modules/partners/router.js';
 import { setTenancyMode, tenancyContext } from './platform/tenancy.js';
 import { hqRouter } from './modules/hq/admin.js';
@@ -142,6 +143,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
     res.json({ id: String(submission._id), title: submission.title ?? '', status: submission.status, ...(applicant ? { applicant } : {}) });
   });
   app.use('/api/v1', pipelineRouter()); // route-level guards only: /submissions/:id/process|pipeline, /jobs/:id/cancel, /events
+  app.use('/api/v1', followupRouter()); // D-33 follow-up answers and review transcript; route-level guards
   app.use('/api/v1', entrepreneurRouter(config));
   app.use((_req, res) => { res.status(404).json({ error: 'Endpoint not found.' }); });
   app.use(errorHandler);

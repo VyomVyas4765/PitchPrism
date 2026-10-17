@@ -43,7 +43,10 @@ class ReviewEngine:
         return call
 
     def start(self, text: str, document_id: str = "pitch", known: dict[str, list[str]] | None = None) -> dict:
-        segments, redacted = segment(text, document_id, "s", known)
+        return self.start_segments(*segment(text, document_id, "s", known))
+
+    def start_segments(self, segments: list[dict], redacted: int = 0) -> dict:
+        """Start from already segmented, redacted lines (the worker segments in its own stage)."""
         if not segments:
             raise ValueError("The pitch has no readable text.")
         session = {"version": 1, "status": "reviewing", "round": 0, "segments": segments, "redactedSpans": redacted,
@@ -113,9 +116,9 @@ class ReviewEngine:
             session["status"] = "complete"
             return
         texts = ask.questions(keys, verdicts, session["fields"], attempts, call)
-        for position, key in enumerate(keys, start=1):
+        for key in keys:
             attempts[key] = attempts.get(key, 0) + 1
-            session["questions"].append({"qId": f"q{session['round']}-{position}-{key}", "field": key, "round": session["round"],
+            session["questions"].append({"qId": f"f{len(session['questions']) + 1}", "field": key, "round": session["round"],
                                          "questionEn": texts[key], "reason": verdicts[key]["reason"], "status": "pending"})
         session["status"] = "needs_input"
 

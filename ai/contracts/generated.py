@@ -434,6 +434,48 @@ ReviewSample = TypedDict("ReviewSample", {
     "updatedAt": DateTime,
 }, total=False)
 
+ReviewQuestion = TypedDict("ReviewQuestion", {
+    "qId": Required[str],
+    "field": Required[CanonicalField],
+    "round": Required[int],
+    "questionEn": Required[str],
+    "reason": str,
+    "status": Required[Literal["pending", "answered", "skipped"]],
+    "answerSegIds": list[str],
+    "answerText": str,
+}, total=False)
+
+ReviewAnswer = TypedDict("ReviewAnswer", {
+    "qId": Required[str],
+    "storageId": Required[ObjectId],
+    "receivedAt": Required[DateTime],
+    "byUserId": Required[ObjectId],
+}, total=False)
+
+ReviewSession = TypedDict("ReviewSession", {
+    "submissionId": Required[ObjectId],
+    "ownerOrgId": Required[ObjectId],
+    "version": int,
+    "status": Required[Literal["reviewing", "needs_input", "complete"]],
+    "round": Required[int],
+    "segments": list[dict[str, Any]],
+    "redactedSpans": int,
+    "fields": dict[str, Any],
+    "numbers": dict[str, Any],
+    "location": dict[str, Any],
+    "businessType": str,
+    "verdicts": dict[str, Any],
+    "attempts": dict[str, Any],
+    "declined": dict[str, Any],
+    "questions": list["ReviewQuestion"],
+    "inbox": list["ReviewAnswer"],
+    "promptVersions": dict[str, Any],
+    "model": str,
+    "calls": list[dict[str, Any]],
+    "createdAt": DateTime,
+    "updatedAt": DateTime,
+}, total=False)
+
 RoutingRule = TypedDict("RoutingRule", {
     "name": Required[str],
     "partnerOrgId": Required[ObjectId],
@@ -656,6 +698,7 @@ COLLECTIONS: dict[str, str] = {
     "PipelineRun": "pipelineRuns",
     "Programme": "programmes",
     "ReviewSample": "reviewSamples",
+    "ReviewSession": "reviewSessions",
     "RoutingRule": "routingRules",
     "Rubric": "rubrics",
     "Share": "shares",

@@ -18,9 +18,12 @@ like the synchronous centre route does. Results go to the centre case in the sam
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import socket
+
+from gridfs import GridFSBucket
 
 from ai.config import PolicyViolation, Settings
 from ai.contracts import bundle
@@ -32,6 +35,8 @@ from ai.intel.scoring import FIELDS, InvalidEvidence, evaluate, prepare_input, q
 from ai.jobqueue import Consumer, InvalidInput, connect, now
 from ai.llm.adapter import LocalJsonAdapter, ModelOutputError
 from ai.providers import CapabilityUnavailable
+from ai.review import ReviewEngine, extracted_input, pending_questions, summary as review_summary
+from ai.review.segment import PitchTooLong, segment
 
 log = logging.getLogger("ai.worker")
 INTAKE_STAGES = ("ingest", "classify", "read", "structure", "translate", "extract")
@@ -92,6 +97,114 @@ def routing_view(db, job, case, idea):
     return view, rules, consents
 
 
+def read_original(db, storage_id) -> bytes:
+    """A private original from the intake store (GridFS bucket "originals", backend/src/modules/entrepreneur/storage.ts)."""
+    return GridFSBucket(db, bucket_name="originals").open_download_stream(storage_id).read()
+
+
+def pitch_text(db, job):
+    """The submission's text pitch: an uploaded .txt or the typed answers. None when it has no text (audio, PDF, photo)."""
+    pitch = db["pitches"].find_one({"submissionId": job["submissionId"]}, {"_id": 1})
+    if not pitch:
+        return None, None
+    parts, document_id = [], None
+    for document in db["documents"].find({"pitchId": pitch["_id"], "purpose": "pitch", "state": "complete", "kind": "text"}).sort("_id", 1):
+        content = read_original(db, document["storageId"]).decode("utf-8", errors="replace")
+        if document.get("declaredMime") == "application/json":
+            try:  # typed answers saved by the intake route: {"language", "answers": [{"step", "text"}]}
+                content = "\n".join(answer.get("text", "") for answer in json.loads(content).get("answers", []))
+            except (ValueError, AttributeError):
+                continue
+        parts.append(content.strip())
+        document_id = document_id or str(document["_id"])
+    text = "\n".join(part for part in parts if part)
+    return (text or None), document_id
+
+
+def save_review(db, job, session, processed):
+    """Store the review session (inbox entries just merged are removed) and mirror its questions on the submission."""
+    fields = {key: value for key, value in session.items() if key not in ("_id", "inbox", "createdAt") and value is not None}
+    fields.update({"submissionId": job["submissionId"], "ownerOrgId": job["ownerOrgId"], "updatedAt": now()})
+    update = {"$set": fields, "$setOnInsert": {"createdAt": now()}}
+    if processed:
+        update["$pull"] = {"inbox": {"qId": {"$in": processed}}}
+    else:
+        update["$setOnInsert"]["inbox"] = []
+    db["reviewSessions"].update_one({"submissionId": job["submissionId"]}, update, upsert=True)
+    db["submissions"].update_one({"_id": job["submissionId"]}, {"$set": {"updatedAt": now(), "followUps": [
+        {"qId": q["qId"], "field": q["field"], "questionEn": q["questionEn"], "status": q["status"]} for q in session["questions"]]}})
+
+
+def review_pitch(db, job, run, make_adapter):
+    """D-33: read the text pitch, judge each topic, ask follow-ups. Returns the extracted input when complete, else None."""
+    session = db["reviewSessions"].find_one({"submissionId": job["submissionId"]})
+    processed = []
+    if job["reason"] == "followup":
+        if not session or session["status"] != "needs_input":
+            with run.stage(job["fromStage"]):
+                raise InvalidInput("no review is waiting for answers")
+        inbox = session.get("inbox", [])
+        answers = [{"qId": item["qId"], "text": read_original(db, item["storageId"]).decode("utf-8", errors="replace"),
+                    "documentId": str(item["storageId"])} for item in inbox]
+        processed = [item["qId"] for item in inbox]
+        with run.stage("extract") as current:
+            adapter = make_adapter()
+            try:
+                session = ReviewEngine(adapter.complete_json, model=getattr(adapter.settings, "model", None)).answer(session, answers)
+            except PitchTooLong as error:
+                raise InvalidInput("answer too long") from error
+            except ValueError as error:
+                if isinstance(error, ModelOutputError):
+                    raise
+                raise InvalidInput("answers did not match the pending questions") from error
+            calls = [call for call in session["calls"] if call["round"] == session["round"]]
+            current.model_use(provider="ollama", model=session.get("model"), llm_calls=len(calls))
+            current.summary(answers=len(answers), round=session["round"])
+    else:
+        with run.stage("ingest") as current:
+            text, document_id = pitch_text(db, job)
+            if text is None:
+                raise CapabilityUnavailable("only text pitches can be read so far; audio, PDF and photo intake are not available")
+            current.summary(characters=len(text), format="text")
+        for stage in ("classify", "read"):
+            with run.stage(stage) as current:
+                current.skip()
+                current.summary(reason="plain_text")
+        with run.stage("structure") as current:
+            try:
+                segments, redacted = segment(text, document_id or "pitch")
+            except PitchTooLong as error:
+                raise InvalidInput("pitch too long") from error
+            if not segments:
+                raise InvalidInput("the pitch has no readable text")
+            current.summary(segments=len(segments))
+        with run.stage("redact") as current:
+            if any(find_pii(item["textEn"]) for item in segments):
+                raise InvalidInput("unredacted personal data in evidence")
+            current.summary(redacted=redacted)
+        with run.stage("translate") as current:
+            current.skip()
+            current.summary(language="en")
+        with run.stage("extract") as current:
+            adapter = make_adapter()
+            session = ReviewEngine(adapter.complete_json, model=getattr(adapter.settings, "model", None)).start_segments(segments, redacted)
+            current.model_use(provider="ollama", model=session.get("model"), llm_calls=len(session["calls"]))
+            current.summary(round=1)
+    with run.stage("quality") as current:
+        current.summary(**{key: value for key, value in review_summary(session).items() if key != "questions"})
+    with run.stage("followup") as current:
+        current.summary(questions=len(pending_questions(session)), status=session["status"])
+    save_review(db, job, session, processed)
+    if session["status"] != "complete":
+        return None
+    idea = extracted_input(session)
+    db["centrecases"].update_one({"submissionId": job["submissionId"]}, {
+        "$set": {"input": idea, "ownerOrgId": job["ownerOrgId"], "updatedAt": now()},
+        "$setOnInsert": {"state": "PENDING_MODEL", "evaluation": None, "evaluationHistory": [], "financialChecks": [], "followUps": [],
+                         "createdAt": now()}}, upsert=True)
+    return idea
+
+
 def handler_for(db, adapter_factory=None):
     def make_adapter():
         return (adapter_factory or (lambda: LocalJsonAdapter(Settings.from_env())))()
@@ -99,17 +212,20 @@ def handler_for(db, adapter_factory=None):
     def handle(job, run):
         case = db["centrecases"].find_one({"submissionId": job["submissionId"]})
         idea = (case or {}).get("input")
-        for stage in INTAKE_STAGES:
+        reviewed = idea is None or job["reason"] == "followup"
+        if reviewed:
+            # No extracted evidence yet: review the text pitch (D-33). Questions pending means the job ends here.
+            idea = review_pitch(db, job, run, make_adapter)
+            if idea is None:
+                run.submission_status("NEEDS_INPUT")
+                return
+            case = db["centrecases"].find_one({"submissionId": job["submissionId"]})
+        for stage in INTAKE_STAGES if not reviewed else ():
             if run.should_run(stage):
                 with run.stage(stage) as current:
-                    if idea is None:
-                        raise CapabilityUnavailable("intake stages are not available in this worker")
                     current.skip()
                     current.summary(reason="evidence_already_extracted")
-        if idea is None:  # a job that starts after intake still needs extracted evidence
-            with run.stage(job["fromStage"]):
-                raise CapabilityUnavailable("no extracted evidence for this idea")
-        if run.should_run("redact"):
+        if run.should_run("redact") and not reviewed:
             with run.stage("redact") as current:
                 texts = [text for segment in idea.get("segments", []) for text in (segment.get("textEn", ""), segment.get("textOriginal", ""))]
                 if any(find_pii(text) for text in texts if isinstance(text, str)):
@@ -124,11 +240,11 @@ def handler_for(db, adapter_factory=None):
         except (InvalidEvidence, ValueError) as error:
             raise InvalidInput("evidence failed validation") from error
         checks = check_finances(idea.get("financials", {}), valid_ids)
-        if run.should_run("quality"):
+        if run.should_run("quality") and not reviewed:
             with run.stage("quality") as current:
                 current.summary(completeness=q["completeness"], flags=len(q["flags"]), unassessable=q["unassessable"], financialChecks=len(checks))
         questions = followups(idea)
-        if run.should_run("followup"):
+        if run.should_run("followup") and not reviewed:
             with run.stage("followup") as current:
                 current.summary(questions=len(questions))
         for stage, requirement in NOT_AVAILABLE.items():

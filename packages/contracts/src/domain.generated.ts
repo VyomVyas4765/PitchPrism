@@ -82,11 +82,6 @@ export type Rupees = number;
  */
 export type StageStatus = "started" | "done" | "skipped" | "failed";
 /**
- * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
- * via the `definition` "PartnerType".
- */
-export type PartnerType = "sector_partner" | "funding_partner";
-/**
  * PRD Appendix B.1: the ten EDP fields, then extended fields. Dev 1 owns the question bank that maps wordings to these keys.
  *
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
@@ -126,6 +121,11 @@ export type CanonicalField =
   | "customer_segment"
   | "skills"
   | "experience";
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PartnerType".
+ */
+export type PartnerType = "sector_partner" | "funding_partner";
 /**
  * How a submission arrived (PRD section 6).
  *
@@ -176,6 +176,7 @@ export interface PitchPrismDomain {
   PipelineRun?: PipelineRun;
   Programme?: Programme;
   ReviewSample?: ReviewSample;
+  ReviewSession?: ReviewSession;
   RoutingRule?: RoutingRule;
   Rubric?: Rubric;
   Share?: Share;
@@ -661,6 +662,75 @@ export interface ReviewSample {
   note?: string;
   createdAt?: DateTime;
   updatedAt?: DateTime;
+}
+/**
+ * D-33 pitch review: one per submission. The worker (ai/review) writes the reading of the pitch, verdict per topic and the follow-up questions; the API appends answers to the inbox. Segment and answer text is redacted; the raw answers are private originals referenced by storageId.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "ReviewSession".
+ */
+export interface ReviewSession {
+  submissionId: ObjectId;
+  ownerOrgId: ObjectId;
+  version?: number;
+  status: "reviewing" | "needs_input" | "complete";
+  round: number;
+  segments?: {}[];
+  redactedSpans?: number;
+  /**
+   * Per topic: state, evidence (segment ids) and a one-line value.
+   */
+  fields?: {};
+  /**
+   * Cited amounts: investment, self, loan, unit_price, monthly_volume, monthly_revenue.
+   */
+  numbers?: {};
+  /**
+   * Cited place: village, district, state and segId.
+   */
+  location?: {};
+  businessType?: string;
+  /**
+   * Per core topic: verdict (sufficient, vague, missing, contradictory, declined) and reason.
+   */
+  verdicts?: {};
+  /**
+   * How many times each topic has been asked.
+   */
+  attempts?: {};
+  /**
+   * Topics the entrepreneur has not decided, with the reason shown to assessors.
+   */
+  declined?: {};
+  questions?: ReviewQuestion[];
+  /**
+   * Answers received by the API and not yet merged by the worker.
+   */
+  inbox?: ReviewAnswer[];
+  promptVersions?: {};
+  model?: string;
+  calls?: {}[];
+  createdAt?: DateTime;
+  updatedAt?: DateTime;
+}
+export interface ReviewQuestion {
+  qId: string;
+  field: CanonicalField;
+  round: number;
+  questionEn: string;
+  reason?: string;
+  status: "pending" | "answered" | "skipped";
+  answerSegIds?: string[];
+  /**
+   * Redacted answer, as the model saw it.
+   */
+  answerText?: string;
+}
+export interface ReviewAnswer {
+  qId: string;
+  storageId: ObjectId;
+  receivedAt: DateTime;
+  byUserId: ObjectId;
 }
 /**
  * W-04: which partner organisation receives which trades, sectors and districts. Suggestions are still limited by the entrepreneur's consent.

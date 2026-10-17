@@ -1085,5 +1085,79 @@
       "expiresAt": "2026-10-18T10:00:00.000Z",
       "usedAt": "2026-10-17T11:00:00.000Z"
     }
+  ],
+  "reviewSessions": [
+    {
+      "_id": "6b4000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "version": 1,
+      "status": "needs_input",
+      "round": 1,
+      "segments": [
+        {
+          "segId": "s1",
+          "textEn": "I want to start a tailoring shop that stitches blouses.",
+          "lang": "en",
+          "source": {
+            "type": "text",
+            "documentId": "synthetic-pitch",
+            "start": 0,
+            "end": 55
+          }
+        }
+      ],
+      "redactedSpans": 0,
+      "fields": {
+        "offering": {
+          "state": "answered",
+          "evidence": [
+            "s1"
+          ],
+          "value": "A tailoring shop stitching blouses."
+        }
+      },
+      "numbers": {},
+      "businessType": "tailoring shop",
+      "verdicts": {
+        "offering": {
+          "verdict": "sufficient",
+          "reason": ""
+        },
+        "customers": {
+          "verdict": "missing",
+          "reason": "The pitch does not say."
+        }
+      },
+      "attempts": {
+        "customers": 1
+      },
+      "declined": {},
+      "questions": [
+        {
+          "qId": "f1",
+          "field": "customers",
+          "round": 1,
+          "questionEn": "Who will buy from you, and where are they? About how many customers do you expect?",
+          "reason": "The pitch does not say.",
+          "status": "pending"
+        }
+      ],
+      "inbox": [],
+      "promptVersions": {
+        "extract": "review-extract-v1",
+        "judge": "review-judge-v1",
+        "ask": "review-ask-v1"
+      },
+      "model": "synthetic-local",
+      "calls": [
+        {
+          "step": "extract:offer",
+          "ms": 1200,
+          "ok": true,
+          "round": 1
+        }
+      ]
+    }
   ]
 }

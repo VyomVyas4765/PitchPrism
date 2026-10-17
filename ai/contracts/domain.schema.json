@@ -2054,6 +2054,188 @@
         }
       }
     },
+    "ReviewSession": {
+      "title": "ReviewSession",
+      "description": "D-33 pitch review: one per submission. The worker (ai/review) writes the reading of the pitch, verdict per topic and the follow-up questions; the API appends answers to the inbox. Segment and answer text is redacted; the raw answers are private originals referenced by storageId.",
+      "x-collection": "reviewSessions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "ownerOrgId",
+        "status",
+        "round"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "reviewing",
+            "needs_input",
+            "complete"
+          ]
+        },
+        "round": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Redacted pitch and answer lines (centre-extracted-input segment shape)."
+          }
+        },
+        "redactedSpans": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fields": {
+          "type": "object",
+          "description": "Per topic: state, evidence (segment ids) and a one-line value."
+        },
+        "numbers": {
+          "type": "object",
+          "description": "Cited amounts: investment, self, loan, unit_price, monthly_volume, monthly_revenue."
+        },
+        "location": {
+          "type": "object",
+          "description": "Cited place: village, district, state and segId."
+        },
+        "businessType": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "verdicts": {
+          "type": "object",
+          "description": "Per core topic: verdict (sufficient, vague, missing, contradictory, declined) and reason."
+        },
+        "attempts": {
+          "type": "object",
+          "description": "How many times each topic has been asked."
+        },
+        "declined": {
+          "type": "object",
+          "description": "Topics the entrepreneur has not decided, with the reason shown to assessors."
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "title": "ReviewQuestion",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "qId",
+              "field",
+              "round",
+              "questionEn",
+              "status"
+            ],
+            "properties": {
+              "qId": {
+                "type": "string",
+                "pattern": "^f\\d{1,3}$"
+              },
+              "field": {
+                "$ref": "#/definitions/CanonicalField"
+              },
+              "round": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "questionEn": {
+                "type": "string",
+                "maxLength": 600
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "answered",
+                  "skipped"
+                ]
+              },
+              "answerSegIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 80
+                }
+              },
+              "answerText": {
+                "type": "string",
+                "maxLength": 4000,
+                "description": "Redacted answer, as the model saw it."
+              }
+            }
+          }
+        },
+        "inbox": {
+          "type": "array",
+          "description": "Answers received by the API and not yet merged by the worker.",
+          "items": {
+            "title": "ReviewAnswer",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "qId",
+              "storageId",
+              "receivedAt",
+              "byUserId"
+            ],
+            "properties": {
+              "qId": {
+                "type": "string",
+                "pattern": "^f\\d{1,3}$"
+              },
+              "storageId": {
+                "$ref": "#/definitions/ObjectId"
+              },
+              "receivedAt": {
+                "$ref": "#/definitions/DateTime"
+              },
+              "byUserId": {
+                "$ref": "#/definitions/ObjectId"
+              }
+            }
+          }
+        },
+        "promptVersions": {
+          "type": "object"
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "calls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "step, ms, ok, round: timing only, never prompts or output."
+          }
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
     "RoutingRule": {
       "title": "RoutingRule",
       "description": "W-04: which partner organisation receives which trades, sectors and districts. Suggestions are still limited by the entrepreneur's consent.",

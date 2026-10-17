@@ -78,6 +78,10 @@ export const EvalRun = define<S.EvalRun>('EvalRun', { overrides: { reportSha256:
 export const PasswordReset = define<S.PasswordReset>('PasswordReset', {
   overrides: { tokenHash: { unique: true } }, indexes: [[{ userId: 1, createdAt: -1 }]],
 });
+// D-33 pitch review: one per submission, written by the worker; the API appends answers to the inbox.
+export const ReviewSession = define<S.ReviewSession>('ReviewSession', { tenant: true,
+  indexes: [[{ submissionId: 1 }, { unique: true }], [{ ownerOrgId: 1, status: 1 }]],
+});
 export const AuditLog = define<S.AuditLog>('AuditLog', {
   indexes: [[{ at: -1 }], [{ targetOrgId: 1, at: -1 }], [{ actorUserId: 1, at: -1 }]],
 });
@@ -91,5 +95,5 @@ const sessionSchema = new Schema({
 export const Session = mongoose.model('Session', sessionSchema);
 
 export const ALL_MODELS = [Org, User, Invitation, Entrepreneur, Consent, Programme, Cohort, Trade, Rubric, RoutingRule,
-  Submission, Document, Transcript, Evaluation, Decision, Share, Outcome, Job, StageEvent, PipelineRun, ReviewSample, EvalRun, PasswordReset, AuditLog, ImportBatch, Session];
+  Submission, Document, Transcript, Evaluation, Decision, Share, Outcome, Job, StageEvent, PipelineRun, ReviewSample, EvalRun, PasswordReset, ReviewSession, AuditLog, ImportBatch, Session];
 export type * as Stored from './stored.generated.js';

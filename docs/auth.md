@@ -8,22 +8,24 @@ The first milestone implements login, expiring/revocable sessions and protected 
 | --- | --- | --- |
 | `GET /health` | Public | Process health after database startup |
 | `POST /auth/login` | Public, rate limited | `{email,password,client?:"web"|"mobile"}`; returns `{user}` and HttpOnly cookie for web, or `{user,accessToken}` for native |
-| `POST /auth/otp/verify` | Public, rate limited | `{idToken}` from Firebase phone sign-in; verifies via Admin SDK with revocation checks, creates/reuses entrepreneur only; returns `{user,accessToken}` |
+| `POST /auth/register` | Public, rate limited | `{email, password (12–128), client?}` → creates an **entrepreneur** account and signs in; role/organisation fields are rejected; an existing email gets 409 |
 | `GET /auth/me` | Session | Current user, role and organisation from database |
 | `POST /auth/logout` | Session | Revokes that session and clears cookie; 204 |
 | `GET /workspaces/:role` | Same role | Starter workspace and coarse capability keys |
 | `GET /admin/overview` | HQ platform permission | Counts of organisations/users |
 | `GET /orgs/:id/workspace` | Own organisation or HQ | Minimal organisation metadata |
 | `GET /submissions/:id` | Scoped resource access | Read-only starter record with safe projection; missing/inaccessible records return 404 |
-| `POST /auth/invites/preview` | Public, rate limited | `{token}` → invited email, role, organisation and expiry; invalid, used, revoked or expired links all return the same 404 |
-| `POST /auth/invites/accept` | Public, rate limited | `{token, displayName, password (12–128), client?}` → creates the staff user with the invite's role and organisation and signs them in; single use |
-| `GET /access/options` | `manage_org_users` | Organisations in the caller's scope and the roles the caller may assign in each |
-| `GET /orgs` | `manage_org_users` | All organisations for HQ; the caller's own organisation otherwise |
-| `POST /orgs`, `PATCH /orgs/:id` | HQ (`manage_platform`) | Create centres/partners (implementation partners need a parent centre; funding partners need lender/CSR mode); rename, set region/languages, deactivate/reactivate |
-| `POST /invites`, `GET /invites`, `POST /invites/:id/revoke` | `manage_org_users`, scoped | Create a one-time link (returned once, token in the URL fragment), list and revoke |
-| `GET /users`, `PATCH /users/:id` | `manage_org_users`, scoped | List staff; change role or disable (disabling also deletes their sessions); never your own account |
+| `POST /invitations/accept/preview` | Public, rate limited | `{token}` → organisation, role, bound email (if any) and expiry; used, withdrawn or expired links return 410 |
+| `POST /invitations/accept` | Public, rate limited | `{token, displayName, email, password (12–128), client?}` → creates the staff user with the invitation's role and organisation and signs them in; single use (atomic claim); an email-bound link accepts only that email |
+| `POST /password-reset/preview`, `POST /password-reset` | Public, rate limited | `{token}` → name and email; `{token, password}` sets the password once and ends every session of that account (410 when used, withdrawn or expired) |
+| `POST /team/staff/:id/reset-link` | `invite_users`, own organisation (HQ: any) | One-time reset link (24 hours, token in the URL fragment: `/reset-password#token`); a newer link withdraws older ones; never your own account |
+| `POST /account/password` | Signed-in staff | `{current, next}` changes your password and ends your other sessions |
+| `GET /team/staff`, `PATCH /team/staff/:id` | `invite_users`, own organisation (HQ: any, `?orgId=`) | List staff; change role or disable (disabling also ends their sessions); never your own account, and only HQ changes HQ accounts |
+| `GET /team/invitations`, `POST /team/invitations`, `POST /team/invitations/:id/revoke` | `invite_users`, own organisation (HQ: any) | Create a one-time link (returned once, token in the URL fragment: `/accept-invite#token`; `orgId` defaults to the inviter's organisation), list with status, and withdraw |
+| `GET/POST /hq/orgs`, `PATCH /hq/orgs/:id` | HQ (`manage_orgs`) | Create centres and partners (implementation partners report to an active centre, everything else to HQ; funding partners need lender or CSR mode); edit or deactivate; type and parent are fixed |
+| `/hq/programmes`, `/hq/rubrics`, `/hq/cohorts`, `/hq/trades`, `/hq/routing-rules` | See `backend/src/modules/README.md` | HQ configuration; cohorts are centre-scoped for centre staff |
 
-**Staff onboarding (W-01).** Staff accounts exist only through invitations. Who may invite whom follows PRD §4: HQ admins invite any staff role into any organisation; centre assessors and cohort leads invite centre assessors, cohort leads and facilitators to their own centre; implementation partners invite their own reviewers and facilitators; sector and funding partners invite their own reviewers. Every role must also fit the organisation type (the same table the session check uses). The invite stores only a sha256 of a 256-bit token; re-inviting an address revokes its earlier pending link; links expire after 72 hours. The accepting person chooses only their name and password; client-supplied role, organisation or status fields are rejected. Links are shown to the inviter rather than emailed, so no mail provider is needed.
+**Staff onboarding (W-01).** Staff accounts exist only through invitations. Who may invite whom follows PRD §4: HQ admins invite any staff role into any organisation; centre assessors and cohort leads invite centre assessors, cohort leads and facilitators to their own centre; implementation partners invite their own reviewers and facilitators; sector and funding partners invite their own reviewers. Every role must also fit the organisation type (the same table the session check uses). The invite stores only a sha256 of a 256-bit token; re-inviting an address revokes its earlier pending link; links expire after 72 hours. The accepting person chooses only their name and password; client-supplied role, organisation or status fields are rejected. Links are shown to the inviter rather than emailed, so no mail provider is needed. Every invitation, acceptance, role change and access change is written to the audit log (W-08).
 
 Browser requests use the Next.js same-origin proxy; tokens are never put in browser local storage. Native requests send `Authorization: Bearer <accessToken>` from secure device storage. Input schemas reject client-supplied role/org fields; there is no public staff signup. Future administrative invitations must use reviewed, scoped endpoints.
 
@@ -54,6 +56,6 @@ Partners receive an explicit minimal projection. Applicant name/phone appear onl
 
 ## Configuration and remaining setup
 
-`pnpm setup:env` creates a private `.env` with random secrets and seed password, without overwriting an existing file. `pnpm seed` is development-only and idempotent; it does not reset existing users. Firebase remains unavailable (503) until `FIREBASE_PROJECT_ID` and Application Default Credentials are configured; tokens from non-phone providers are rejected. The API stores the Firebase UID for authentication and does not duplicate the verified phone number in its auth collection. Production startup rejects the Firebase emulator and non-HTTPS browser origins.
+`pnpm setup:env` creates a private `.env` with random secrets and seed password, without overwriting an existing file. `pnpm seed` is development-only and idempotent; it does not reset existing users. Production startup rejects non-HTTPS browser origins and a missing `PII_ENCRYPTION_KEY`.
 
-Full phone/device integration steps are in [app/README.md](../app/README.md). Firebase token-verification behavior follows the [official Admin SDK guidance](https://firebase.google.com/docs/auth/admin/verify-id-tokens). Entrepreneur personal fields are sealed by the entrepreneur module (`PII_ENCRYPTION_KEY`). Password reset, complete domain contracts, distributed rate limiting, an audit log of access changes (W-08) and production deployment are follow-up duties.
+Sign-in is email and password for every role (D-27); there is no phone, OTP or SMS sign-in and no Firebase dependency. Email addresses are not verified (no mail provider), so a wrong address cannot be recovered without an administrator.

@@ -1,5 +1,6 @@
 import { Schema, type IndexDefinition, type IndexOptions, type SchemaOptions } from 'mongoose';
 import { COLLECTIONS, domainSchema, type EntityName } from '@pitchprism/contracts';
+import { tenancyPlugin } from '../platform/tenancy.js';
 
 // Builds Mongoose schemas from the generated contract bundle so database models cannot drift from
 // packages/contracts (D-03). Only the JSON Schema subset used by schemas/domain is supported; anything
@@ -76,6 +77,8 @@ export interface ModelSpec {
   overrides?: Record<string, Json>;
   indexes?: [IndexDefinition, IndexOptions?][];
   options?: SchemaOptions;
+  /** Holds applicant or submission data: in-request queries must declare a tenant scope (platform/tenancy.ts). */
+  tenant?: boolean;
 }
 
 export function contractSchema(name: EntityName, spec: ModelSpec = {}) {
@@ -89,5 +92,6 @@ export function contractSchema(name: EntityName, spec: ModelSpec = {}) {
   const hasTimestamps = 'createdAt' in (contract.properties ?? {});
   const schema = new Schema(definition, { collection: COLLECTIONS[name], strict: 'throw', timestamps: hasTimestamps, ...spec.options });
   for (const [fields, options] of spec.indexes ?? []) schema.index(fields, options);
+  if (spec.tenant) schema.plugin(tenancyPlugin);
   return schema;
 }

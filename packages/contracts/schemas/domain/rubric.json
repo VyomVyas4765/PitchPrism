@@ -28,7 +28,7 @@
         }
       }
     },
-    "completenessWeights": { "type": "object", "description": "Weight per canonical field for completeness.", "additionalProperties": { "type": "number", "minimum": 0 } },
+    "completenessWeights": { "type": "object", "description": "Weight per canonical field for completeness; the weights total 100.", "additionalProperties": { "type": "number", "minimum": 0 } },
     "bands": {
       "title": "RubricBands",
       "type": "object",
@@ -40,7 +40,21 @@
         "minCoverage": { "type": "number", "minimum": 0, "maximum": 100 }
       }
     },
-    "pathwayRules": { "type": "object", "description": "Thresholds for the pathway calculator (Dev 2). Free-form until Dev 2 freezes the calculator inputs." },
+    "pathwayRules": {
+      "title": "PathwayRules",
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Thresholds read by the pathway calculator (ai/intel/scoring.py). Missing keys use the calculator defaults.",
+      "properties": {
+        "requestInfoBelowCompleteness": { "type": "number", "minimum": 0, "maximum": 100, "description": "Below this completeness the pathway is request information (default 70)." },
+        "highCompleteness": { "type": "number", "minimum": 0, "maximum": 100, "description": "Completeness at or above this counts as complete for the quadrant (default 70)." },
+        "fundingMinFeasibility": { "type": "integer", "minimum": 1, "maximum": 5, "description": "Strong ideas need at least this feasibility score for funding consideration (default 4)." },
+        "fundingMaxLoan": { "type": "number", "minimum": 0, "description": "Largest requested loan in rupees for funding consideration (default 200000)." },
+        "skillingMaxReadiness": { "type": "integer", "minimum": 1, "maximum": 5, "description": "Readiness at or below this suggests skilling (default 2)." },
+        "mentoringWeakAtOrBelow": { "type": "integer", "minimum": 1, "maximum": 5, "description": "A promising idea with any listed domain at or below this suggests mentoring (default 2)." },
+        "mentoringWeakDomains": { "type": "array", "items": { "type": "string", "pattern": "^[a-z_]{2,40}$" }, "description": "Domains checked for the mentoring rule." }
+      }
+    },
     "status": { "type": "string", "enum": ["draft", "published", "archived"] },
     "createdByUserId": { "$ref": "common.json#/definitions/ObjectId" },
     "createdAt": { "$ref": "common.json#/definitions/DateTime" },

@@ -74,7 +74,7 @@ class _EntrepreneurShellState extends State<EntrepreneurShell> {
           if (consents['processing'] == null) {
             return ConsentScreen(ctx: ctx, noticeVersion: notice, onDone: _refresh);
           }
-          if (me['profileComplete'] != true) {
+          if (me['onboardingComplete'] != true) {
             return ProfileScreen(ctx: ctx, profile: me['profile'] as Map<String, dynamic>, onDone: _refresh);
           }
           final account = me['id'] as String;
@@ -127,7 +127,17 @@ class _HomeScreenState extends State<HomeScreen> {
             borderRadius: BorderRadius.circular(4),
             child: InkWell(
               key: Key('home-$key'),
-              onTap: () => _startPitch(switch (key) { 'speak' => 'guided', 'type' => 'typed', _ => 'upload' }),
+              onTap: () async {
+                if (key != 'speak') return _startPitch(key == 'type' ? 'typed' : 'upload');
+                final mode = await showModalBottomSheet<String>(context: context, builder: (sheet) => SafeArea(child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    FilledButton.icon(key: const Key('speak-guided'), onPressed: () => Navigator.pop(sheet, 'guided'), icon: const Icon(Icons.quiz), label: Text(ctx.t('answerQuestions'))),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(key: const Key('speak-free'), onPressed: () => Navigator.pop(sheet, 'free_talk'), icon: const Icon(Icons.record_voice_over), label: Text(ctx.t('justTalk'))),
+                  ]))));
+                if (mode != null) await _startPitch(mode);
+              },
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(children: [

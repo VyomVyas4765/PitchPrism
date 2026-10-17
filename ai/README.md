@@ -25,7 +25,42 @@ Settings load from the ignored root `.env` or explicit process environment. `mak
 - Callers must redact PII before generation/vision and validate evidence after generation. `complete_json`/`vision_json` validate JSON Schema, not truth, citations, fairness, language quality or financial arithmetic. Those guards remain the stage owners' duties.
 - Logged metrics contain provider/model, duration, token counts and zero hosted API cost, without prompts/model output. Compute, electricity, disks, production hosting and SMS/identity services have separate costs.
 
-## Provider interfaces
+## Pitch review (D-33)
+
+`ai/review` turns a plain-text pitch into a complete, cited idea before scoring. It reads the pitch (redacted, numbered lines), extracts the ten EDP topics with the local model, judges each against the question bank's `review.checks`, and asks at most three follow-up questions a round until every topic is answered or the entrepreneur says they have not decided. The worker runs it for text pitches and ends with `NEEDS_INPUT` while questions are open; answers come back through the API and a `followup` job reviews again.
+
+The model is Groq's hosted API by default (D-34): set `AI_RUNTIME=groq`, `AI_HOSTED_APIS_ENABLED=true` and `GROQ_API_KEY` in `.env`. Only redacted text is sent. `AI_RUNTIME=local` uses an installed Ollama model instead.
+
+```bash
+python -m ai.review my-pitch.txt --evaluate   # answer the questions in the terminal, then score
+python -m ai.eval.review_harness              # 15 synthetic pitches with a simulated entrepreneur
+python -m ai.eval.review_harness --fake       # the same without a model (plumbing only)
+```
+
+## Job queue (D-29)
+
+`ai/jobqueue.py` is the worker side of the MongoDB queue; `backend/src/platform/jobs.ts` is the API side, and the two implement one protocol. The API enqueues after checking consent and access. The worker connects to `MONGODB_URI`, claims one job at a time with an atomic lease, and wraps each stage in `run.stage(name)`. That records `started` and `done`/`skipped`/`failed` stage events for the live card (streamed over SSE), writes a `pipelineRuns` row with timing and model use (A-29), and extends the lease.
+
+```python
+from ai.jobqueue import Consumer, connect
+
+def handle(job, run):                      # job: the claimed Job document; run.from_stage is where to start
+    if run.should_run("read"):
+        with run.stage("read") as stage:
+            stage.summary(segments=14, languages=["te"])     # small, non-personal counts only
+            stage.model_use(provider="ollama", model="…", llm_calls=1)
+    run.submission_status("READY")         # or NEEDS_INPUT / UNASSESSABLE; reviewers set decisions
+
+Consumer(connect(), handle, worker_id="worker-1").run_forever()
+```
+
+- Raise `CapabilityUnavailable` when a local provider is missing: the job fails visibly with `capability_unavailable` and is not retried. Raise `TimeoutError` or `RetryableError` for transient faults: they are retried with backoff (5 s, 20 s, 80 s) up to `maxAttempts`. Any other exception fails the attempt as `stage_error`.
+- Exception text is never stored, because it may contain prompts or personal data. Staff see fixed messages.
+- A worker that crashes loses its lease after 60 seconds and the job returns to the queue; after `maxAttempts` it fails as `attempts_exhausted`.
+- `python -m ai.worker` (`pnpm worker`, `make pipeline`) is the consumer: it runs redaction, quality, follow-ups, scoring, narrative, feedback and routing with the job's published rubric, records the stages it cannot run yet as skipped, and writes the centre case. Dev 1 adds the intake stages (ingest to extract) to `ai/worker.py`.
+- `pnpm pipeline:replay` (development only) consumes jobs and replays the fixture's stage timings, marked `replay: true`, for demonstrations without a local model. It never marks an idea assessed unless a stored evaluation already exists.
+
+
 
 `ai/providers.py` defines task requests and a local-provider registry for transcription, OCR, translation, transliteration, embeddings, structured generation and speech synthesis. Unregistered tasks fail explicitly. `ai/llm/adapter.py` provides the initial Ollama `complete_json` and `vision_json` interface; vision requires an installed vision-capable model and redacted image crops. No OCR or multilingual capability is inferred from the existence of that method.
 

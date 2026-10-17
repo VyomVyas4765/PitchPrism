@@ -12,7 +12,7 @@ import HqAdminTools from '../../features/hq/HqAdminTools';
 import HqOperations from '../../features/hq/HqOperations';
 import { PartnerWorkspace } from '../../features/partners/partner-workspace';
 
-export type DashboardSection = 'overview' | 'pipeline' | 'configuration' | 'operations' | 'access' | 'review-queue' | 'cohorts' | 'submissions' | 'applicants' | 'organisation' | 'opportunities' | 'funding' | 'reports';
+const PARTNER = ['implementation_partner', 'sector_partner', 'funding_partner'];
 
 export default function DashboardView({ role, section = 'overview' }: { role: string; section?: string }) {
   const router = useRouter();
@@ -50,6 +50,8 @@ export default function DashboardView({ role, section = 'overview' }: { role: st
 
   if (!user || !workspace) return <main className="workspace"><h1>PitchPrism</h1><p role={error ? 'alert' : 'status'}>{error || 'Opening your workspace…'}</p>{error && <a href="/">Return to sign in</a>}</main>;
 
+  const can = (permission: Parameters<typeof workspace.permissions.includes>[0]) => workspace.permissions.includes(permission);
+  const allowed = NAVIGATION.some(item => item.section === section && item.show(user, can));
   const isHq = user.role === 'hq_admin';
   const isCentre = user.role === 'centre_assessor' || user.role === 'cohort_lead';
   const content = isHq ? (
@@ -62,7 +64,7 @@ export default function DashboardView({ role, section = 'overview' }: { role: st
     workspace.permissions.includes('manage_org_users') ? <AccessAdmin isHq={false} selfId={user.id} /> :
     <section className="dashboard-placeholder"><span className="eyebrow">Workspace section</span><h2>{section.replaceAll('-', ' ')}</h2><p>This role section is ready for its scoped workflow.</p></section>;
 
-  return <DashboardShell user={user} workspace={workspace} onLogout={logout} busy={busy}>
+  return <DashboardShell user={user} workspace={workspace} section={section} onLogout={logout} busy={busy}>
     <main className="dashboard-page">
       {!isCentre && <section className="dashboard-overview">
         <div><span className="eyebrow">Your workspace</span><h2>{isHq ? section === 'overview' ? 'Keep the network moving.' : section.replaceAll('-', ' ') : 'Keep the next decision moving.'}</h2><p>Review evidence, follow progress, and take the next action for your organisation.</p></div>

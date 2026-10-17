@@ -45,7 +45,7 @@ beforeEach(async () => {
     { name: 'Synthetic centre', type: 'centre' }, { name: 'Synthetic sibling', type: 'centre' },
     { name: 'Synthetic sector', type: 'sector_partner' }, { name: 'Synthetic lender', type: 'funding_partner', fundingMode: 'lender' },
   ]) as [typeof centre, typeof sibling, typeof sector, typeof funding];
-  applicant = await User.create({ displayName: 'Synthetic applicant', role: 'entrepreneur', firebaseUid: 'synthetic-uid' });
+  applicant = await User.create({ displayName: 'Synthetic applicant', role: 'entrepreneur', email: 'synthetic-uid@pitchprism.test' });
   assessor = await staff('centre_assessor');
   applicantProfile = await Entrepreneur.create({ _id: applicant._id, userId: applicant._id, homeOrgId: centre._id, createdVia: 'self',
     personal: vault.seal({ name: 'Synthetic applicant', phone: '+910000000000' }, String(applicant._id)) });
@@ -138,18 +138,10 @@ describe('authentication', () => {
     for (let attempt = 0; attempt < 10; attempt++) await request(app).post('/api/v1/auth/login').send({ email: assessor.email, password: 'wrong' }).expect(401);
     await request(app).post('/api/v1/auth/login').send({ email: assessor.email, password }).expect(429);
   });
-  it('fails closed when Firebase is unconfigured', async () => {
-    await request(app).post('/api/v1/auth/otp/verify').send({ idToken: 'unverified' }).expect(503);
-    expect(await User.countDocuments({ firebaseUid: 'unverified' })).toBe(0);
-  });
-  it('creates only entrepreneur accounts from a verified phone identity and reuses them', async () => {
-    const verifiedApp = createApp(config, { verifyPhoneToken: async () => ({ uid: 'verified-synthetic', phone: '+910000000001' }) });
-    const first = await request(verifiedApp).post('/api/v1/auth/otp/verify').send({ idToken: 'verified-by-injected-test-adapter' }).expect(200);
-    const second = await request(verifiedApp).post('/api/v1/auth/otp/verify').send({ idToken: 'verified-by-injected-test-adapter' }).expect(200);
-    expect(first.body.user.role).toBe('entrepreneur'); expect(first.body.user.orgId).toBeNull();
-    expect(first.body.user.id).toBe(second.body.user.id);
-    await request(verifiedApp).get('/api/v1/auth/me').set('Authorization', `Bearer ${first.body.accessToken}`).expect(200);
-    await request(verifiedApp).post('/api/v1/auth/otp/verify').send({ idToken: 'test', role: 'hq_admin' }).expect(400);
+  it('has no phone or OTP sign-in route (D-27)', async () => {
+    await request(app).post('/api/v1/auth/otp/verify').send({ idToken: 'unverified' }).expect(401);
+    await request(app).post('/api/v1/auth/otp/verify').set('Authorization', `Bearer ${await tokenFor(applicant)}`)
+      .send({ idToken: 'unverified' }).expect(404);
   });
 });
 

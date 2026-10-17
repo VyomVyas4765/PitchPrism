@@ -6,14 +6,19 @@ export const COLLECTIONS = {
   "Decision": "decisions",
   "Document": "documents",
   "Entrepreneur": "entrepreneurs",
+  "EvalRun": "evalRuns",
   "Evaluation": "evaluations",
   "ImportBatch": "importBatches",
   "Invitation": "invitations",
   "Job": "jobs",
   "Org": "orgs",
   "Outcome": "outcomes",
+  "PasswordReset": "passwordResets",
   "PipelineRun": "pipelineRuns",
+  "PitchReading": "pitchReadings",
   "Programme": "programmes",
+  "ReviewSample": "reviewSamples",
+  "ReviewSession": "reviewSessions",
   "RoutingRule": "routingRules",
   "Rubric": "rubrics",
   "Share": "shares",
@@ -310,7 +315,9 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         "existing_business",
         "customer_gender",
         "customer_age_range",
-        "customer_segment"
+        "customer_segment",
+        "skills",
+        "experience"
       ]
     },
     "AnswerState": {
@@ -809,6 +816,13 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
           "$ref": "#/definitions/Sealed",
           "description": "Sealed JSON: name, and when collected phone, email, gender and social category (Q-23)."
         },
+        "onboarding": {
+          "$ref": "#/definitions/Sealed",
+          "description": "Sealed one-time onboarding contact, background, location detail and EDP answers; never sent to models or partners."
+        },
+        "onboardingCompletedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
         "contactHashes": {
           "type": "array",
           "description": "Keyed HMAC-SHA256 of each normalised phone/email (backend/src/crypto.ts), hex.",
@@ -825,6 +839,10 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
           "$ref": "#/definitions/Language"
         },
         "district": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "state": {
           "type": "string",
           "maxLength": 80
         },
@@ -854,12 +872,188 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         },
         "clientApplicantId": {
           "type": "string",
-          "pattern": "^[A-Za-z0-9_-]{8,64}$",
-          "description": "Facilitator device ID used to make assisted applicant creation idempotent."
+          "maxLength": 80,
+          "description": "Assisted mode: the facilitator device's ID for this applicant, so an offline retry does not register them twice (Dev 1)."
         },
         "homeOrgId": {
           "$ref": "#/definitions/ObjectId",
           "description": "Centre that owns the relationship, once assigned."
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "EvalRun": {
+      "title": "EvalRun",
+      "description": "W-33: one evaluation-harness run on the organiser dataset (ai/eval/harness.py), recorded once per report. Aggregate metrics and per-file outcomes keyed by manifest ID only: no source text, names or model output.",
+      "x-collection": "evalRuns",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reportSha256",
+        "runAt",
+        "total",
+        "assessed",
+        "complete"
+      ],
+      "properties": {
+        "reportSha256": {
+          "type": "string",
+          "pattern": "^[a-f\\d]{64}$"
+        },
+        "runAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "manifestVersion": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "rubricKey": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "rubricVersion": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "promptVersion": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assessed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingExtraction": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "fieldStateAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "canonicalValueAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "flagRecall": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "durationP50Ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "durationP95Ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "computeSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sum of per-file durations: local compute time, the real cost (hosted AI cost is zero by policy)."
+        },
+        "parity": {
+          "type": "array",
+          "items": {
+            "title": "ParityGroup",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "group",
+              "count",
+              "gap",
+              "pass"
+            ],
+            "properties": {
+              "group": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "gap": {
+                "type": "number",
+                "minimum": 0
+              },
+              "pass": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "perFile": {
+          "type": "array",
+          "items": {
+            "title": "EvalFileResult",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 80,
+                "description": "Manifest file ID, not a person or file name."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "assessed",
+                  "missing_extraction",
+                  "failed"
+                ]
+              },
+              "band": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "potential": {
+                "type": "number"
+              },
+              "durationMs": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "fieldChecks": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "fieldChecksCorrect": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
         },
         "createdAt": {
           "$ref": "#/definitions/DateTime"
@@ -1591,6 +1785,50 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         }
       }
     },
+    "PasswordReset": {
+      "title": "PasswordReset",
+      "description": "One-time staff password-reset link issued by an administrator in scope (no email provider, like invitations, D-27). Only a SHA-256 hash of the token is stored. Valid 24 hours, single use; issuing a new link withdraws earlier unused ones.",
+      "x-collection": "passwordResets",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tokenHash",
+        "userId",
+        "orgId",
+        "issuedByUserId",
+        "expiresAt"
+      ],
+      "properties": {
+        "tokenHash": {
+          "type": "string",
+          "pattern": "^[a-f\\d]{64}$"
+        },
+        "userId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "orgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "issuedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "expiresAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "usedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "revokedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
     "PipelineRun": {
       "title": "PipelineRun",
       "description": "Timing and compute record per stage (A-29). Hosted AI cost is zero by policy (D-24), so compute time, tokens and model are what matter.",
@@ -1665,6 +1903,84 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         "error": {
           "type": "string",
           "maxLength": 600
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "PitchReading": {
+      "title": "PitchReading",
+      "description": "Versioned private reading of a Dev 1 pitch draft, distinct from the shared submission transcript.",
+      "x-collection": "pitchReadings",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pitchId",
+        "ownerOrgId",
+        "version",
+        "status",
+        "segments"
+      ],
+      "properties": {
+        "pitchId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "extracted",
+            "pending",
+            "failed"
+          ]
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "extracted": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "pending": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "blurBoxes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "editedByUserId": {
+          "$ref": "#/definitions/ObjectId"
         },
         "createdAt": {
           "$ref": "#/definitions/DateTime"
@@ -1809,6 +2125,237 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         }
       }
     },
+    "ReviewSample": {
+      "title": "ReviewSample",
+      "description": "W-06 second-review sampling: HQ re-reads a sample of centre decisions and records whether it agrees. One verdict per decision; feeds the agreement rate per centre. Notes must not repeat applicant personal data.",
+      "x-collection": "reviewSamples",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decisionId",
+        "submissionId",
+        "ownerOrgId",
+        "reviewerUserId",
+        "agrees"
+      ],
+      "properties": {
+        "decisionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "reviewerUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "agrees": {
+          "type": "boolean"
+        },
+        "suggestedDecision": {
+          "type": "string",
+          "enum": [
+            "shortlist",
+            "not_yet",
+            "more_info"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "ReviewSession": {
+      "title": "ReviewSession",
+      "description": "D-33 pitch review: one per submission. The worker (ai/review) writes the reading of the pitch, verdict per topic and the follow-up questions; the API appends answers to the inbox. Segment and answer text is redacted; the raw answers are private originals referenced by storageId.",
+      "x-collection": "reviewSessions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "ownerOrgId",
+        "status",
+        "round"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "reviewing",
+            "needs_input",
+            "complete"
+          ]
+        },
+        "round": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Redacted pitch and answer lines (centre-extracted-input segment shape)."
+          }
+        },
+        "redactedSpans": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fields": {
+          "type": "object",
+          "description": "Per topic: state, evidence (segment ids) and a one-line value."
+        },
+        "numbers": {
+          "type": "object",
+          "description": "Cited amounts: investment, self, loan, unit_price, monthly_volume, monthly_revenue."
+        },
+        "location": {
+          "type": "object",
+          "description": "Cited place: village, district, state and segId."
+        },
+        "businessType": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "verdicts": {
+          "type": "object",
+          "description": "Per core topic: verdict (sufficient, vague, missing, contradictory, declined) and reason."
+        },
+        "attempts": {
+          "type": "object",
+          "description": "How many times each topic has been asked."
+        },
+        "declined": {
+          "type": "object",
+          "description": "Topics the entrepreneur has not decided, with the reason shown to assessors."
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "title": "ReviewQuestion",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "qId",
+              "field",
+              "round",
+              "questionEn",
+              "status"
+            ],
+            "properties": {
+              "qId": {
+                "type": "string",
+                "pattern": "^f\\d{1,3}$"
+              },
+              "field": {
+                "$ref": "#/definitions/CanonicalField"
+              },
+              "round": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "questionEn": {
+                "type": "string",
+                "maxLength": 600
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "answered",
+                  "skipped"
+                ]
+              },
+              "answerSegIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 80
+                }
+              },
+              "answerText": {
+                "type": "string",
+                "maxLength": 4000,
+                "description": "Redacted answer, as the model saw it."
+              }
+            }
+          }
+        },
+        "inbox": {
+          "type": "array",
+          "description": "Answers received by the API and not yet merged by the worker.",
+          "items": {
+            "title": "ReviewAnswer",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "qId",
+              "storageId",
+              "receivedAt",
+              "byUserId"
+            ],
+            "properties": {
+              "qId": {
+                "type": "string",
+                "pattern": "^f\\d{1,3}$"
+              },
+              "storageId": {
+                "$ref": "#/definitions/ObjectId"
+              },
+              "receivedAt": {
+                "$ref": "#/definitions/DateTime"
+              },
+              "byUserId": {
+                "$ref": "#/definitions/ObjectId"
+              }
+            }
+          }
+        },
+        "promptVersions": {
+          "type": "object"
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "calls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "step, ms, ok, round: timing only, never prompts or output."
+          }
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
     "RoutingRule": {
       "title": "RoutingRule",
       "description": "W-04: which partner organisation receives which trades, sectors and districts. Suggestions are still limited by the entrepreneur's consent.",
@@ -1946,7 +2493,7 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         },
         "completenessWeights": {
           "type": "object",
-          "description": "Weight per canonical field for completeness.",
+          "description": "Weight per canonical field for completeness; the weights total 100.",
           "additionalProperties": {
             "type": "number",
             "minimum": 0
@@ -1980,8 +2527,55 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
           }
         },
         "pathwayRules": {
+          "title": "PathwayRules",
           "type": "object",
-          "description": "Thresholds for the pathway calculator (Dev 2). Free-form until Dev 2 freezes the calculator inputs."
+          "additionalProperties": false,
+          "description": "Thresholds read by the pathway calculator (ai/intel/scoring.py). Missing keys use the calculator defaults.",
+          "properties": {
+            "requestInfoBelowCompleteness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Below this completeness the pathway is request information (default 70)."
+            },
+            "highCompleteness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Completeness at or above this counts as complete for the quadrant (default 70)."
+            },
+            "fundingMinFeasibility": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "Strong ideas need at least this feasibility score for funding consideration (default 4)."
+            },
+            "fundingMaxLoan": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Largest requested loan in rupees for funding consideration (default 200000)."
+            },
+            "skillingMaxReadiness": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "Readiness at or below this suggests skilling (default 2)."
+            },
+            "mentoringWeakAtOrBelow": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "A promising idea with any listed domain at or below this suggests mentoring (default 2)."
+            },
+            "mentoringWeakDomains": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z_]{2,40}$"
+              },
+              "description": "Domains checked for the mentoring rule."
+            }
+          }
         },
         "status": {
           "type": "string",

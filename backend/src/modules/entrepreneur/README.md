@@ -4,8 +4,9 @@ Entrepreneur onboarding, consent and Idea Passport APIs (M-01 server side, M-03,
 
 | Method/path | Behavior |
 | --- | --- |
-| `GET /me` | Language, profile, `profileComplete`, active consents and the current `noticeVersion` |
+| `GET /me` | Language, coarse profile, `profileComplete`, `onboardingComplete`, active consents and the current `noticeVersion`; sealed contact and answer data are never returned |
 | `PUT /me` | Partial update: `language`, `name`, `district`, `pincode` (6 digits), `trade`, `gender` (`female`/`male`/`other`/`prefer_not_to_say`, `null` clears). Language can be saved before consent; any profile field needs active processing consent (403) |
+| `POST /me/onboarding` | One-time owner-only form after processing consent: applicant name/mobile, background, credit score (optional), village/block/district/state/PIN, interested business and all ten EDP idea-brief answers. Stores contact and answers encrypted; a second submission returns 409 |
 | `POST /consents` | `{purpose:"processing"}` or `{purpose:"partner_sharing", scope:"sector_partner"|"funding_partner"}`, plus `noticeVersion`, `language`, `method` (`app_tap`/`app_voice`). Sharing needs processing first (409). Repeating an active grant returns it (200) |
 | `POST /consents/:id/revoke` | Revokes and returns state; safe to retry. Revoking processing withdraws all sharing. Matching partner shares are deactivated before the response, so partners lose access on their next request |
 | `GET /me/passport` | Per idea: who can see it (`owning_centre`, `collected_by`, `consented_share` with `shareId`, `partnerType`, `contactAccepted`) |
@@ -26,14 +27,20 @@ Entrepreneurs act on their own pitches; facilitators only on pitches and applica
 | `POST /pitches/:id/documents` | `{clientFileId, kind, bytes, sha256, mime, promptStep?}`; kind-specific size and MIME limits; at most 20 files |
 | `PUT /documents/:id/content` | Raw `application/octet-stream` chunk (≤ 1 MiB) at `Upload-Offset`; a wrong offset gets 409 with the server's `receivedBytes`. The final chunk is checked against size and sha256: `complete` (immutable GridFS original) or `rejected` |
 | `GET /documents/:id` | Resume point after an app restart |
-| `POST /pitches/:id/submit` | Needs processing consent, a centre, finished uploads and some content. Typed answers become an immutable text original. Creates one `Submission` (owner = centre, source = facilitator's org) and idempotently enqueues ingestion; a repeat submit repairs a missing job. The local worker records `capability_unavailable` until validated ingestion handlers are integrated, so no assessment is claimed. |
+| `POST /pitches/:id/submit` | Needs processing consent, a centre, finished uploads and some content. Typed answers become an immutable text original. Creates one `Submission` (owner = centre, source = facilitator's org) and marks `pipeline: pending_queue`; no queue consumer exists yet, so nothing claims processing happened |
+| `POST /pitches/:id/process` | Retry reading after `pending_capability`, `failed`, or `processing` stuck for 30 minutes (owner) |
+| `GET /pitches/:id/transcript` | Latest transcript version with pipeline state (`pending_queue`, `processing`, `transcribed`, `pending_capability`, `failed`) |
+| `PUT /pitches/:id/transcript` | `{baseVersion, edits:[{segId, text}]}` saves corrections as a new version; version 1 stays as read; a stale base gets 409 |
+| `GET /documents/:id/original` | The owner's own original for playback (private, not cached) |
 | `POST /assisted/applicants`, `GET /assisted/applicants` | Facilitator registers applicants (name/gender sealed) and lists only their own |
 | `POST /assisted/applicants/:id/evidence` | Registers the spoken-consent recording; uploaded through the content route |
 | `POST /assisted/applicants/:id/consents` | Records consent with `method: assisted_recorded`; needs a complete evidence recording and `checkboxConfirmed: true` |
 
+After submit, `processing.ts` runs the local Python pipeline (`ai.ingest.run`) in the background on this host and stores its result as transcript version 1, including the `CentreExtractedInput` for Dev 2 and page blur boxes. This is an integration bridge until the shared job queue exists: a run interrupted by a restart stays `processing` and its owner can retry it after 30 minutes.
+
 Facilitators from an implementation partner cannot submit yet: their linked centre needs `Org.parentOrgId` (shared model, Dev 3).
 
-**Records.** `entrepreneurs._id` equals the entrepreneur's user ID for phone sign-in, matching the shared submission scope. Assisted applicants (M-17) will get their own ID. Name and gender are sealed with AES-256-GCM using `PII_ENCRYPTION_KEY`, bound to the record ID, never selected by default, and never logged. Without the key, profile writes fail with 503 and nothing is stored. District, pincode and trade are coarse fields for the pipeline. `consents` are append-only: revoking stamps `revokedAt`/`revokedByUserId`; granting again adds a record. Each record stores the notice version and language shown.
+**Records.** `entrepreneurs._id` equals the entrepreneur's user ID, matching the shared submission scope. Assisted applicants (M-17) have their own ID. Name, gender, mobile, credit score, background and one-time answers are sealed with AES-256-GCM using `PII_ENCRYPTION_KEY`, bound to the record ID, never selected by default, and never logged. Without the key, profile writes fail with 503 and nothing is stored. District, pincode and trade remain coarse fields for the pipeline. Onboarding answers are separate from an idea submission and are not sent to scoring or partners; Dev 2 and Dev 3 must agree a shared contract before consuming them. `consents` are append-only: revoking stamps `revokedAt`/`revokedByUserId`; granting again adds a record. Each record stores the notice version and language shown.
 
 **For other roles.** Import `sharingAllowed(entrepreneurId, partnerType)` from `modules/entrepreneur/index.js` before suggesting, creating or sending a partner share (W-13, W-17, A-27). It requires active processing and sharing consent for that partner type.
 

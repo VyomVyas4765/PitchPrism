@@ -13,6 +13,16 @@ import { sharingAllowed } from '../src/modules/entrepreneur/index.js';
 // Synthetic values only; the key below exists for tests and protects no real data.
 const config = configSchema.parse({ NODE_ENV: 'test', JWT_SECRET: 'test-only-secret-with-more-than-thirty-two-characters', PII_ENCRYPTION_KEY: 'ab'.repeat(32) });
 const syntheticName = 'Synthetic Applicant Kumari';
+const onboarding = {
+  name: syntheticName, mobile: '+91 9123456789', trade: 'Tailoring', village: 'Synthetic Nagar',
+  block: 'Sample Block', district: 'Nashik', state: 'Maharashtra', pincode: '422001',
+  setupLocation: 'A rented room', productsServices: 'Garment stitching', targetCustomers: 'Local families',
+  marketResearch: 'Spoke with local households', rawMaterials: 'Fabric and thread',
+  suppliers: 'Local wholesaler', fundingSources: 'Savings and a small loan',
+  competition: 'Two nearby tailors', prices: 'Blouse stitching 400 rupees',
+  expectedMonthlyRevenue: '40000 rupees', education: 'Trade training',
+  workBackground: 'Two years of stitching', gender: null, creditScore: null,
+};
 let mongo: MongoMemoryServer;
 let app: ReturnType<typeof createApp>;
 let centre: InstanceType<typeof Org>;
@@ -41,8 +51,8 @@ beforeEach(async () => {
     { name: 'Synthetic centre', type: 'centre' }, { name: 'Synthetic agri partner', type: 'sector_partner' },
     { name: 'Synthetic lender', type: 'funding_partner', fundingMode: 'lender' },
   ]) as [typeof centre, typeof sector, typeof funding];
-  applicant = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', firebaseUid: 'synthetic-uid-1' });
-  other = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', firebaseUid: 'synthetic-uid-2' });
+  applicant = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', email: 'synthetic-uid-1@pitchprism.test' });
+  other = await User.create({ displayName: 'Entrepreneur', role: 'entrepreneur', email: 'synthetic-uid-2@pitchprism.test' });
   submission = await Submission.create({ title: 'Synthetic papad unit', ownerOrgId: centre._id, entrepreneurId: applicant._id,
     createdByUserId: applicant._id, status: 'SHORTLISTED', fundingReady: true,
     shares: [{ orgId: sector._id, partnerType: 'sector_partner', active: true, contactAccepted: false },
@@ -57,6 +67,7 @@ describe('entrepreneur access', () => {
       const staff = await User.create({ displayName: `Synthetic ${role}`, email: `${role}@pitchprism.test`, role, orgId: centre._id });
       await request(app).get('/api/v1/me').set('Authorization', await as(staff)).expect(403);
       await request(app).put('/api/v1/me').set('Authorization', await as(staff)).send({ language: 'hi' }).expect(403);
+      await request(app).post('/api/v1/me/onboarding').set('Authorization', await as(staff)).send(onboarding).expect(403);
       await request(app).post('/api/v1/consents').set('Authorization', await as(staff)).send(consent({ purpose: 'processing' })).expect(403);
     }
     const response = await request(app).get('/api/v1/me').set('Authorization', await as(applicant)).expect(200);
@@ -75,6 +86,27 @@ describe('entrepreneur access', () => {
 });
 
 describe('language and profile', () => {
+  it('accepts a complete onboarding only once after consent and seals the answers', async () => {
+    const auth = await as(applicant);
+    await request(app).post('/api/v1/me/onboarding').set('Authorization', auth).send(onboarding).expect(403);
+    await grantProcessing(auth);
+    await request(app).post('/api/v1/me/onboarding').set('Authorization', auth)
+      .send({ ...onboarding, creditScore: 901 }).expect(400);
+    await request(app).post('/api/v1/me/onboarding').set('Authorization', auth)
+      .send({ ...onboarding, mobile: '----------' }).expect(400);
+    await request(app).post('/api/v1/me/onboarding').set('Authorization', auth)
+      .send({ ...onboarding, entrepreneurId: String(other._id) }).expect(400);
+    const saved = await request(app).post('/api/v1/me/onboarding').set('Authorization', auth).send(onboarding).expect(201);
+    expect(saved.body).toMatchObject({ onboardingComplete: true, profile: { name: syntheticName, trade: 'Tailoring' } });
+    expect(JSON.stringify(saved.body)).not.toContain(onboarding.mobile);
+    const raw = await mongoose.connection.collection('entrepreneurs').findOne({ _id: applicant._id });
+    expect(JSON.stringify(raw)).not.toContain(onboarding.mobile);
+    expect(JSON.stringify(raw)).not.toContain(onboarding.workBackground);
+    await request(app).post('/api/v1/me/onboarding').set('Authorization', auth).send(onboarding).expect(409);
+    const otherView = await request(app).get('/api/v1/me').set('Authorization', await as(other)).expect(200);
+    expect(otherView.body.onboardingComplete).toBe(false);
+    expect(JSON.stringify(otherView.body)).not.toContain(onboarding.mobile);
+  });
   it('saves the language before consent but rejects unknown languages and client-chosen access fields', async () => {
     const auth = await as(applicant);
     const response = await request(app).put('/api/v1/me').set('Authorization', auth).send({ language: 'or' }).expect(200);
@@ -95,7 +127,7 @@ describe('language and profile', () => {
     await grantProcessing(auth);
     const saved = await request(app).put('/api/v1/me').set('Authorization', auth)
       .send({ language: 'mr', name: syntheticName, district: 'Nashik', pincode: '422001', trade: 'Food processing', gender: 'female' }).expect(200);
-    expect(saved.body.profile).toEqual({ name: syntheticName, gender: 'female', district: 'Nashik', pincode: '422001', trade: 'Food processing' });
+    expect(saved.body.profile).toEqual({ name: syntheticName, gender: 'female', district: 'Nashik', pincode: '422001', state: null, trade: 'Food processing' });
     expect(saved.body.profileComplete).toBe(true);
     const raw = await mongoose.connection.collection('entrepreneurs').findOne({ _id: applicant._id });
     expect(JSON.stringify(raw)).not.toContain(syntheticName);

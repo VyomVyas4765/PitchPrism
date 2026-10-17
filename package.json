@@ -9,7 +9,6 @@
     "db:check": "pnpm --filter @pitchprism/backend db:check",
     "db:local": "node backend/scripts/local-mongo.mjs",
     "dev:local": "node backend/scripts/dev-local.mjs",
-    "worker": "pnpm --filter @pitchprism/backend worker",
     "ios": "node scripts/run-ios.mjs",
     "matrix:generate": "node scripts/generate-matrix.mjs",
     "dev": "pnpm --filter @pitchprism/contracts build && pnpm --parallel --filter @pitchprism/backend --filter @pitchprism/frontend dev",
@@ -18,6 +17,8 @@
     "test": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend test",
     "contracts:generate": "pnpm --filter @pitchprism/contracts generate",
     "seed": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend seed",
-    "fixtures:load": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend fixtures:load"
+    "fixtures:load": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend fixtures:load",
+    "worker": "node scripts/run-worker.mjs",
+    "pipeline:replay": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend pipeline:replay --"
   }
 }

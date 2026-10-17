@@ -1,8 +1,9 @@
 """A-02 (first part): detect a document's format from its content, never from its name or declared type.
 
-Covered: audio / pdf / image / text / archive / unknown. Still pending in A-02: digital-versus-scanned
-per page and script per page (need a PDF layout library; licence choice open) and template
-fingerprints (need the organiser templates on the worker host). Results say which checks ran.
+Covered: audio / pdf / image / text / archive / unknown from content signatures; digital-versus-scanned
+and script per page come from `ai.ingest.pdf` and `ai.ingest.language`; `fingerprint` names known
+templates from printed titles/markers. Fingerprints were written from the manifest's template
+descriptions, not the organiser files themselves, so they are unvalidated until run on them.
 """
 import json
 import os
@@ -77,3 +78,23 @@ def detect_format(path: Path) -> dict:
             if error.start >= len(head) - 3:
                 return {"kind": "text", "container": "utf-8", "checks": checks}
     return {"kind": "unknown", "container": None, "reason": "unrecognised_signature", "checks": checks}
+
+
+# (template id, markers that must all appear, case-insensitive). Order matters: most specific first.
+TEMPLATES = [
+    ("case-study-paper-te", ("[your name]",)),
+    ("platform-form-hi-v2", ("business idea submission",)),
+    ("platform-form-hi", ("nanounicorn",)),
+    ("edp-business-plan", ("business plan", "annexure")),
+    ("edp-business-plan", ("व्यवसाय योजना",)),
+    ("edp-idea-brief", ("business idea brief",)),
+]
+
+
+def fingerprint(text: str) -> str:
+    """A-02 template by fingerprint; anything unrecognised is "unknown" and is paired generically."""
+    lowered = text.lower()
+    for template, markers in TEMPLATES:
+        if all(marker.lower() in lowered for marker in markers):
+            return template
+    return "unknown"

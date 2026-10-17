@@ -151,7 +151,9 @@
         "existing_business",
         "customer_gender",
         "customer_age_range",
-        "customer_segment"
+        "customer_segment",
+        "skills",
+        "experience"
       ]
     },
     "AnswerState": {

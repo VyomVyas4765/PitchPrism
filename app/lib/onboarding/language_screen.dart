@@ -101,7 +101,7 @@ class _LanguageTile extends StatelessWidget {
                     if (voice == false)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(tr(language, 'voiceUnavailable'), style: theme.textTheme.bodySmall),
+                        child: Text('${tr(language, 'voiceUnavailable')} ${tr(language, 'voiceInstallHint')}', style: theme.textTheme.bodySmall),
                       ),
                   ],
                 ),

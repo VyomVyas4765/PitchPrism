@@ -105,3 +105,6 @@ textarea { display: block; width: 100%; min-height: 90px; margin: 10px 0; }
 .decision-actions { display: flex; flex-wrap: wrap; gap: 8px; }.decision-panel, .feedback-panel { border-top: 1px solid var(--rule); margin-top: 25px; padding-top: 5px; }
 .feedback-panel small { display: block; margin-top: 8px; }.decision-saved { background: #e8efdc; padding: 10px; }
 @media (max-width: 750px) { .centre-grid { grid-template-columns: 1fr; }.centre-heading { display: block; }.centre-controls { flex-wrap: wrap; }.score-strip { flex-wrap: wrap; } }
+.header-actions { display: flex; align-items: center; gap: 20px; font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
+.dashboard-sidebar nav a[aria-current='page'] { background: #303933; color: #fff; box-shadow: inset 3px 0 0 #d4e46c; }
+.sidebar-group { display: block; color: #879188; font: 10px Arial, Helvetica, sans-serif; letter-spacing: .12em; text-transform: uppercase; padding: 18px 12px 9px; }

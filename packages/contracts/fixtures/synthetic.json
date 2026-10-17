@@ -199,7 +199,7 @@
       "_id": "6a2000000000000000000001",
       "rubricKey": "edp-default",
       "version": 1,
-      "name": "EDP default (PRD section 13)",
+      "name": "EDP default (matches ai/intel/scoring.py)",
       "status": "published",
       "domains": [
         {
@@ -220,8 +220,7 @@
           "lowDescriptor": "No problem or need named",
           "highDescriptor": "Names who buys, why, and how often",
           "evidenceFields": [
-            "customers",
-            "problem_addressed"
+            "customers"
           ]
         },
         {
@@ -241,13 +240,14 @@
           "lowDescriptor": "Start-up cost unknown or far beyond reach",
           "highDescriptor": "Realistic cost, named suppliers and premises",
           "evidenceFields": [
+            "location",
             "raw_materials",
             "suppliers",
             "funding"
           ]
         },
         {
-          "key": "competition",
+          "key": "competition_awareness",
           "label": "Competition awareness",
           "weight": 10,
           "lowDescriptor": "Denies or ignores competition",
@@ -263,44 +263,45 @@
           "lowDescriptor": "Same as everyone else",
           "highDescriptor": "A credible reason customers would choose this business",
           "evidenceFields": [
-            "differentiation",
+            "offering",
             "competition"
           ]
         },
         {
-          "key": "revenue_logic",
+          "key": "financial_logic",
           "label": "Revenue and financial logic",
           "weight": 15,
           "lowDescriptor": "No idea how money is made",
           "highDescriptor": "Price, cost, volume and margin reasoning; consistent numbers",
           "evidenceFields": [
+            "funding",
             "unit_price",
-            "monthly_revenue",
-            "funding"
+            "monthly_revenue"
           ]
         },
         {
-          "key": "readiness",
+          "key": "entrepreneur_readiness",
           "label": "Entrepreneur readiness",
           "weight": 10,
           "lowDescriptor": "Idea only, no link to skills or action",
           "highDescriptor": "Relevant experience; has already started",
           "evidenceFields": [
-            "existing_business"
+            "skills",
+            "experience"
           ]
         }
       ],
       "completenessWeights": {
-        "location": 1.5,
-        "offering": 1.5,
-        "customers": 1.5,
-        "market_research": 1,
-        "raw_materials": 1,
-        "suppliers": 1,
-        "funding": 1.5,
-        "competition": 1,
-        "unit_price": 1.5,
-        "monthly_revenue": 1
+        "location": 12,
+        "offering": 15,
+        "customers": 15,
+        "market_research": 10,
+        "raw_materials": 4,
+        "suppliers": 4,
+        "funding": 12,
+        "competition": 6,
+        "unit_price": 12,
+        "monthly_revenue": 10
       },
       "bands": {
         "strong": 70,
@@ -308,9 +309,17 @@
         "minCoverage": 60
       },
       "pathwayRules": {
-        "completeHigh": 70,
-        "fundingFeasibilityMin": 4,
-        "skillingReadinessMax": 2
+        "requestInfoBelowCompleteness": 70,
+        "highCompleteness": 70,
+        "fundingMinFeasibility": 4,
+        "fundingMaxLoan": 200000,
+        "skillingMaxReadiness": 2,
+        "mentoringWeakAtOrBelow": 2,
+        "mentoringWeakDomains": [
+          "market_potential",
+          "competition_awareness",
+          "financial_logic"
+        ]
       },
       "createdByUserId": "651000000000000000000001"
     }
@@ -541,6 +550,16 @@
       "durationSec": 118.5,
       "codec": "opus",
       "uploadedByUserId": "651000000000000000000004"
+    }
+  ],
+  "pitchReadings": [
+    {
+      "_id": "657100000000000000000001",
+      "pitchId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "version": 1,
+      "status": "extracted",
+      "segments": []
     }
   ],
   "transcripts": [
@@ -995,6 +1014,158 @@
           "index": 1,
           "kind": "audio",
           "status": "pending"
+        }
+      ]
+    }
+  ],
+  "reviewSamples": [
+    {
+      "_id": "6b1000000000000000000001",
+      "decisionId": "659000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "reviewerUserId": "651000000000000000000001",
+      "agrees": true,
+      "note": "Synthetic second review: asking for more information was right."
+    }
+  ],
+  "evalRuns": [
+    {
+      "_id": "6b2000000000000000000001",
+      "reportSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "runAt": "2026-10-17T10:00:00.000Z",
+      "manifestVersion": "1",
+      "rubricKey": "edp-default",
+      "rubricVersion": "edp-draft-v1",
+      "promptVersion": "edp-score-v1",
+      "models": [
+        "local-synthetic"
+      ],
+      "total": 3,
+      "assessed": 2,
+      "missingExtraction": 1,
+      "failed": 0,
+      "complete": false,
+      "fieldStateAccuracy": 0.9,
+      "flagRecall": 0.5,
+      "durationP50Ms": 1200,
+      "durationP95Ms": 1900,
+      "computeSeconds": 3.1,
+      "parity": [
+        {
+          "group": "synthetic-tailoring",
+          "count": 2,
+          "gap": 3,
+          "pass": true
+        }
+      ],
+      "perFile": [
+        {
+          "id": "synthetic-1",
+          "status": "assessed",
+          "band": "Promising",
+          "potential": 62,
+          "durationMs": 1200,
+          "fieldChecks": 10,
+          "fieldChecksCorrect": 9
+        },
+        {
+          "id": "synthetic-2",
+          "status": "assessed",
+          "band": "Promising",
+          "potential": 59,
+          "durationMs": 1900,
+          "fieldChecks": 10,
+          "fieldChecksCorrect": 9
+        },
+        {
+          "id": "synthetic-3",
+          "status": "missing_extraction"
+        }
+      ]
+    }
+  ],
+  "passwordResets": [
+    {
+      "_id": "6b3000000000000000000001",
+      "tokenHash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "userId": "651000000000000000000002",
+      "orgId": "650000000000000000000002",
+      "issuedByUserId": "651000000000000000000001",
+      "expiresAt": "2026-10-18T10:00:00.000Z",
+      "usedAt": "2026-10-17T11:00:00.000Z"
+    }
+  ],
+  "reviewSessions": [
+    {
+      "_id": "6b4000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "version": 1,
+      "status": "needs_input",
+      "round": 1,
+      "segments": [
+        {
+          "segId": "s1",
+          "textEn": "I want to start a tailoring shop that stitches blouses.",
+          "lang": "en",
+          "source": {
+            "type": "text",
+            "documentId": "synthetic-pitch",
+            "start": 0,
+            "end": 55
+          }
+        }
+      ],
+      "redactedSpans": 0,
+      "fields": {
+        "offering": {
+          "state": "answered",
+          "evidence": [
+            "s1"
+          ],
+          "value": "A tailoring shop stitching blouses."
+        }
+      },
+      "numbers": {},
+      "businessType": "tailoring shop",
+      "verdicts": {
+        "offering": {
+          "verdict": "sufficient",
+          "reason": ""
+        },
+        "customers": {
+          "verdict": "missing",
+          "reason": "The pitch does not say."
+        }
+      },
+      "attempts": {
+        "customers": 1
+      },
+      "declined": {},
+      "questions": [
+        {
+          "qId": "f1",
+          "field": "customers",
+          "round": 1,
+          "questionEn": "Who will buy from you, and where are they? About how many customers do you expect?",
+          "reason": "The pitch does not say.",
+          "status": "pending"
+        }
+      ],
+      "inbox": [],
+      "promptVersions": {
+        "extract": "review-extract-v1",
+        "judge": "review-judge-v1",
+        "ask": "review-ask-v1"
+      },
+      "model": "synthetic-local",
+      "calls": [
+        {
+          "step": "extract:offer",
+          "ms": 1200,
+          "ok": true,
+          "round": 1
         }
       ]
     }

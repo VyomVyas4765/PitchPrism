@@ -36,13 +36,13 @@ export function assistedRouter(config: Config) {
   const facilitatorOnly = requirePermission('submit_assisted');
   // A facilitator reaches only applicants they registered; others are indistinguishable from missing.
   const ownApplicant = async (req: Request) => {
-    const applicant = await Entrepreneur.findOne({ _id: objectId.parse(req.params.id), createdVia: 'assisted', facilitatorId: req.auth!.user.id }).select('+personal');
+    const applicant = await Entrepreneur.findOne({ _id: objectId.parse(req.params.id), createdVia: 'assisted' }).setOptions({ tenant: { facilitatorId: req.auth!.user.id } }).select('+personal');
     if (!applicant) throw new HttpError(404, 'Applicant not found.');
     return applicant;
   };
   const applicantView = async (applicant: InstanceType<typeof Entrepreneur>) => {
     const personal = applicant.personal && vault ? vault.open<{ name?: string; gender?: string | null }>(applicant.personal as Sealed, String(applicant._id)) : {};
-    const consents = await Consent.find({ entrepreneurId: applicant._id, status: 'active' }).select('purpose scope').lean();
+    const consents = await Consent.find({ status: 'active' }).setOptions({ tenant: { entrepreneurId: applicant._id } }).select('purpose scope').lean();
     return {
       id: String(applicant._id), clientApplicantId: applicant.clientApplicantId, language: applicant.language,
       name: personal.name ?? null, district: applicant.district ?? null, pincode: applicant.pincode ?? null, trade: applicant.trade ?? null,
@@ -55,7 +55,7 @@ export function assistedRouter(config: Config) {
     const input = applicantInput.parse(req.body);
     if (!vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
     const user = req.auth!.user;
-    const existing = await Entrepreneur.findOne({ facilitatorId: user.id, clientApplicantId: input.clientApplicantId }).select('+personal');
+    const existing = await Entrepreneur.findOne({ clientApplicantId: input.clientApplicantId }).setOptions({ tenant: { facilitatorId: user.id } }).select('+personal');
     if (existing) { res.json(await applicantView(existing)); return; }
     const applicant = new Entrepreneur({ createdVia: 'assisted', facilitatorId: user.id, homeOrgId: user.orgId, clientApplicantId: input.clientApplicantId,
       language: input.language, trade: input.trade, district: input.district, pincode: input.pincode });
@@ -64,14 +64,14 @@ export function assistedRouter(config: Config) {
       await applicant.save();
     } catch (error) {
       if ((error as { code?: number }).code !== 11000) throw error;
-      const raced = await Entrepreneur.findOne({ facilitatorId: user.id, clientApplicantId: input.clientApplicantId }).select('+personal');
+      const raced = await Entrepreneur.findOne({ clientApplicantId: input.clientApplicantId }).setOptions({ tenant: { facilitatorId: user.id } }).select('+personal');
       res.json(await applicantView(raced!)); return;
     }
     res.status(201).json(await applicantView(applicant));
   });
 
   router.get('/assisted/applicants', facilitatorOnly, async (req, res) => {
-    const applicants = await Entrepreneur.find({ createdVia: 'assisted', facilitatorId: req.auth!.user.id }).select('+personal').sort({ _id: -1 }).limit(200);
+    const applicants = await Entrepreneur.find({ createdVia: 'assisted' }).setOptions({ tenant: { facilitatorId: req.auth!.user.id } }).select('+personal').sort({ _id: -1 }).limit(200);
     res.json({ applicants: await Promise.all(applicants.map(applicantView)) });
   });
 
@@ -98,7 +98,7 @@ export function assistedRouter(config: Config) {
     const evidence = await PitchDocument.findOne({ _id: input.evidenceDocumentId, entrepreneurId: applicant._id,
       createdByUserId: req.auth!.user.id, purpose: 'consent_evidence', state: 'complete' });
     if (!evidence) throw new HttpError(409, 'Upload the applicant’s spoken consent recording first.');
-    if (input.purpose === 'partner_sharing' && !await Consent.exists({ entrepreneurId: applicant._id, purpose: 'processing', status: 'active' })) {
+    if (input.purpose === 'partner_sharing' && !await Consent.exists({ purpose: 'processing', status: 'active' }).setOptions({ tenant: { entrepreneurId: applicant._id } })) {
       throw new HttpError(409, 'Record processing consent before partner sharing.');
     }
     const { created } = await grantConsent({ entrepreneurId: applicant._id, purpose: input.purpose,

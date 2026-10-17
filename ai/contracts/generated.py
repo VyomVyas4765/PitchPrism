@@ -14,7 +14,7 @@ Channel = Literal["app", "assisted", "import", "pwa", "whatsapp", "platform"]
 SubmissionStatus = Literal["DRAFT", "QUEUED", "PROCESSING", "NEEDS_INPUT", "UNASSESSABLE", "READY", "FAILED", "IN_REVIEW", "SHORTLISTED", "NOT_YET", "MORE_INFO", "SHARED"]
 Stage = Literal["ingest", "classify", "read", "structure", "redact", "translate", "extract", "quality", "followup", "normalise", "similar", "local", "score", "narrative", "rank", "feedback", "route"]
 StageStatus = Literal["started", "done", "skipped", "failed"]
-CanonicalField = Literal["location", "offering", "customers", "market_research", "raw_materials", "suppliers", "funding", "competition", "unit_price", "monthly_revenue", "business_name", "problem_addressed", "differentiation", "pricing_strategy", "support_network", "infrastructure", "transport", "staffing", "fixed_overheads", "location_rationale", "customer_acquisition", "promotion_plan", "goals", "investment_required", "self_investment", "expected_loan", "market_type", "existing_business", "customer_gender", "customer_age_range", "customer_segment"]
+CanonicalField = Literal["location", "offering", "customers", "market_research", "raw_materials", "suppliers", "funding", "competition", "unit_price", "monthly_revenue", "business_name", "problem_addressed", "differentiation", "pricing_strategy", "support_network", "infrastructure", "transport", "staffing", "fixed_overheads", "location_rationale", "customer_acquisition", "promotion_plan", "goals", "investment_required", "self_investment", "expected_loan", "market_type", "existing_business", "customer_gender", "customer_age_range", "customer_segment", "skills", "experience"]
 AnswerState = Literal["answered", "missing", "not_asked", "irrelevant"]
 Band = Literal["strong", "promising", "not_yet", "insufficient"]
 Pathway = Literal["deeper_evaluation", "funding_consideration", "mentoring", "skilling", "request_information", "resubmit_with_help"]
@@ -147,10 +147,13 @@ Document = TypedDict("Document", {
 Entrepreneur = TypedDict("Entrepreneur", {
     "userId": ObjectId,
     "personal": "Sealed",
+    "onboarding": "Sealed",
+    "onboardingCompletedAt": DateTime,
     "contactHashes": list[str],
     "placeholderContact": bool,
     "language": Language,
     "district": str,
+    "state": str,
     "pincode": str,
     "trade": str,
     "education": str,
@@ -158,6 +161,48 @@ Entrepreneur = TypedDict("Entrepreneur", {
     "facilitatorId": ObjectId,
     "clientApplicantId": str,
     "homeOrgId": ObjectId,
+    "createdAt": DateTime,
+    "updatedAt": DateTime,
+}, total=False)
+
+ParityGroup = TypedDict("ParityGroup", {
+    "group": Required[str],
+    "count": Required[int],
+    "gap": Required[float],
+    "pass": Required[bool],
+}, total=False)
+
+EvalFileResult = TypedDict("EvalFileResult", {
+    "id": Required[str],
+    "status": Required[Literal["assessed", "missing_extraction", "failed"]],
+    "band": str,
+    "potential": float,
+    "durationMs": int,
+    "fieldChecks": int,
+    "fieldChecksCorrect": int,
+}, total=False)
+
+EvalRun = TypedDict("EvalRun", {
+    "reportSha256": Required[str],
+    "runAt": Required[DateTime],
+    "manifestVersion": str,
+    "rubricKey": str,
+    "rubricVersion": str,
+    "promptVersion": str,
+    "models": list[str],
+    "total": Required[int],
+    "assessed": Required[int],
+    "missingExtraction": int,
+    "failed": int,
+    "complete": Required[bool],
+    "fieldStateAccuracy": float,
+    "canonicalValueAccuracy": float,
+    "flagRecall": float,
+    "durationP50Ms": int,
+    "durationP95Ms": int,
+    "computeSeconds": float,
+    "parity": list["ParityGroup"],
+    "perFile": list["EvalFileResult"],
     "createdAt": DateTime,
     "updatedAt": DateTime,
 }, total=False)
@@ -318,6 +363,18 @@ Outcome = TypedDict("Outcome", {
     "updatedAt": DateTime,
 }, total=False)
 
+PasswordReset = TypedDict("PasswordReset", {
+    "tokenHash": Required[str],
+    "userId": Required[ObjectId],
+    "orgId": Required[ObjectId],
+    "issuedByUserId": Required[ObjectId],
+    "expiresAt": Required[DateTime],
+    "usedAt": DateTime,
+    "revokedAt": DateTime,
+    "createdAt": DateTime,
+    "updatedAt": DateTime,
+}, total=False)
+
 PipelineRun = TypedDict("PipelineRun", {
     "jobId": Required[ObjectId],
     "submissionId": Required[ObjectId],
@@ -335,6 +392,22 @@ PipelineRun = TypedDict("PipelineRun", {
     "computeSeconds": float,
     "hostedCostInr": Literal[0],
     "error": str,
+    "createdAt": DateTime,
+    "updatedAt": DateTime,
+}, total=False)
+
+PitchReading = TypedDict("PitchReading", {
+    "pitchId": Required[ObjectId],
+    "submissionId": ObjectId,
+    "ownerOrgId": Required[ObjectId],
+    "version": Required[int],
+    "status": Required[Literal["extracted", "pending", "failed"]],
+    "segments": Required[list[dict[str, Any]]],
+    "extracted": dict[str, Any],
+    "pending": list[dict[str, Any]],
+    "issues": list[dict[str, Any]],
+    "blurBoxes": list[dict[str, Any]],
+    "editedByUserId": ObjectId,
     "createdAt": DateTime,
     "updatedAt": DateTime,
 }, total=False)
@@ -368,6 +441,60 @@ QA = TypedDict("QA", {
     "overwrites": list["Overwrite"],
 }, total=False)
 
+ReviewSample = TypedDict("ReviewSample", {
+    "decisionId": Required[ObjectId],
+    "submissionId": Required[ObjectId],
+    "ownerOrgId": Required[ObjectId],
+    "reviewerUserId": Required[ObjectId],
+    "agrees": Required[bool],
+    "suggestedDecision": Literal["shortlist", "not_yet", "more_info"],
+    "note": str,
+    "createdAt": DateTime,
+    "updatedAt": DateTime,
+}, total=False)
+
+ReviewQuestion = TypedDict("ReviewQuestion", {
+    "qId": Required[str],
+    "field": Required[CanonicalField],
+    "round": Required[int],
+    "questionEn": Required[str],
+    "reason": str,
+    "status": Required[Literal["pending", "answered", "skipped"]],
+    "answerSegIds": list[str],
+    "answerText": str,
+}, total=False)
+
+ReviewAnswer = TypedDict("ReviewAnswer", {
+    "qId": Required[str],
+    "storageId": Required[ObjectId],
+    "receivedAt": Required[DateTime],
+    "byUserId": Required[ObjectId],
+}, total=False)
+
+ReviewSession = TypedDict("ReviewSession", {
+    "submissionId": Required[ObjectId],
+    "ownerOrgId": Required[ObjectId],
+    "version": int,
+    "status": Required[Literal["reviewing", "needs_input", "complete"]],
+    "round": Required[int],
+    "segments": list[dict[str, Any]],
+    "redactedSpans": int,
+    "fields": dict[str, Any],
+    "numbers": dict[str, Any],
+    "location": dict[str, Any],
+    "businessType": str,
+    "verdicts": dict[str, Any],
+    "attempts": dict[str, Any],
+    "declined": dict[str, Any],
+    "questions": list["ReviewQuestion"],
+    "inbox": list["ReviewAnswer"],
+    "promptVersions": dict[str, Any],
+    "model": str,
+    "calls": list[dict[str, Any]],
+    "createdAt": DateTime,
+    "updatedAt": DateTime,
+}, total=False)
+
 RoutingRule = TypedDict("RoutingRule", {
     "name": Required[str],
     "partnerOrgId": Required[ObjectId],
@@ -396,6 +523,16 @@ RubricBands = TypedDict("RubricBands", {
     "minCoverage": Required[float],
 }, total=False)
 
+PathwayRules = TypedDict("PathwayRules", {
+    "requestInfoBelowCompleteness": float,
+    "highCompleteness": float,
+    "fundingMinFeasibility": int,
+    "fundingMaxLoan": float,
+    "skillingMaxReadiness": int,
+    "mentoringWeakAtOrBelow": int,
+    "mentoringWeakDomains": list[str],
+}, total=False)
+
 Rubric = TypedDict("Rubric", {
     "rubricKey": Required[str],
     "version": Required[int],
@@ -403,7 +540,7 @@ Rubric = TypedDict("Rubric", {
     "domains": Required[list["RubricDomain"]],
     "completenessWeights": dict[str, float],
     "bands": Required["RubricBands"],
-    "pathwayRules": dict[str, Any],
+    "pathwayRules": "PathwayRules",
     "status": Required[Literal["draft", "published", "archived"]],
     "createdByUserId": ObjectId,
     "createdAt": DateTime,
@@ -569,14 +706,19 @@ COLLECTIONS: dict[str, str] = {
     "Decision": "decisions",
     "Document": "documents",
     "Entrepreneur": "entrepreneurs",
+    "EvalRun": "evalRuns",
     "Evaluation": "evaluations",
     "ImportBatch": "importBatches",
     "Invitation": "invitations",
     "Job": "jobs",
     "Org": "orgs",
     "Outcome": "outcomes",
+    "PasswordReset": "passwordResets",
     "PipelineRun": "pipelineRuns",
+    "PitchReading": "pitchReadings",
     "Programme": "programmes",
+    "ReviewSample": "reviewSamples",
+    "ReviewSession": "reviewSessions",
     "RoutingRule": "routingRules",
     "Rubric": "rubrics",
     "Share": "shares",

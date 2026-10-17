@@ -44,7 +44,7 @@ beforeEach(async () => {
   outsider = await User.create({ displayName: 'Synthetic outsider', role: 'centre_assessor', orgId: sibling._id });
   const partnerOrg = await Org.create({ name: 'Synthetic partner', type: 'sector_partner' });
   partner = await User.create({ displayName: 'Synthetic partner', role: 'sector_partner', orgId: partnerOrg._id });
-  const applicant = await User.create({ displayName: 'Synthetic applicant', role: 'entrepreneur', firebaseUid: 'centre-test-applicant' });
+  const applicant = await User.create({ displayName: 'Synthetic applicant', role: 'entrepreneur', email: 'centre-test-applicant@pitchprism.test' });
   submission = await Submission.create({ title: 'Synthetic tailoring', ownerOrgId: centre._id, entrepreneurId: applicant._id,
     createdByUserId: applicant._id, status: 'DRAFT' });
   await Consent.create({ entrepreneurId: applicant._id, purpose: 'processing', scope: 'all', status: 'active',

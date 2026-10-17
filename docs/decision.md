@@ -4,7 +4,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 
 **Status key:** ✅ Decided · 🟡 Default (holds until someone objects with a reason) · ❓ Open
 
-**Current implementation:** D-26 now removes Redis and includes iOS development builds; earlier queue/platform entries are historical.  D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD. D-27 sets staff invitations; D-28 and D-30 define the shared domain contracts and how they absorbed the first role modules; D-29 details the MongoDB job and stage-event design.
+**Current implementation:** D-26 now removes Redis and includes iOS development builds; earlier queue/platform entries are historical.  D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD. D-27 sets staff invitations; D-28 and D-30 define the shared domain contracts and how they absorbed the first role modules; D-29 details the MongoDB job and stage-event design; D-31 refines its rerun rule and records the tenancy rollout.
 
 ## Index
 
@@ -36,10 +36,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-24 | Full scope, local-only AI; lean Android; explicit cost/capability evidence | ✅ | All |
 | D-25 | Reconcile answered, superseded and still-open PRD questions | ✅ | All |
 | D-26 | Remove Redis; persistent local MongoDB; add iOS development target | ✅ | Dev 1, Dev 3 |
-| D-27 | Staff invitations by one-time copyable link | ✅ | Dev 3 |
-| D-28 | Contracts v1: one bundle drives TypeScript, Python, models and fixtures | ✅ | Dev 3 |
-| D-29 | MongoDB job queue and stage-event design (details D-26) | ✅ | Dev 3 |
-| D-30 | Contracts absorb the first role modules' tested conventions | ✅ | Dev 3 |
+| D-27 | Email-only sign-in; iOS-only build target for now | ✅ | Dev 1, Dev 3 |
 
 ---
 
@@ -247,55 +244,11 @@ Current register after D-25. The complete answered/partial/open classification i
 
 **Build networking.** The Mac's global Git HTTPS→SSH rewrite can hang public Swift-package downloads on a restricted network. `GIT_CONFIG_GLOBAL=/dev/null` is scoped to the Flutter build process; global Git settings are not modified.
 
-### D-27 · Staff invitations by one-time copyable link ✅
 
-**Context.** W-01 needs HQ (and centres or partners, for their own users) to invite staff. There is no email or SMS service in the ₹0 budget, and the scaffold deliberately has no public sign-up.
+### D-27 · Email-only sign-in and iOS-only build target ✅
 
-**Decision.** An invitation is a random token stored only as a hash, with an expiry (72 hours by default), single use, and bound to the role and organisation the inviter chose. The server checks that the inviter is allowed to grant that role in that organisation; the client never chooses its own grant. The inviter copies the link and shares it themselves; the invitee sets their name and password. Expired, revoked or reused tokens are rejected. An email sender can be added later behind the same endpoint without changing the flow.
+**Context.** 17 October 2026, team direction (Arnav): remove phone OTP, SMS and other non-email sign-in; build only for iOS for now.
 
-### D-28 · Contracts v1: one bundle drives TypeScript, Python, models and fixtures ✅
+**Decision.** Every role signs in with email and password. Entrepreneurs self-register (`POST /auth/register`) and are always entrepreneurs; staff, including facilitators, join only through scoped invitations (W-01). Firebase phone OTP, its verifier, `firebase-admin`, the Flutter Firebase packages and `User.firebaseUid` are removed. This supersedes D-21's Firebase OTP for entrepreneurs and PRD M-02's "phone number login with OTP". The Flutter app is built and tested for iPhone only; the Android project stays in the repository but is not built or tested. This supersedes D-20/D-26's Android-first performance target for the current build; the PRD's low-cost Android audience is deferred, not dropped.
 
-**Context.** D-03 chose JSON Schema generated into TypeScript and Pydantic. The worker already validates with `jsonschema` and has no Pydantic dependency (D-24 keeps it lean), and hand-written Mongoose models would drift from the schemas.
-
-**Decision.** This refines D-03. `packages/contracts/schemas/domain/` holds one JSON Schema per domain type (22 stored collections plus embedded types). `pnpm contracts:generate` bundles them into one schema and writes TypeScript types, storage types for the backend, and a Python module of TypedDicts with `validate()` over the same bundle, so the worker needs no new dependency. The backend builds every Mongoose model from the bundle at startup (`backend/src/models/schema.ts`), adding only storage concerns such as indexes and hidden fields. Unknown fields are rejected (`strict: 'throw'`). `fixtures/synthetic.json` holds a valid example per collection; backend and Python tests check those fixtures against the schemas and the models, so the three cannot disagree silently.
-
-**Modelling choices.**
-- **The applicant is an `Entrepreneur` record, separate from sign-in `User`s** (for phone sign-in its _id equals the User _id). Personal details are sealed in `personal` by the entrepreneur PII vault, bound to the record ID, with keyed contact hashes for duplicate matching and placeholder detection.
-- **Partner access reads active entries in `Submission.shares`**, so scope stays a single query filter; consent and share services keep it in step with `consents` and `shares`.
-- **Scope is combined with route filters via `scoped()` (`$and`), never by object spread.** A spread let a route's `_id` override the "match nothing" scope during development; the access tests now guard it.
-- **The status lifecycle follows `docs/flow.md` §1.2.** Funding lenders see SHORTLISTED or SHARED ideas.
-
-**Consequences.** Contracts v1 is published for review by Devs 1, 2 and 4; changes go through Dev 3 and regenerate all outputs. One secret, `PII_ENCRYPTION_KEY`, seals personal data and keys contact hashes; `pnpm setup:env` adds missing secrets to an existing `.env`. Q-08 (several programmes per entrepreneur) is still open, so no uniqueness rule ties an entrepreneur to one programme yet.
-
-### D-29 · MongoDB job queue and stage-event design ✅
-
-**Context.** D-05 chose BullMQ on Redis, but its Python consumer was never validated (Q-14). D-24 runs one local worker job at a time, and Redis has no other use in the system. Local development runs MongoDB as a single server, so change streams (which need a replica set) are not available there.
-
-**Decision.** This supersedes D-05 and details the MongoDB jobs and events that D-26 selected.
-
-- **Jobs.** A `jobs` collection holds each `JobPayload` with `status` (queued, leased, done, failed, cancelled), `attempts`, `maxAttempts`, `availableAt`, `leaseUntil`, `workerId` and `error`. The API enqueues with an idempotency key (submission, from-stage, reason, input version), so a double click cannot create two jobs.
-- **Claiming.** The worker claims one job with an atomic `findOneAndUpdate` (queued, or leased with an expired lease, and `availableAt` reached → leased, `attempts + 1`). It extends the lease while working, then marks the job done or failed. A crashed worker's job returns to the queue when its lease expires. After `maxAttempts` the job is failed and stays visible; nothing is retried silently forever.
-- **Events.** The worker writes each `StageEvent` to a capped `stageEvents` collection and records timing and model use in the uncapped `pipelineRuns` collection (A-29). The API follows `stageEvents` with a tailable cursor and streams them over SSE, filtered by the viewer's organisation scope. A reconnecting client sends `Last-Event-ID`, and the API replays what it missed from persisted events, so reconnects neither lose nor invent completed stages (A-28 acceptance). Tailable cursors work on both the local single server and Atlas.
-
-**Consequences.** The `JobPayload` and `StageEvent` contracts keep their fields; only the transport changes. Q-14 becomes a test obligation: prove enqueue, claim, lease expiry, retry, terminal failure and SSE reconnect, with Dev 1 owning the Python consumer. Polling at about one second is enough for pilot volume and a single worker; revisit if several workers or much higher volume arrive.
-
-### D-30 · Contracts absorb the first role modules' tested conventions ✅
-
-**Context.** Devs 1, 2 and 4 built their first slices in parallel with contracts v1, against the starter models: Dev 1 defined its own `Entrepreneur` and `Consent` models with a sealed `personal` field and `PII_ENCRYPTION_KEY`; Dev 2 added decision statuses; Dev 4 and Dev 1 read and write `Submission.shares` and a plaintext `applicant`. Two models with one name crash the API, and forcing three tested modules onto different shapes mid-build would cost more than it gains.
-
-**Decision.** The shared contracts adopt the conventions those modules already test, and every model is defined once in `backend/src/models/` from the contracts (role modules re-export them).
-- `Entrepreneur` and `Consent` follow Dev 1's design: sealed `personal` bound to the record ID, append-only consents with one active consent per purpose and scope, and Entrepreneur _id equal to the User _id for phone sign-in, so entrepreneur scope is `entrepreneurId: user.id`.
-- One secret: `PII_ENCRYPTION_KEY` (64 hex). The contact-hash key derives from it; `DATA_ENCRYPTION_KEY` from contracts v1 is dropped.
-- `Submission.shares` keeps its name, with a generated `_id` per entry (the Idea Passport's shareId); missing fields on an entry simply never grant access. Status gains `MORE_INFO`.
-- `Submission.applicant` (plaintext name and phone) stays as a **deprecated, transitional** field so the starter flows and their tests keep working. Reads prefer the sealed profile. Remove it when assisted intake writes sealed profiles; until then it holds synthetic data only.
-- Dev 4's partner router is mounted at `/api/v1/partners` behind the shared session middleware, as its handoff requested.
-
-**Consequences.** All 104 backend tests (all four roles) and 49 worker tests pass on the shared models. Role routes still compose scope by object spread in places; that is safe while no scope uses `_id`, but new code should use `scoped()`. Follow-ups: remove `applicant` (Dev 1, Dev 3), and route partner and consent writes through one share service when partner actions land (Devs 1, 4).
-
-### D-31 · User-requested Groq exception for centre EDP scoring
-
-**Context.** The user asked for Groq to score a supplied two-page business-idea PDF and to remain the ongoing centre scoring provider, using the provisional PRD §13 rubric. This explicitly overrides D-24's hosted-inference ban and zero-API-spend target for this one workflow; the official rubric and organiser-dataset quality gate remain outstanding.
-
-**Decision.** Preserve D-24 for all other AI tasks. The centre PDF path locally extracts and redacts the known English digital EDP and English Business Idea form-fillup families, then the server-side worker sends only approved answer evidence to a fixed Groq endpoint using strict structured output. The latter family pairs printed question anchors with answer regions instead of fixed row positions. Active processing consent, centre scope, bounded responses, two model runs, citation validation, deterministic totals and human decision are mandatory for persisted scoring. The non-production unsaved preview remains a separate demo entry point. An unavailable provider or unsupported PDF returns pending/error rather than a score. The key stays in ignored `.env`, never the browser or app. Hosted usage is nonzero and must be measured before scale-up.
-
-**Limits.** The PDF mapping remains specific to two known English digital form families; Dev 1 still owns general PDF/OCR/language ingestion and licence review. Dev 2 still owns scorer quality and parity. The examples are not ground truth for domain ratings. Hosted processing of live organiser records needs the required consent and organiser policy approval. See [centre scoring plan](centre-groq-evaluation-plan.md).
+**Consequences.** Email addresses are not verified (no mail provider is configured), and there is no password reset yet; an administrator must help with a lost password. Entrepreneurs without an email address cannot self-register; facilitators register them in assisted mode instead. M-16 SMS fallback and M-21 WhatsApp are notification/intake channels, not sign-in, and keep their PRD priorities. Spoken prompts use the iPhone's own voices with per-language availability checks (Marathi, Telugu, Odia and Bengali voices may be missing on a given device).

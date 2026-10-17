@@ -4,11 +4,9 @@ AI idea screening for Tata STRIVE, built for Code Odyssey 5.0. Entrepreneurs pit
 
 ## First milestone: authentication and access
 
-The repository now has a Flutter mobile app (Android + iOS development), Next.js dashboard, Express API, shared auth contracts and a Python worker scaffold. Staff can sign in/out and open protected role workspaces. Entrepreneurs exchange a verified Firebase phone token for an API session. Role, organisation and consent checks run on the server.
+The repository now has a Flutter iPhone app (iOS is the build target; Android kept but not built, D-27), Next.js dashboard, Express API, shared auth contracts and a Python worker scaffold. Staff can sign in/out and open protected role workspaces. Entrepreneurs register with email and password (D-27). Role, organisation and consent checks run on the server.
 
-Domain contracts v1 are published in [packages/contracts](packages/contracts/README.md): JSON Schemas for all 22 collections, generated TypeScript and Python types, contract-built Mongoose models and synthetic fixtures.
-
-The centre assessment slice now accepts redacted, extracted EDP Idea Brief evidence, runs deterministic checks and local-only scoring, and serves a scoped review card, queue, decisions and feedback draft. App PDF extraction, the durable queue, original-file viewer and the rest of the centre workflow remain integration work; see [centre evaluation](docs/centre-evaluation.md). The starter submission endpoint remains read-only for applicant data; no applicant submissions are seeded. Real OTP needs Firebase project configuration. See [local AI setup](ai/README.md) and the [88-requirement implementation matrix](docs/implementation-matrix.md).
+The centre assessment slice now accepts redacted, extracted EDP Idea Brief evidence, runs deterministic checks and local-only scoring, and serves a scoped review card, queue, decisions and feedback draft. App PDF extraction, the durable queue, original-file viewer and the rest of the centre workflow remain integration work; see [centre evaluation](docs/centre-evaluation.md). The starter submission endpoint remains read-only for applicant data; no applicant submissions are seeded. See [local AI setup](ai/README.md) and the [88-requirement implementation matrix](docs/implementation-matrix.md).
 
 ## Quick start
 
@@ -20,19 +18,19 @@ pnpm install
 pnpm setup:env          # Creates ignored .env with random secrets; preserves an existing file
 pnpm dev:local          # Persistent local MongoDB + synthetic staff seed + API/dashboard
 pnpm fixtures:load      # Optional: contract fixtures (a submission, evaluation, events...) with fixture.* staff logins
+pnpm worker             # Pipeline worker (python -m ai.worker): runs queued jobs stage by stage; needs ai/.venv
+pnpm pipeline:replay    # Optional, dev only: replays fixture stage timings for queued jobs (live card, SSE) until the worker runs real stages
 ```
 
-Open http://localhost:3000. The API is at http://localhost:4000/api/v1. `pnpm dev:local` overrides the database URI for its child processes only; the private Atlas URI in `.env` is preserved. Local files live in ignored `local/mongodb/` and survive restarts. Ctrl+C stops the launcher without deleting data. Redis is removed. For a separately managed/Atlas database, use `pnpm seed` and `pnpm dev` after configuring a resolvable URI. Sign in as the bootstrap HQ admin (`SEED_ADMIN_EMAIL`, default `hq_admin@pitchprism.test`) with the `SEED_PASSWORD` value from your local `.env`. Re-running the seed preserves existing credentials/roles and never resets accounts. If `.env` already exists, compare it with `.env.example` and supply missing values yourself.
+Open http://localhost:3000. The API is at http://localhost:4000/api/v1. `pnpm dev:local` overrides the database URI for its child processes only; the private Atlas URI in `.env` is preserved. Local files live in ignored `local/mongodb/` and survive restarts. Ctrl+C stops the launcher without deleting data. Redis is removed. For a separately managed/Atlas database, use `pnpm seed` and `pnpm dev` after configuring a resolvable URI. Sign in as the bootstrap HQ admin (`SEED_ADMIN_EMAIL`, default `hq_admin@pitchprism.test`) with the `SEED_PASSWORD` value from your local `.env`. Everyone else joins through a one-time invitation link that HQ or their own organisation's staff create (HQ desk → Team, or the Team panel), opened at `/accept-invite#<token>`. Re-running the seed preserves existing credentials/roles and never resets accounts. If `.env` already exists, compare it with `.env.example` and supply missing values yourself.
 
-**Staff join by invitation only** (W-01): there is no public staff sign-up and no role chooser. Under **People and access** on the dashboard, HQ creates organisations (centres and sector/funding partners report to HQ; implementation partners to a centre) and invites anyone; centre staff invite assessors, cohort leads and facilitators to their own centre; partners invite their own organisation's users. The inviter copies the one-time link (it expires after 72 hours) and sends it themselves; the invitee opens it, sees the role and organisation, and sets their own name and password. Admins can change roles within their scope and disable accounts, which takes effect on the next request. For a local demo only, `SEED_DEMO_STAFF=true` also seeds one synthetic account per staff role (`<role>@pitchprism.test`). See [authentication](docs/auth.md).
+**Staff join by invitation only** (W-01): there is no public staff sign-up and no role chooser. In the HQ desk (**Organisations** and **Team** tabs), HQ creates organisations (centres and sector/funding partners report to HQ; implementation partners to a centre) and invites anyone; centre staff invite assessors, cohort leads and facilitators to their own centre; partners invite their own organisation's users (each from the **Team** panel on their dashboard). The inviter copies the one-time link (it expires after 72 hours) and sends it themselves; the invitee opens it, sees the role and organisation, and sets their own name and password. Admins can change roles within their scope and disable accounts, which takes effect on the next request. For a local demo only, `SEED_DEMO_STAFF=true` also seeds one synthetic account per staff role (`<role>@pitchprism.test`). See [authentication](docs/auth.md).
 
-Entrepreneurs are created only after verified Firebase phone sign-in; see [mobile setup](app/README.md). Cohort lead has the centre's permissions. Funding CSR mode is aggregate-only; the starter individual-record API denies it.
+Entrepreneurs create their own account with email and password in the iPhone app (D-27: no phone/OTP/SMS sign-in); see [mobile setup](app/README.md). Cohort lead has the centre's permissions. Funding CSR mode is aggregate-only; the starter individual-record API denies it.
 
 ```bash
-# Mobile: Android emulator uses 10.0.2.2 to reach the API.
-cd app
-flutter pub get
-flutter run
+# iPhone (D-27: iOS only for now). On the Mac, with the API running:
+pnpm ios               # or from app/: flutter run -d YOUR_IPHONE_ID --dart-define=API_BASE_URL=http://YOUR_MAC_LAN_IP:4000/api/v1
 ```
 
 From the repository root, `make worker-setup && make worker` runs the Python capability report. `make worker-check` inspects the local runtime and installed models; `make worker-test` checks local-only policies and structured output. No model is selected/downloaded automatically, and no queue consumer or full AI stages are claimed. The optional Docker MongoDB service persists in its named local volume. Local containers bind to loopback and are development services.
@@ -63,7 +61,7 @@ See [role duties](docs/duties/README.md) for the four assignments and all 88 PRD
 
 ```bash
 pnpm typecheck
-pnpm test               # Access tests use a temporary real MongoDB; no Docker/Firebase credentials
+pnpm test               # Access tests use a temporary real MongoDB; no Docker or external credentials
 pnpm duties:check
 pnpm matrix:generate    # After updating implementation/cost/acceptance records
 pnpm contracts:generate # After changing shared schemas; commit generated source

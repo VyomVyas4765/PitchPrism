@@ -82,11 +82,6 @@ export type Rupees = number;
  */
 export type StageStatus = "started" | "done" | "skipped" | "failed";
 /**
- * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
- * via the `definition` "PartnerType".
- */
-export type PartnerType = "sector_partner" | "funding_partner";
-/**
  * PRD Appendix B.1: the ten EDP fields, then extended fields. Dev 1 owns the question bank that maps wordings to these keys.
  *
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
@@ -123,7 +118,14 @@ export type CanonicalField =
   | "existing_business"
   | "customer_gender"
   | "customer_age_range"
-  | "customer_segment";
+  | "customer_segment"
+  | "skills"
+  | "experience";
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PartnerType".
+ */
+export type PartnerType = "sector_partner" | "funding_partner";
 /**
  * How a submission arrived (PRD section 6).
  *
@@ -163,14 +165,19 @@ export interface PitchPrismDomain {
   Decision?: Decision;
   Document?: Document;
   Entrepreneur?: Entrepreneur;
+  EvalRun?: EvalRun;
   Evaluation?: Evaluation;
   ImportBatch?: ImportBatch;
   Invitation?: Invitation;
   Job?: Job;
   Org?: Org;
   Outcome?: Outcome;
+  PasswordReset?: PasswordReset;
   PipelineRun?: PipelineRun;
+  PitchReading?: PitchReading;
   Programme?: Programme;
+  ReviewSample?: ReviewSample;
+  ReviewSession?: ReviewSession;
   RoutingRule?: RoutingRule;
   Rubric?: Rubric;
   Share?: Share;
@@ -307,6 +314,8 @@ export interface DocumentPage {
 export interface Entrepreneur {
   userId?: ObjectId;
   personal?: Sealed;
+  onboarding?: Sealed;
+  onboardingCompletedAt?: DateTime;
   /**
    * Keyed HMAC-SHA256 of each normalised phone/email (backend/src/crypto.ts), hex.
    */
@@ -317,6 +326,7 @@ export interface Entrepreneur {
   placeholderContact?: boolean;
   language?: Language;
   district?: string;
+  state?: string;
   pincode?: string;
   /**
    * Trade or skill as given; the normalised trade key lives on the submission.
@@ -344,6 +354,57 @@ export interface Sealed {
   iv: string;
   tag: string;
   ct: string;
+}
+/**
+ * W-33: one evaluation-harness run on the organiser dataset (ai/eval/harness.py), recorded once per report. Aggregate metrics and per-file outcomes keyed by manifest ID only: no source text, names or model output.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "EvalRun".
+ */
+export interface EvalRun {
+  reportSha256: string;
+  runAt: DateTime;
+  manifestVersion?: string;
+  rubricKey?: string;
+  rubricVersion?: string;
+  promptVersion?: string;
+  models?: string[];
+  total: number;
+  assessed: number;
+  missingExtraction?: number;
+  failed?: number;
+  complete: boolean;
+  fieldStateAccuracy?: number;
+  canonicalValueAccuracy?: number;
+  flagRecall?: number;
+  durationP50Ms?: number;
+  durationP95Ms?: number;
+  /**
+   * Sum of per-file durations: local compute time, the real cost (hosted AI cost is zero by policy).
+   */
+  computeSeconds?: number;
+  parity?: ParityGroup[];
+  perFile?: EvalFileResult[];
+  createdAt?: DateTime;
+  updatedAt?: DateTime;
+}
+export interface ParityGroup {
+  group: string;
+  count: number;
+  gap: number;
+  pass: boolean;
+}
+export interface EvalFileResult {
+  /**
+   * Manifest file ID, not a person or file name.
+   */
+  id: string;
+  status: "assessed" | "missing_extraction" | "failed";
+  band?: string;
+  potential?: number;
+  durationMs?: number;
+  fieldChecks?: number;
+  fieldChecksCorrect?: number;
 }
 /**
  * One scoring of one submission (PRD sections 13-14). Dev 2 owns the content; potential, completeness, band, quadrant and pathway are computed in code (D-12). A null domain score means Not assessed (D-11). Old evaluations are kept.
@@ -528,6 +589,23 @@ export interface Outcome {
   updatedAt?: DateTime;
 }
 /**
+ * One-time staff password-reset link issued by an administrator in scope (no email provider, like invitations, D-27). Only a SHA-256 hash of the token is stored. Valid 24 hours, single use; issuing a new link withdraws earlier unused ones.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PasswordReset".
+ */
+export interface PasswordReset {
+  tokenHash: string;
+  userId: ObjectId;
+  orgId: ObjectId;
+  issuedByUserId: ObjectId;
+  expiresAt: DateTime;
+  usedAt?: DateTime;
+  revokedAt?: DateTime;
+  createdAt?: DateTime;
+  updatedAt?: DateTime;
+}
+/**
  * Timing and compute record per stage (A-29). Hosted AI cost is zero by policy (D-24), so compute time, tokens and model are what matter.
  *
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
@@ -554,6 +632,37 @@ export interface PipelineRun {
   updatedAt?: DateTime;
 }
 /**
+ * Versioned private reading of a Dev 1 pitch draft, distinct from the shared submission transcript.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PitchReading".
+ */
+export interface PitchReading {
+  pitchId: ObjectId;
+  submissionId?: ObjectId;
+  ownerOrgId: ObjectId;
+  version: number;
+  status: "extracted" | "pending" | "failed";
+  segments: {
+    [k: string]: unknown;
+  }[];
+  extracted?: {
+    [k: string]: unknown;
+  };
+  pending?: {
+    [k: string]: unknown;
+  }[];
+  issues?: {
+    [k: string]: unknown;
+  }[];
+  blurBoxes?: {
+    [k: string]: unknown;
+  }[];
+  editedByUserId?: ObjectId;
+  createdAt?: DateTime;
+  updatedAt?: DateTime;
+}
+/**
  * A Tata STRIVE offering run by a centre, such as EDP Varanasi (glossary).
  *
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
@@ -571,6 +680,92 @@ export interface Programme {
   status: "draft" | "active" | "closed";
   createdAt?: DateTime;
   updatedAt?: DateTime;
+}
+/**
+ * W-06 second-review sampling: HQ re-reads a sample of centre decisions and records whether it agrees. One verdict per decision; feeds the agreement rate per centre. Notes must not repeat applicant personal data.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "ReviewSample".
+ */
+export interface ReviewSample {
+  decisionId: ObjectId;
+  submissionId: ObjectId;
+  ownerOrgId: ObjectId;
+  reviewerUserId: ObjectId;
+  agrees: boolean;
+  suggestedDecision?: "shortlist" | "not_yet" | "more_info";
+  note?: string;
+  createdAt?: DateTime;
+  updatedAt?: DateTime;
+}
+/**
+ * D-33 pitch review: one per submission. The worker (ai/review) writes the reading of the pitch, verdict per topic and the follow-up questions; the API appends answers to the inbox. Segment and answer text is redacted; the raw answers are private originals referenced by storageId.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "ReviewSession".
+ */
+export interface ReviewSession {
+  submissionId: ObjectId;
+  ownerOrgId: ObjectId;
+  version?: number;
+  status: "reviewing" | "needs_input" | "complete";
+  round: number;
+  segments?: {}[];
+  redactedSpans?: number;
+  /**
+   * Per topic: state, evidence (segment ids) and a one-line value.
+   */
+  fields?: {};
+  /**
+   * Cited amounts: investment, self, loan, unit_price, monthly_volume, monthly_revenue.
+   */
+  numbers?: {};
+  /**
+   * Cited place: village, district, state and segId.
+   */
+  location?: {};
+  businessType?: string;
+  /**
+   * Per core topic: verdict (sufficient, vague, missing, contradictory, declined) and reason.
+   */
+  verdicts?: {};
+  /**
+   * How many times each topic has been asked.
+   */
+  attempts?: {};
+  /**
+   * Topics the entrepreneur has not decided, with the reason shown to assessors.
+   */
+  declined?: {};
+  questions?: ReviewQuestion[];
+  /**
+   * Answers received by the API and not yet merged by the worker.
+   */
+  inbox?: ReviewAnswer[];
+  promptVersions?: {};
+  model?: string;
+  calls?: {}[];
+  createdAt?: DateTime;
+  updatedAt?: DateTime;
+}
+export interface ReviewQuestion {
+  qId: string;
+  field: CanonicalField;
+  round: number;
+  questionEn: string;
+  reason?: string;
+  status: "pending" | "answered" | "skipped";
+  answerSegIds?: string[];
+  /**
+   * Redacted answer, as the model saw it.
+   */
+  answerText?: string;
+}
+export interface ReviewAnswer {
+  qId: string;
+  storageId: ObjectId;
+  receivedAt: DateTime;
+  byUserId: ObjectId;
 }
 /**
  * W-04: which partner organisation receives which trades, sectors and districts. Suggestions are still limited by the entrepreneur's consent.
@@ -605,16 +800,13 @@ export interface Rubric {
    */
   domains: [RubricDomain, ...RubricDomain[]];
   /**
-   * Weight per canonical field for completeness.
+   * Weight per canonical field for completeness; the weights total 100.
    */
   completenessWeights?: {
     [k: string]: number;
   };
   bands: RubricBands;
-  /**
-   * Thresholds for the pathway calculator (Dev 2). Free-form until Dev 2 freezes the calculator inputs.
-   */
-  pathwayRules?: {};
+  pathwayRules?: PathwayRules;
   status: "draft" | "published" | "archived";
   createdByUserId?: ObjectId;
   createdAt?: DateTime;
@@ -641,6 +833,39 @@ export interface RubricBands {
   strong: number;
   promising: number;
   minCoverage: number;
+}
+/**
+ * Thresholds read by the pathway calculator (ai/intel/scoring.py). Missing keys use the calculator defaults.
+ */
+export interface PathwayRules {
+  /**
+   * Below this completeness the pathway is request information (default 70).
+   */
+  requestInfoBelowCompleteness?: number;
+  /**
+   * Completeness at or above this counts as complete for the quadrant (default 70).
+   */
+  highCompleteness?: number;
+  /**
+   * Strong ideas need at least this feasibility score for funding consideration (default 4).
+   */
+  fundingMinFeasibility?: number;
+  /**
+   * Largest requested loan in rupees for funding consideration (default 200000).
+   */
+  fundingMaxLoan?: number;
+  /**
+   * Readiness at or below this suggests skilling (default 2).
+   */
+  skillingMaxReadiness?: number;
+  /**
+   * A promising idea with any listed domain at or below this suggests mentoring (default 2).
+   */
+  mentoringWeakAtOrBelow?: number;
+  /**
+   * Domains checked for the mentoring rule.
+   */
+  mentoringWeakDomains?: string[];
 }
 /**
  * One consent-gated route of an idea to a partner (PRD section 5). The source of truth for partner access; the platform share-sync service mirrors it into Submission.partnerAccess.

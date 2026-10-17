@@ -23,8 +23,8 @@ const pitchSchema = new Schema({
   typedAnswers: [{ _id: false, step: { type: String, enum: GUIDED_STEPS }, text: String }],
   status: { type: String, enum: ['DRAFT', 'SUBMITTED'], default: 'DRAFT', required: true },
   submissionId: Schema.Types.ObjectId,
-  // Queue state is tracked on Job; this pitch flag does not imply that AI processing succeeded.
-  pipeline: { type: String, enum: ['not_requested', 'pending_queue'], default: 'not_requested' },
+  // States are explicit: no state claims processing happened unless a transcript exists (D-24).
+  pipeline: { type: String, enum: ['not_requested', 'pending_queue', 'processing', 'transcribed', 'pending_capability', 'failed'], default: 'not_requested' },
   submittedAt: Date,
 }, { timestamps: true });
 pitchSchema.index({ createdByUserId: 1, clientDraftId: 1 }, { unique: true });

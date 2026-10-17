@@ -26,6 +26,9 @@ abstract class ApiClient {
     int offset,
     List<int> bytes,
   );
+
+  /// Raw bytes of one of the caller's own originals (for playback).
+  Future<List<int>> download(String path);
 }
 
 class PitchPrismApi implements ApiClient {
@@ -109,5 +112,17 @@ class PitchPrismApi implements ApiClient {
       );
     }
     return data;
+  }
+
+  @override
+  Future<List<int>> download(String path) async {
+    final token = await _storage.read(key: 'session');
+    final response = await http
+        .get(Uri.parse('$baseUrl$path'), headers: {if (token != null) 'Authorization': 'Bearer $token'})
+        .timeout(const Duration(seconds: 60));
+    if (response.statusCode >= 400) {
+      throw ApiException('Could not load the recording.', response.statusCode);
+    }
+    return response.bodyBytes;
   }
 }

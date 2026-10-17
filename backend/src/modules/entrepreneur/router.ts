@@ -5,7 +5,7 @@ import { HttpError } from '../../errors.js';
 import { Org, Submission } from '../../models.js';
 import { requirePermission, submissionScope } from '../../auth/authorization.js';
 import { piiVault, type Sealed } from './pii-vault.js';
-import { CONSENT_NOTICE_VERSION, CONSENT_NOTICE_VERSIONS, Consent, Entrepreneur, GENDERS, LANGUAGES, SHARING_SCOPES, type SharingScope } from './models.js';import { grantConsent, hasProcessingConsent, revokeConsent } from './consent.js';
+import { CONSENT_NOTICE_VERSION, CONSENT_NOTICE_VERSIONS, Consent, Entrepreneur, GENDERS, INDIAN_STATES, LANGUAGES, SHARING_SCOPES, type SharingScope } from './models.js';import { grantConsent, hasProcessingConsent, revokeConsent } from './consent.js';
 import { intakeRouter } from './intake-router.js';
 import { assistedRouter } from './assisted-router.js';
 
@@ -17,8 +17,21 @@ const profileInput = z.object({
   name: text(100).optional(),
   district: text(80).optional(),
   pincode: z.string().trim().regex(/^[1-9]\d{5}$/).optional(),
+  state: z.enum(INDIAN_STATES).optional(),
   trade: text(80).optional(),
   gender: z.enum(GENDERS).nullable().optional(),
+}).strict();
+const onboardingInput = z.object({
+  name: text(100), mobile: z.string().trim().regex(/^\+?[0-9 ()-]{10,20}$/)
+    .refine(value => /^(?:91)?[6-9]\d{9}$/.test(value.replace(/\D/g, ''))), trade: text(80),
+  village: text(80), block: text(80), district: text(80), state: z.enum(INDIAN_STATES),
+  pincode: z.string().trim().regex(/^[1-9]\d{5}$/), setupLocation: text(300),
+  productsServices: text(300), targetCustomers: text(300), marketResearch: text(300),
+  rawMaterials: text(300), suppliers: text(300), fundingSources: text(300),
+  competition: text(300), prices: text(300), expectedMonthlyRevenue: text(300),
+  education: text(150), workBackground: text(300),
+  gender: z.enum(GENDERS).nullable(),
+  creditScore: z.number().int().min(300).max(900).nullable(),
 }).strict();
 const consentFields = {
   noticeVersion: z.enum(CONSENT_NOTICE_VERSIONS), language: z.enum(LANGUAGES),
@@ -37,7 +50,7 @@ const consentView = (consent: ConsentRecord) => ({
   method: consent.method, language: consent.language,
 });
 async function consentState(entrepreneurId: string) {
-  const active = await Consent.find({ entrepreneurId, status: 'active' }).lean();
+  const active = await Consent.find({ status: 'active' }).setOptions({ tenant: { entrepreneurId } }).lean();
   const find = (purpose: string, scope: string) => active.find(item => item.purpose === purpose && item.scope === scope);
   const processing = find('processing', 'all');
   return {
@@ -57,21 +70,56 @@ export function entrepreneurRouter(config: Config) {
   const self = (req: Request) => req.auth!.user.id;
 
   async function profileView(entrepreneurId: string) {
-    const record = await Entrepreneur.findById(entrepreneurId).select('+personal').lean();
-    if (record?.personal && !vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
+    const record = await Entrepreneur.findById(entrepreneurId).setOptions({ tenant: { _id: entrepreneurId } }).select('+personal +onboarding').lean();
+    if ((record?.personal || record?.onboarding) && !vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
     const personal = record?.personal && vault ? vault.open<{ name?: string; gender?: string | null }>(record.personal as Sealed, entrepreneurId) : {};
     const profile = {
       name: personal.name ?? null, gender: personal.gender ?? null,
-      district: record?.district ?? null, pincode: record?.pincode ?? null, trade: record?.trade ?? null,
+      district: record?.district ?? null, pincode: record?.pincode ?? null, state: record?.state ?? null, trade: record?.trade ?? null,
     };
     return {
       id: entrepreneurId, language: record?.language ?? null, profile,
       profileComplete: !!(profile.name && (profile.district || profile.pincode) && profile.trade),
+      onboardingComplete: !!record?.onboardingCompletedAt,
       consents: await consentState(entrepreneurId), noticeVersion: CONSENT_NOTICE_VERSION,
     };
   }
 
   router.get('/me', entrepreneurOnly, async (req, res) => { res.json(await profileView(self(req))); });
+
+  // A complete application is written once. Concurrent retries cannot replace the first answer set.
+  router.post('/me/onboarding', entrepreneurOnly, async (req, res) => {
+    const input = onboardingInput.parse(req.body);
+    const id = self(req);
+    if (!await hasProcessingConsent(id)) throw new HttpError(403, 'Give consent before saving onboarding details.');
+    if (!vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
+    const { name, gender, trade, district, state, pincode, ...answers } = input;
+    const current = await Entrepreneur.findById(id).setOptions({ tenant: { _id: id } }).select('+personal onboardingCompletedAt').lean();
+    if (current?.onboardingCompletedAt) throw new HttpError(409, 'Onboarding has already been completed.');
+    const previousPersonal = current?.personal ? vault.open<{ gender?: string | null }>(current.personal as Sealed, id) : {};
+    const personal = vault.seal({ ...previousPersonal, name, gender }, id);
+    const saved = await Entrepreneur.updateOne({ _id: id, onboardingCompletedAt: { $exists: false } }, {
+      $set: {
+        personal, onboarding: vault.seal(answers, id),
+        onboardingCompletedAt: new Date(), trade, district, state, pincode,
+      },
+      $setOnInsert: { userId: id, createdVia: 'self' },
+    }, { upsert: false, runValidators: true }).setOptions({ tenant: { _id: id } });
+    if (!saved.matchedCount) {
+      const existing = await Entrepreneur.findById(id).setOptions({ tenant: { _id: id } }).select('onboardingCompletedAt').lean();
+      if (existing?.onboardingCompletedAt) throw new HttpError(409, 'Onboarding has already been completed.');
+      try {
+        await Entrepreneur.create({ _id: id, userId: id, createdVia: 'self', personal,
+          onboarding: vault.seal(answers, id), onboardingCompletedAt: new Date(), trade, district, state, pincode });
+      } catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 11000) {
+          throw new HttpError(409, 'Onboarding has already been completed.');
+        }
+        throw error;
+      }
+    }
+    res.status(201).json(await profileView(id));
+  });
 
   router.put('/me', entrepreneurOnly, async (req, res) => {
     const input = profileInput.parse(req.body);
@@ -83,11 +131,12 @@ export function entrepreneurRouter(config: Config) {
     const update: Record<string, unknown> = { ...coarse, ...(language ? { language } : {}) };
     if (name !== undefined || gender !== undefined) {
       if (!vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
-      const existing = await Entrepreneur.findById(id).select('+personal').lean();
+      const existing = await Entrepreneur.findById(id).setOptions({ tenant: { _id: id } }).select('+personal').lean();
       const current = existing?.personal ? vault.open<{ name?: string; gender?: string | null }>(existing.personal as Sealed, id) : {};
       update.personal = vault.seal({ ...current, ...(name !== undefined ? { name } : {}), ...(gender !== undefined ? { gender } : {}) }, id);
     }
-    await Entrepreneur.updateOne({ _id: id }, { $set: update, $setOnInsert: { userId: id, createdVia: 'self' } }, { upsert: true, runValidators: true });
+    // Upsert: the key lives only in the scope (MongoDB cannot seed an insert from a path matched twice).
+    await Entrepreneur.updateOne({}, { $set: update, $setOnInsert: { userId: id, createdVia: 'self' } }, { upsert: true, runValidators: true }).setOptions({ tenant: { _id: id } });
     res.json(await profileView(id));
   });
 
@@ -115,13 +164,13 @@ export function entrepreneurRouter(config: Config) {
 
   // M-12 basis: the caller's own ideas and their current status, via the shared scope.
   router.get('/me/submissions', entrepreneurOnly, async (req, res) => {
-    const submissions = await Submission.find(submissionScope(req.auth!)).select('title status').sort({ _id: -1 }).lean();
+    const submissions = await Submission.find({}).setOptions({ tenant: submissionScope(req.auth!) }).select('title status').sort({ _id: -1 }).lean();
     res.json({ submissions: submissions.map(item => ({ id: String(item._id), title: item.title, status: item.status })) });
   });
 
   // M-18: a facilitator sees only submissions they created, with contact details (PRD §4 permission matrix).
   router.get('/assisted/submissions', requirePermission('submit_assisted'), async (req, res) => {
-    const submissions = await Submission.find(submissionScope(req.auth!)).select('title status applicant').sort({ _id: -1 }).lean();
+    const submissions = await Submission.find({}).setOptions({ tenant: submissionScope(req.auth!) }).select('title status applicant').sort({ _id: -1 }).lean();
     res.json({ submissions: submissions.map(item => ({ id: String(item._id), title: item.title, status: item.status,
       applicant: { name: item.applicant?.name ?? null, phone: item.applicant?.phone ?? null } })) });
   });
@@ -129,7 +178,7 @@ export function entrepreneurRouter(config: Config) {
   // M-15: which organisations can see each idea now, and why. Partners appear only with an active share.
   router.get('/me/passport', entrepreneurOnly, async (req, res) => {
     const id = self(req);
-    const submissions = await Submission.find(submissionScope(req.auth!)).select('title status ownerOrgId sourceOrgId shares').lean();
+    const submissions = await Submission.find({}).setOptions({ tenant: submissionScope(req.auth!) }).select('title status ownerOrgId sourceOrgId shares').lean();
     const orgIds = new Set<string>();
     for (const item of submissions) {
       orgIds.add(String(item.ownerOrgId));
@@ -155,7 +204,7 @@ export function entrepreneurRouter(config: Config) {
   });
 
   // Intake and assisted mode live in this module and mount through this router (no extra app.ts edit).
-  router.use(intakeRouter());
+  router.use(intakeRouter(config));
   router.use(assistedRouter(config));
   return router;
 }

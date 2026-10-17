@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReviewSample",
+  "description": "W-06 second-review sampling: HQ re-reads a sample of centre decisions and records whether it agrees. One verdict per decision; feeds the agreement rate per centre. Notes must not repeat applicant personal data.",
+  "x-collection": "reviewSamples",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decisionId", "submissionId", "ownerOrgId", "reviewerUserId", "agrees"],
+  "properties": {
+    "decisionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "reviewerUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "agrees": { "type": "boolean" },
+    "suggestedDecision": { "type": "string", "enum": ["shortlist", "not_yet", "more_info"] },
+    "note": { "type": "string", "maxLength": 400 },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

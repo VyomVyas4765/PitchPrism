@@ -26,18 +26,19 @@
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Phone number login with OTP",
-    "implementation": "Phone OTP and API session exchange",
+    "implementation": "Email and password sign-in and entrepreneur self-registration (D-27 supersedes phone OTP)",
     "execution": "Flutter mobile + API; Android primary, iOS development build",
-    "local_strategy": "Firebase Auth is identity, separate from the hosted AI budget",
+    "local_strategy": "API sessions; no Firebase, SMS or OTP provider",
     "dependencies": [
       "Auth/consent contracts",
       "Private submission API",
       "Local worker capabilities where required"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
-    "acceptance_test": "Configured test-phone sign-in, expiry and invalid-code/device checks",
-    "status": "foundation_partial",
+    "acceptance_test": "Register, sign in, expiry and wrong-password checks on an iPhone",
+    "status": "device_pending",
     "evidence": [
+      "app/test/auth_entry_test.dart",
       "backend/tests/auth.test.ts",
       "docs/auth.md"
     ]
@@ -68,21 +69,22 @@
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Short profile by voice or tap: name, district or pincode, trade or skill, optional gender",
-    "implementation": "Profile by voice or tap",
-    "execution": "Flutter mobile + API; Android primary, iOS development build",
-    "local_strategy": "Local speech adapter when validated; form fallback",
+    "implementation": "One-time iOS tap form after consent with encrypted applicant contact/background, credit score, location and ten EDP idea-brief answers; voice input pending",
+    "execution": "Flutter iOS mobile + scoped API and MongoDB",
+    "local_strategy": "Tap form in six draft locales; local speech adapter only when validated, no hosted AI",
     "dependencies": [
       "Auth/consent contracts",
       "Private submission API",
       "Local worker capabilities where required"
     ],
-    "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
-    "acceptance_test": "Profile edit persists without leaking sensitive attributes to models",
+    "cost_exposure": "No hosted AI calls; MongoDB profile storage and iOS device costs remain. No SMS/OTP sign-in (D-27).",
+    "acceptance_test": "After language, email sign-in and consent, iOS form validates every field, saves once, blocks repeat and cross-user writes, and seals contact/background/answers. Verify on device and review draft translations; voice input remains pending.",
     "status": "client_partial",
     "evidence": [
       "backend/src/modules/entrepreneur/README.md",
       "backend/tests/entrepreneur.test.ts",
       "app/lib/entrepreneur/profile_screen.dart",
+      "app/lib/entrepreneur/onboarding_copy.dart",
       "app/test/onboarding_test.dart"
     ]
   },
@@ -100,14 +102,16 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Each source format reaches the same submission pipeline",
-    "status": "client_partial",
+    "status": "device_pending",
     "evidence": [
       "docs/duties/dev-1-intake-proposal.md",
       "app/lib/intake/pitch_screen.dart",
       "backend/src/modules/entrepreneur/intake-router.ts",
       "backend/tests/intake.test.ts",
       "app/test/outbox_test.dart",
-      "app/test/intake_ui_test.dart"
+      "app/test/intake_ui_test.dart",
+      "app/lib/intake/transcript_screen.dart",
+      "app/test/accessibility_test.dart"
     ]
   },
   "M-06": {
@@ -124,14 +128,17 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Pause/re-record works and evidence retains timestamps",
-    "status": "client_partial",
+    "status": "device_pending",
     "evidence": [
       "data/seed/question-bank.json",
       "ai/tests/test_question_bank.py",
       "app/lib/intake/record_tile.dart",
       "backend/tests/intake.test.ts",
       "app/test/outbox_test.dart",
-      "app/test/intake_ui_test.dart"
+      "app/test/intake_ui_test.dart",
+      "app/lib/intake/pitch_screen.dart",
+      "app/lib/intake/transcript_screen.dart",
+      "app/test/accessibility_test.dart"
     ]
   },
   "M-07": {
@@ -148,8 +155,14 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Five-minute recordings preserve source and resume upload",
-    "status": "planned",
-    "evidence": []
+    "status": "device_pending",
+    "evidence": [
+      "app/lib/intake/pitch_screen.dart",
+      "app/lib/intake/transcript_screen.dart",
+      "app/test/intake_ui_test.dart",
+      "app/test/accessibility_test.dart",
+      "backend/tests/intake.test.ts"
+    ]
   },
   "M-08": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -165,8 +178,14 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Original segments remain addressable after corrections",
-    "status": "planned",
-    "evidence": []
+    "status": "device_pending",
+    "evidence": [
+      "app/lib/intake/pitch_screen.dart",
+      "app/lib/intake/transcript_screen.dart",
+      "app/test/intake_ui_test.dart",
+      "app/test/accessibility_test.dart",
+      "backend/tests/intake.test.ts"
+    ]
   },
   "M-09": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -182,8 +201,12 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Missing-field answers re-enter ingestion without losing history",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": [
+      "app/lib/entrepreneur/followup_screen.dart",
+      "app/test/followup_test.dart"
+    ],
+    "notes": "Typed English answers in the app (with \"not decided yet\"); voice questions and answers pending. The widget test needs Flutter 3.47 to run."
   },
   "M-10": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -380,9 +403,15 @@
       "Local worker capabilities where required"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
-    "acceptance_test": "Measure install/download sizes and memory on 2 GB target; Android 8+",
-    "status": "planned",
-    "evidence": []
+    "acceptance_test": "iPhone tap targets/labels pass; size and memory measured on device (Android deferred by D-27)",
+    "status": "device_pending",
+    "evidence": [
+      "app/lib/intake/pitch_screen.dart",
+      "app/lib/intake/transcript_screen.dart",
+      "app/test/intake_ui_test.dart",
+      "app/test/accessibility_test.dart",
+      "backend/tests/intake.test.ts"
+    ]
   },
   "M-20": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -465,15 +494,17 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate org/user invitations and role setup with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "api_ui_partial",
+    "status": "implemented",
     "evidence": [
-      "backend/tests/auth.test.ts",
-      "docs/auth.md",
-      "backend/src/modules/hq/router.ts",
-      "backend/tests/access.test.ts",
-      "frontend/features/hq/AccessAdmin.tsx",
-      "frontend/app/accept-invite/page.tsx"
-    ]
+      "backend/tests/hq.test.ts",
+      "backend/src/modules/hq/staff.ts",
+      "backend/src/modules/hq/admin.ts",
+      "frontend/features/hq/TeamPanel.tsx",
+      "frontend/app/accept-invite/page.tsx",
+      "frontend/app/reset-password/page.tsx",
+      "frontend/app/account/page.tsx"
+    ],
+    "notes": "Includes Arnav's first build's ideas, password reset links and self-service password change. Links are passed on by the inviter; no email provider by design."
   },
   "W-02": {
     "owner": "dev-3-hq-platform",
@@ -488,8 +519,13 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate programme/rubric version administration with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/hq.test.ts",
+      "ai/tests/test_rubric_scoring.py",
+      "frontend/features/hq/RubricBuilder.tsx"
+    ],
+    "notes": "Form and visual builder (prism weights, band scale, pathway rules, completeness, live score preview, diff). Published versions drive scoring in the worker."
   },
   "W-03": {
     "owner": "dev-3-hq-platform",
@@ -504,8 +540,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate cross-org pipeline filtering with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts",
+      "backend/src/modules/hq/reports.ts",
+      "frontend/features/hq/ReportPanels.tsx"
+    ]
   },
   "W-04": {
     "owner": "dev-3-hq-platform",
@@ -519,11 +559,13 @@
       "Role/org/consent guards; shared contracts"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate rule form and permitted projection; verify missing or revoked consent blocks partner access, cross-org denial, loading/error/empty states, and audit history.",
-    "status": "api_partial",
+    "acceptance_test": "Demonstrate partner routing-rule administration with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
+    "status": "implemented",
     "evidence": [
-      "backend/tests/hq-admin.test.ts"
-    ]
+      "backend/tests/hq.test.ts",
+      "backend/src/modules/hq/admin.ts"
+    ],
+    "notes": "Rules suggest partners only; applying them to shares waits for Dev 2 routing (A-27) and consent checks."
   },
   "W-05": {
     "owner": "dev-3-hq-platform",
@@ -538,8 +580,10 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate hq funnel analytics with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts"
+    ]
   },
   "W-06": {
     "owner": "dev-3-hq-platform",
@@ -554,8 +598,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate human second-review samples with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts",
+      "packages/contracts/schemas/domain/review-sample.json"
+    ]
   },
   "W-07": {
     "owner": "dev-3-hq-platform",
@@ -570,8 +617,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate fairness monitoring with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts"
+    ],
+    "notes": "Fills in as evaluations are written; groups under the minimum size are shown but not compared."
   },
   "W-08": {
     "owner": "dev-3-hq-platform",
@@ -586,8 +636,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate append-only audit viewer with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts",
+      "backend/src/platform/audit.ts"
+    ]
   },
   "W-09": {
     "owner": "dev-2-centre-cohort",
@@ -941,8 +994,13 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate idea-cluster map with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/idea-map.test.ts",
+      "backend/tests/reports.test.ts",
+      "frontend/features/hq/IdeaMapPanel.tsx"
+    ],
+    "notes": "Lexical similarity (TF-IDF, PCA, k-means) until A-19 semantic embeddings exist; then only the vectors change."
   },
   "W-28": {
     "owner": "dev-2-centre-cohort",
@@ -1020,10 +1078,10 @@
       "Role/org/consent guards; shared contracts"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate cohort/trade admin with loading/error/empty states, contract validation and audit; test HQ versus centre scope, cross-org denial and permitted projection.",
-    "status": "api_partial",
+    "acceptance_test": "Demonstrate cohort/trade admin with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
+    "status": "implemented",
     "evidence": [
-      "backend/tests/hq-admin.test.ts"
+      "backend/tests/hq.test.ts"
     ]
   },
   "W-33": {
@@ -1039,8 +1097,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate model quality/eval reporting with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts",
+      "packages/contracts/schemas/domain/eval-run.json"
+    ],
+    "notes": "Each harness report is recorded once as an evalRun; latest run, history, parity, latency and cost. Numbers appear once Dev 2 runs the harness on the organiser data."
   },
   "W-34": {
     "owner": "dev-2-centre-cohort",
@@ -1090,7 +1152,8 @@
     "evidence": [
       "docs/duties/dev-1-intake-proposal.md",
       "backend/src/modules/entrepreneur/storage.ts",
-      "backend/tests/intake.test.ts"
+      "backend/tests/intake.test.ts",
+      "backend/src/modules/entrepreneur/processing.ts"
     ]
   },
   "A-02": {
@@ -1135,14 +1198,17 @@
     "requirement": "Transcribe chunks in parallel within Sarvam's rate limits, with language detected per chunk; output segments with ID, language, text, start and end",
     "implementation": "Six-language transcription with per-chunk language",
     "execution": "worker; optional Android after capability checks",
-    "local_strategy": "Local STT candidate TBD after six-language evaluation",
+    "local_strategy": "faster-whisper small (MIT) via local/models; hi/mr/te/bn/en supported but unevaluated; Odia has no local model and stays pending",
     "dependencies": [
       "Audio chunks; local model/runtime"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Evaluate all aud-* files, code mixing, timestamps and language labels",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/local_models.py",
+      "docs/benchmarks/dev1-local-models-2026-10-17.json"
+    ]
   },
   "A-05": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1150,16 +1216,18 @@
     "requirement": "Extract text spans with bounding box, font and colour, plus drawn lines and table rules; rebuild question and answer cells from the layout, not the content-stream order",
     "implementation": "English digital EDP and Business Idea form-fillup families: EDP fixed anchors and form-fillup printed-question/right-column pairing with source boxes, missing/not-asked states, affirmative existing-business experience evidence, local redaction and fail-closed mapping; general PDFs/OCR pending Dev 1",
     "execution": "worker",
-    "local_strategy": "pdfplumber text-layer extraction with printed-question anchors for the English form-fillup family; no hosted document API",
+    "local_strategy": "pdfplumber + pypdfium2 (permissive) geometry; organiser PDFs not yet run",
     "dependencies": [
       "Private PDFs; source-anchor contract"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
-    "acceptance_test": "EDP and six local English form-fillup examples map recognized answers with page/bbox anchors and safe redaction; a synthetic affirmative existing-business answer supplies cited experience, while negative/blank/omitted answers do not. Unsupported forms fail. Broader layout and six-language accuracy still pending.",
+    "acceptance_test": "Spans/bboxes/lines reconstruct Q&A independent of stream order",
     "status": "worker_partial",
     "evidence": [
-      "ai/ingest/edp_pdf.py",
-      "ai/tests/test_edp_groq.py"
+      "ai/ingest/pdf.py",
+      "ai/tests/test_ingest_pdf_ocr.py",
+      "ai/ingest/run.py",
+      "ai/tests/test_ingest_pipeline.py"
     ]
   },
   "A-06": {
@@ -1174,8 +1242,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Corrupt MR/TE/HI samples rerender and reread with confidence",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/language.py",
+      "ai/tests/test_ingest_pdf_ocr.py"
+    ]
   },
   "A-07": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1183,14 +1254,17 @@
     "requirement": "Render pages at 300 dpi; detect blur and skew; read with Sarvam Document AI, falling back to a vision model for handwriting with low confidence; resolve ditto marks in tables; return per-region confidence",
     "implementation": "Scans, layout, handwriting and low-confidence crops",
     "execution": "worker",
-    "local_strategy": "Local OCR/vision candidates; model choice not locked",
+    "local_strategy": "Tesseract 5 + tessdata_best six languages; handwriting accuracy unknown; no vision fallback installed",
     "dependencies": [
       "Rendering; model licence/RAM/language evaluation"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Handwritten organiser samples meet eval targets or remain explicitly unreadable",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/ocr.py",
+      "docs/benchmarks/dev1-local-models-2026-10-17.json"
+    ]
   },
   "A-08": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1204,8 +1278,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Final corrected values match manifest while struck originals remain linked",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/pdf.py",
+      "ai/ingest/run.py",
+      "ai/tests/test_ingest_pipeline.py"
+    ]
   },
   "A-09": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1218,12 +1296,13 @@
       "Question bank; Segment/QA contracts"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
-    "acceptance_test": "Synthetic shifted rows and six local English form-fillups distinguish answered, missing and not-asked with source boxes; unknown-Q retention and multilingual custom-form mapping remain pending",
+    "acceptance_test": "Custom/changed forms distinguish missing, not asked and unknown Q&A",
     "status": "worker_partial",
     "evidence": [
       "data/seed/question-bank.json",
-      "ai/ingest/edp_pdf.py",
-      "ai/tests/test_edp_groq.py"
+      "ai/ingest/structure.py",
+      "ai/ingest/run.py",
+      "ai/tests/test_ingest_pipeline.py"
     ]
   },
   "A-10": {
@@ -1242,7 +1321,9 @@
     "evidence": [
       "ai/ingest/pii.py",
       "ai/tests/test_ingest_pii.py",
-      "backend/src/modules/entrepreneur/pii-vault.ts"
+      "backend/src/modules/entrepreneur/pii-vault.ts",
+      "ai/ingest/run.py",
+      "ai/tests/test_ingest_pipeline.py"
     ]
   },
   "A-11": {
@@ -1251,14 +1332,18 @@
     "requirement": "Identify the language of every answer separately; translate each segment to English, keeping its ID; transliterate on request. Code-mixed answers are translated whole, never truncated to one language",
     "implementation": "Per-answer language, translation and transliteration",
     "execution": "worker",
-    "local_strategy": "Local multilingual model candidates; immutable originals and content cache",
+    "local_strategy": "Rule-based per-answer language ID; IndicTrans2 Indic→English (MIT, code reviewed and hash-pinned) as the local translator; Opus-MT rejected",
     "dependencies": [
       "Redacted segments; six-language benchmark"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Six languages/code mixing retain segIds and satisfy parity targets",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/language.py",
+      "ai/ingest/local_models.py",
+      "docs/benchmarks/dev1-local-models-2026-10-17.json"
+    ]
   },
   "A-12": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1275,9 +1360,8 @@
     "status": "worker_partial",
     "evidence": [
       "packages/contracts/fixtures/extracted-input/README.md",
-      "ai/ingest/edp_pdf.py",
-      "ai/intel/pdf_cli.py",
-      "ai/tests/test_edp_groq.py"
+      "ai/ingest/run.py",
+      "ai/tests/test_ingest_pipeline.py"
     ]
   },
   "A-13": {
@@ -1345,8 +1429,13 @@
     "acceptance_test": "3–5 useful questions, original language, answers rerun correct stages",
     "status": "partial",
     "evidence": [
-      "ai/intel/narrative.py"
-    ]
+      "ai/review/session.py",
+      "ai/worker.py",
+      "backend/src/modules/entrepreneur/followup-router.ts",
+      "ai/tests/test_worker_review.py",
+      "backend/tests/followups.test.ts"
+    ],
+    "notes": "Text pitches (D-33): up to 3 questions a round until every topic is answered or declined; answers re-run extraction. English only; translation and voice pending; imported-file requests for information pending."
   },
   "A-17": {
     "owner": "dev-2-centre-cohort",
@@ -1543,17 +1632,21 @@
     "requirement": "Publish each stage's result as it finishes, so the dashboard card fills in progressively over server-sent events",
     "implementation": "MongoDB job leases emit durable stage records and a scoped SSE route supports Last-Event-ID replay. Real ingestion/intelligence stages and incremental card rendering remain pending",
     "execution": "worker + API + web",
-    "local_strategy": "MongoDB leases, capped stage events and scoped SSE; no Redis or hosted AI. A missing local handler records capability_unavailable.",
+    "local_strategy": "MongoDB job leases and durable capped stage events followed by a tailable cursor, scoped SSE; no Redis or hosted AI",
     "dependencies": [
       "StageEvent contract; tenancy; persisted results"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
-    "acceptance_test": "Events scoped to viewer; reconnect does not lose or invent completed stages, including role changes and share revocation; card shows actual persisted stages within the target time after real handlers are integrated.",
-    "status": "api_partial",
+    "acceptance_test": "Events scoped to viewer; reconnect does not lose or invent completed stages",
+    "status": "implemented",
     "evidence": [
-      "backend/tests/queue.test.ts",
-      "backend/tests/events.test.ts"
-    ]
+      "backend/tests/pipeline.test.ts",
+      "ai/tests/test_jobqueue.py",
+      "ai/tests/test_worker.py",
+      "ai/worker.py",
+      "frontend/features/pipeline/LiveStages.tsx"
+    ],
+    "notes": "Each stage is published as it finishes and the centre card fills in over SSE (scoped, resumable). Intake stages run when Dev 1 adds them to the worker; until then they are skipped for already-extracted evidence and fail visibly otherwise."
   },
   "A-29": {
     "owner": "dev-3-hq-platform",
@@ -1567,14 +1660,12 @@
     ],
     "cost_exposure": "Metered Groq tokens for the centre exception; compute, storage and hosting separate. Cost-per-run and budget alerts pending.",
     "acceptance_test": "Log model/latency/tokens/API cost without prompts/PII; attempt blocks visible",
-    "status": "worker_partial",
+    "status": "implemented",
     "evidence": [
-      "ai/llm/adapter.py",
-      "ai/tests/test_local_runtime.py",
-      "backend/tests/queue.test.ts",
-      "ai/intel/groq.py",
-      "backend/src/modules/centre/model.ts"
-    ]
+      "backend/tests/pipeline.test.ts",
+      "backend/tests/reports.test.ts"
+    ],
+    "notes": "Timings and model use are recorded per stage; numbers fill in when the worker runs real stages."
   },
   "A-30": {
     "owner": "dev-2-centre-cohort",

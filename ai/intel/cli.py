@@ -5,11 +5,13 @@ import sys
 
 from jsonschema import Draft202012Validator
 
-from ai.config import PolicyViolation, Settings
+from ai.config import PolicyViolation
 from ai.intel.finance import check_finances
 from ai.intel.scoring import InvalidEvidence, evaluate, prepare_input, quality
 from ai.intel.narrative import feedback_draft, followups, summary_plan
-from ai.llm.adapter import LocalJsonAdapter, ModelOutputError
+from ai.llm.adapter import ModelOutputError
+from ai.llm.factory import make_adapter
+from ai.llm.groq import RateLimited
 from ai.providers import CapabilityUnavailable
 
 
@@ -28,11 +30,11 @@ def main():
         _, _, valid_ids = prepare_input(idea)
         checks = check_finances(idea.get("financials", {}), valid_ids)
         try:
-            result = evaluate(idea, LocalJsonAdapter(Settings.from_env()))
+            result = evaluate(idea, make_adapter())
             print(json.dumps({"status": "assessed", "evaluation": {**result, "financialChecks": checks,
                             "followUps": followups(idea), "planDraft": summary_plan(idea),
                             "feedbackDraft": feedback_draft(result)}}, ensure_ascii=False))
-        except (CapabilityUnavailable, ModelOutputError, PolicyViolation):
+        except (CapabilityUnavailable, ModelOutputError, PolicyViolation, RateLimited):
             # The quality and deterministic arithmetic remain useful, but no potential score is fabricated.
             print(json.dumps({"status": "pending_model", "quality": quality(idea), "financialChecks": checks,
                               "followUps": followups(idea), "planDraft": summary_plan(idea),

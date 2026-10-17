@@ -1,4 +1,4 @@
-.PHONY: worker worker-setup worker-check worker-test
+.PHONY: worker worker-setup worker-check worker-test pipeline
 PYTHON ?= python3.11
 
 worker-setup:
@@ -7,6 +7,9 @@ worker-setup:
 
 worker:
 	ai/.venv/bin/python -m ai
+
+pipeline:
+	ai/.venv/bin/python -m ai.worker
 
 worker-check:
 	ai/.venv/bin/python -m ai --check-runtime

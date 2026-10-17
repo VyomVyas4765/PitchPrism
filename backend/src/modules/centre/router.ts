@@ -2,8 +2,9 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { HttpError } from '../../errors.js';
-import { requirePermission, scoped, submissionScope } from '../../auth/authorization.js';
-import { AuditEvent, Entrepreneur, Submission } from '../../models.js';
+import { requirePermission, submissionScope } from '../../auth/authorization.js';
+import { Submission } from '../../models.js';
+import { recordAudit } from '../../platform/audit.js';
 import { CentreCase } from './model.js';
 import { assessLocally, assessPdfWithGroq, type AssessmentResult, type PdfAssessment } from './runner.js';
 import { planIntakeRouter } from './plan-intake.js';
@@ -53,24 +54,21 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
   router.get('/queue', async (req, res) => {
     const actor = req.auth!.user;
     const match = actor.role === 'hq_admin' ? {} : { ownerOrgId: actor.orgId };
-    const submissions = await Submission.find(scoped(submissionScope(req.auth!), {}))
-      .select('title status ownerOrgId').sort({ _id: -1 }).limit(100).lean();
-    const cases = await CentreCase.find({ ...match, submissionId: { $in: submissions.map(item => item._id) } }).lean();
-    const byId = new Map(cases.map(item => [String(item.submissionId), item]));
-    res.json({ items: submissions.map(submission => {
-      const item = byId.get(String(submission._id));
-      return {
-        submissionId: String(submission._id), title: submission.title,
-        state: item?.state ?? 'PENDING_MODEL', status: submission.status, reviewAvailable: !!item,
-        potential: item?.evaluation?.potential ?? null, completeness: item?.evaluation?.completeness ?? item?.quality?.completeness ?? null,
-        band: item?.evaluation?.band ?? null, updatedAt: item?.updatedAt ?? submission._id.getTimestamp(),
-      };
-    }) });
+    const cases = await CentreCase.find(match).sort({ updatedAt: -1 }).limit(100).lean();
+    const submissions = await Submission.find({ _id: { $in: cases.map(item => item.submissionId) } }).setOptions({ tenant: submissionScope(req.auth!) })
+      .select('title status ownerOrgId').lean();
+    const byId = new Map(submissions.map(item => [String(item._id), item]));
+    res.json({ items: cases.filter(item => byId.has(String(item.submissionId))).map(item => ({
+      submissionId: String(item.submissionId), title: byId.get(String(item.submissionId))!.title,
+      state: item.state, status: byId.get(String(item.submissionId))!.status,
+      potential: item.evaluation?.potential ?? null, completeness: item.evaluation?.completeness ?? item.quality?.completeness ?? null,
+      band: item.evaluation?.band ?? null, updatedAt: item.updatedAt,
+    })) });
   });
 
   router.post('/submissions/:id/assessment', async (req, res) => {
     const submissionId = id.parse(req.params.id);
-    const submission = await Submission.findOne(scoped(submissionScope(req.auth!), { _id: submissionId }));
+    const submission = await Submission.findOne({ _id: submissionId }).setOptions({ tenant: submissionScope(req.auth!) });
     if (!submission) throw new HttpError(404, 'Submission not found.');
     if (!await hasProcessingConsent(submission.entrepreneurId))
       throw new HttpError(403, 'Active processing consent is required before assessment.');
@@ -97,7 +95,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     if (result.status === 'assessed' && ['DRAFT', 'READY', 'UNASSESSABLE'].includes(submission.status)) {
       submission.status = state === 'UNASSESSABLE' ? 'UNASSESSABLE' : 'READY'; await submission.save();
     }
-    await AuditEvent.create({ actorUserId: req.auth!.user.id, action: 'score', resourceType: 'Submission', resourceId: String(submission._id), metadata: { state } });
+    await recordAudit(req.auth, 'submission.score', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, { state });
     res.status(previous ? 200 : 201).json({ submissionId, state: record!.state, evaluation: record!.evaluation,
       quality: record!.quality, financialChecks: record!.financialChecks, followUps: record!.followUps,
       planDraft: record!.planDraft, reason: record!.reason });
@@ -156,7 +154,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
 
   router.get('/submissions/:id/card', async (req, res) => {
     const submissionId = id.parse(req.params.id);
-    const submission = await Submission.findOne({ _id: submissionId, ...submissionScope(req.auth!) }).lean();
+    const submission = await Submission.findOne({ _id: submissionId }).setOptions({ tenant: submissionScope(req.auth!) }).lean();
     if (!submission) throw new HttpError(404, 'Submission not found.');
     const item = await CentreCase.findOne({ submissionId, ownerOrgId: submission.ownerOrgId }).lean();
     if (!item) throw new HttpError(404, 'Assessment has not started.');
@@ -170,7 +168,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
   router.post('/submissions/:id/decision', async (req, res) => {
     const submissionId = id.parse(req.params.id);
     const input = decisions.parse(req.body);
-    const submission = await Submission.findOne({ _id: submissionId, ...submissionScope(req.auth!) });
+    const submission = await Submission.findOne({ _id: submissionId }).setOptions({ tenant: submissionScope(req.auth!) });
     if (!submission) throw new HttpError(404, 'Submission not found.');
     const item = await CentreCase.findOne({ submissionId, ownerOrgId: submission.ownerOrgId });
     if (!item || !item.evaluation || item.state === 'PENDING_MODEL' || item.state === 'UNASSESSABLE')
@@ -187,14 +185,14 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     await item.save();
     submission.status = input.decision === 'shortlist' ? 'SHORTLISTED' : input.decision === 'not_yet' ? 'NOT_YET' : 'MORE_INFO';
     await submission.save();
-    await AuditEvent.create({ actorUserId: req.auth!.user.id, action: 'decision', resourceType: 'Submission', resourceId: String(submission._id), metadata: { decision: input.decision, override: !!(override || bandOverride) } });
+    await recordAudit(req.auth, 'decision.record', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, { decision: input.decision, override: !!(override || bandOverride) });
     res.json({ decision: item.decision, status: submission.status });
   });
 
   router.put('/submissions/:id/feedback', async (req, res) => {
     const submissionId = id.parse(req.params.id);
     const { textEn } = z.object({ textEn: z.string().trim().min(10).max(4000) }).strict().parse(req.body);
-    const submission = await Submission.findOne({ _id: submissionId, ...submissionScope(req.auth!) }).lean();
+    const submission = await Submission.findOne({ _id: submissionId }).setOptions({ tenant: submissionScope(req.auth!) }).lean();
     if (!submission) throw new HttpError(404, 'Submission not found.');
     const item = await CentreCase.findOne({ submissionId, ownerOrgId: submission.ownerOrgId });
     if (!item) throw new HttpError(404, 'Assessment has not started.');

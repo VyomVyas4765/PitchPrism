@@ -5,9 +5,10 @@ import styles from './hq.module.css';
 import TeamPanel from './TeamPanel';
 import { OrganisationsPanel, ProgrammesPanel, RoutingPanel, RubricsPanel, TradesPanel } from './ConfigPanels';
 import { AuditPanel, FairnessPanel, OverviewPanel, PipelinePanel, SamplingPanel } from './ReportPanels';
+import IdeaMapPanel from './IdeaMapPanel';
 
 const TABS = [
-  { key: 'overview', label: 'Overview' }, { key: 'pipeline', label: 'Pipeline' }, { key: 'fairness', label: 'Fairness' },
+  { key: 'overview', label: 'Overview' }, { key: 'pipeline', label: 'Pipeline' }, { key: 'map', label: 'Idea map' }, { key: 'fairness', label: 'Fairness' },
   { key: 'sampling', label: 'Second review' }, { key: 'audit', label: 'Audit' },
   { key: 'orgs', label: 'Organisations' }, { key: 'team', label: 'Team' }, { key: 'programmes', label: 'Programmes and cohorts' },
   { key: 'rubrics', label: 'Rubrics' }, { key: 'trades', label: 'Trades' }, { key: 'routing', label: 'Routing' },
@@ -31,6 +32,7 @@ export default function HqWorkspace({ user }: { user: SessionUser }) {
     <div id="hq-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
       {tab === 'overview' && <OverviewPanel />}
       {tab === 'pipeline' && <PipelinePanel />}
+      {tab === 'map' && <IdeaMapPanel />}
       {tab === 'fairness' && <FairnessPanel />}
       {tab === 'sampling' && <SamplingPanel />}
       {tab === 'audit' && <AuditPanel />}

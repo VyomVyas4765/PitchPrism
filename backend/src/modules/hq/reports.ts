@@ -8,6 +8,8 @@ import { HttpError } from '../../errors.js';
 import { AuditLog, Cohort, Decision, EvalRun, Job, Org, Outcome, PipelineRun, ReviewSample, Submission, User } from '../../models.js';
 import { recordAudit } from '../../platform/audit.js';
 import { objectId } from '../../platform/validation.js';
+import { CentreCase } from '../centre/model.js';
+import { layout } from './idea-map.js';
 
 // HQ reporting (W-03 pipeline, W-05 funnel, W-06 sampling, W-07 fairness, W-08 audit, W-33 model quality,
 // A-29 pipeline health). HQ reads across organisations, so tenant queries are explicitly unscoped ({}).
@@ -290,6 +292,43 @@ export function hqReportsRouter() {
       entries: page.map(row => ({ id: String(row._id), at: row.at, action: row.action, outcome: row.outcome, actor: row.actorUserId ? actors[String(row.actorUserId)] ?? 'Removed user' : 'System',
         actorRole: row.actorRole ?? null, actorOrg: row.orgId ? orgs[String(row.orgId)] ?? null : null, targetType: row.targetType, targetId: row.targetId ?? null,
         targetOrg: row.targetOrgId ? orgs[String(row.targetOrgId)] ?? null : null, meta: row.meta ?? {} })) });
+  });
+
+  // ---- W-27 idea map: ideas placed by similarity of their fingerprint (trade, offering, customers), with named
+  // clusters and saturation alerts where one district already has several similar ideas.
+  router.get('/idea-map', analytics, async (req, res) => {
+    const query = z.object({ orgId: objectId.optional(), cohortId: objectId.optional(), saturation: z.coerce.number().int().min(2).max(50).default(3) }).strict().parse(req.query);
+    const LIMIT = 3000;
+    const submissions = await Submission.find({ ...(query.orgId ? { ownerOrgId: query.orgId } : {}), ...(query.cohortId ? { cohortId: query.cohortId } : {}), status: { $ne: 'DRAFT' } })
+      .setOptions(ALL).sort({ _id: -1 }).limit(LIMIT + 1).select('title summaryEn tradeKey sector cohortId ownerOrgId location status').lean();
+    const page = submissions.slice(0, LIMIT);
+    const cases = await CentreCase.find({ submissionId: { $in: page.map(item => item._id) } }).select('submissionId input').lean();
+    const caseFor = new Map(cases.map(item => [String(item.submissionId), item.input as { segments?: Array<{ segId: string; textEn?: string }>;
+      fields?: Record<string, { state?: string; evidence?: string[] }>; context?: { businessType?: string; plannedBusinessLocation?: { district?: string } } } | undefined]));
+    const evidenceText = (input: ReturnType<typeof caseFor.get>, field: string) => {
+      const ids = new Set(input?.fields?.[field]?.state === 'answered' ? input.fields[field]!.evidence ?? [] : []);
+      return (input?.segments ?? []).filter(segment => ids.has(segment.segId)).map(segment => segment.textEn ?? '').join(' ');
+    };
+    const ideas = page.map(item => {
+      const input = caseFor.get(String(item._id));
+      const district = input?.context?.plannedBusinessLocation?.district ?? (item.location as { district?: string } | undefined)?.district ?? null;
+      const text = [item.title, item.summaryEn, item.tradeKey?.replaceAll('_', ' '), item.sector, input?.context?.businessType,
+        evidenceText(input, 'offering'), evidenceText(input, 'customers')].filter(Boolean).join(' ');
+      return { item, district, text };
+    });
+    const { points, clusters } = layout(ideas.map(idea => ({ id: String(idea.item._id), text: idea.text })));
+    const [orgs, cohorts] = await Promise.all([names(Org, page.map(item => item.ownerOrgId)), names(Cohort, page.map(item => item.cohortId))]);
+    const alerts = clusters.flatMap(group => {
+      const byDistrict = new Map<string, number>();
+      points.forEach((point, i) => { const district = ideas[i]!.district; if (point.cluster === group.id && district) byDistrict.set(district, (byDistrict.get(district) ?? 0) + 1); });
+      return [...byDistrict.entries()].filter(([, count]) => count >= query.saturation)
+        .map(([district, count]) => ({ cluster: group.id, label: group.label, district, count }));
+    }).sort((a, b) => b.count - a.count);
+    res.json({ method: 'lexical', note: 'Placed by words the ideas share (trade, offering, customers), not by meaning. Semantic embeddings (A-19) will replace this when available.',
+      total: page.length, truncated: submissions.length > LIMIT, clusters, alerts,
+      points: points.map((point, i) => { const { item, district } = ideas[i]!;
+        return { ...point, title: item.title ?? 'Untitled idea', status: item.status, tradeKey: item.tradeKey ?? null, district,
+          centre: orgs[String(item.ownerOrgId)] ?? null, cohort: item.cohortId ? cohorts[String(item.cohortId)] ?? null : null }; }) });
   });
 
   // ---- W-33 model quality: evaluation-harness runs (ai/eval/harness.py). A new report file is recorded once as an

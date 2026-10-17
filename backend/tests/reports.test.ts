@@ -49,7 +49,7 @@ beforeEach(async () => {
 
 describe('HQ reports', () => {
   it('are HQ only', async () => {
-    for (const route of ['pipeline', 'funnel', 'pipeline-health', 'fairness', 'sampling', 'audit', 'model-quality']) {
+    for (const route of ['pipeline', 'funnel', 'pipeline-health', 'fairness', 'sampling', 'audit', 'model-quality', 'idea-map']) {
       await request(app).get(`/api/v1/hq/reports/${route}`).set('Authorization', assessorAuth).expect(403);
     }
   });
@@ -155,6 +155,26 @@ describe('HQ reports', () => {
     const denied = await request(app).get(`/api/v1/hq/reports/audit?outcome=denied&orgId=${sibling._id}`).set('Authorization', hqAuth).expect(200);
     expect(denied.body.entries[0]).toMatchObject({ action: 'pipeline.start', targetOrg: 'Synthetic sibling', actor: 'System' });
     await request(app).get('/api/v1/hq/reports/audit?action=.*').set('Authorization', hqAuth).expect(400);
+  });
+
+  it('maps ideas by similarity with named clusters and a saturation alert per district', async () => {
+    const texts: Array<[string, string]> = [['Tailoring blouses stitching', 'Pune'], ['Blouses stitching unit', 'Pune'], ['Tailoring school uniforms stitching', 'Pune'],
+      ['Cow milk dairy paneer', 'Nashik'], ['Milk paneer dairy', 'Nashik']];
+    for (const [title, district] of texts) {
+      const item = await idea(centre._id, 'READY', { title, tradeKey: title.includes('milk') ? 'dairy' : 'tailoring' });
+      await CentreCase.create({ submissionId: item._id, ownerOrgId: centre._id, state: 'READY', input: { template: 'edp-idea-brief',
+        context: { plannedBusinessLocation: { district, state: 'Maharashtra' } }, segments: [{ segId: 's1', textEn: title, lang: 'en', source: { type: 'text' } }],
+        fields: { offering: { state: 'answered', evidence: ['s1'] } } } });
+    }
+    await idea(centre._id, 'DRAFT', { title: 'Unsubmitted draft' });
+    const map = (await request(app).get('/api/v1/hq/reports/idea-map').set('Authorization', hqAuth).expect(200)).body;
+    expect(map).toMatchObject({ method: 'lexical', total: 5, truncated: false });
+    const clusterOf = (title: string) => map.points.find((point: { title: string }) => point.title === title).cluster;
+    expect(clusterOf('Tailoring blouses stitching')).toBe(clusterOf('Blouses stitching unit'));
+    expect(clusterOf('Cow milk dairy paneer')).not.toBe(clusterOf('Blouses stitching unit'));
+    expect(map.alerts).toEqual([expect.objectContaining({ district: 'Pune', count: 3 })]);
+    expect(map.points[0]).toEqual(expect.objectContaining({ centre: 'Synthetic centre', district: expect.any(String) }));
+    expect(JSON.stringify(map)).not.toMatch(/textEn|segments|entrepreneurId/);
   });
 
   it('shows the evaluation-harness report when one exists and says so when it does not', async () => {

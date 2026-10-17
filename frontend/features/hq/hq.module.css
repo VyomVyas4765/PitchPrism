@@ -64,3 +64,10 @@
 .bandScale span { display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; }
 .bandScale i { position: absolute; top: -6px; bottom: -6px; width: 3px; background: var(--pencil); }
 .preview { font-family: Arial, sans-serif; font-size: 15px; padding: 10px 14px; border-left: 4px solid var(--ink); background: #eee8da; }
+/* W-27 idea map */
+.mapWrap { display: grid; grid-template-columns: minmax(0, 560px) minmax(200px, 1fr); gap: 24px; align-items: start; }
+.map { width: 100%; height: auto; display: block; }
+.mapLabel { font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: var(--paper-raised); stroke-width: 4px; }
+.legend { list-style: none; padding: 0; margin: 0 0 16px; font-size: 14px; line-height: 1.9; }
+.legend li { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 760px) { .mapWrap { grid-template-columns: 1fr; } }

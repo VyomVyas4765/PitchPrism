@@ -14,10 +14,12 @@ export interface AssessmentResult {
 }
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
-const localPython = fileURLToPath(new URL('../../../../ai/.venv/bin/python', import.meta.url));
+// POSIX and Windows virtualenv layouts.
+const localPythons = ['../../../../ai/.venv/bin/python', '../../../../ai/.venv/Scripts/python.exe']
+  .map(path => fileURLToPath(new URL(path, import.meta.url)));
 
 export async function assessLocally(input: CentreExtractedInput): Promise<AssessmentResult> {
-  const python = process.env.PITCHPRISM_PYTHON || (existsSync(localPython) ? localPython : 'python3');
+  const python = process.env.PITCHPRISM_PYTHON || localPythons.find(path => existsSync(path)) || (process.platform === 'win32' ? 'python' : 'python3');
   return new Promise((resolve, reject) => {
     const child = spawn(python, ['-m', 'ai.intel.cli'], { cwd: root, stdio: ['pipe', 'pipe', 'ignore'], timeout: 135000 });
     let output = '';

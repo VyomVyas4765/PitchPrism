@@ -25,7 +25,10 @@ const entrepreneurSchema = new Schema({
   createdVia: { type: String, enum: ['self', 'assisted'], required: true },
   facilitatorId: { type: Schema.Types.ObjectId, ref: 'User' },
   homeOrgId: { type: Schema.Types.ObjectId, ref: 'Org' },
+  // Assisted mode: the device's ID for this applicant, so an offline retry does not register them twice.
+  clientApplicantId: String,
 }, { timestamps: true });
+entrepreneurSchema.index({ facilitatorId: 1, clientApplicantId: 1 }, { unique: true, partialFilterExpression: { clientApplicantId: { $type: 'string' } } });
 
 // PRD §19 `consents`: append-only per purpose. Revoking stamps the record; granting again adds a new one.
 const consentSchema = new Schema({

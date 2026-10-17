@@ -12,7 +12,7 @@ Reading, redaction, language and extraction stages (A-01–A-12). Everything her
 
 **Not started (need decisions or capabilities):** A-01 storage/hashing (with Dev 3's upload/storage contract), A-04 transcription (no local STT evaluated for six languages), A-05/A-06/A-08 PDF layout, quality gate and strike-through (PDF library licence: PyMuPDF is AGPL-3.0; pdfplumber/pypdfium2 are permissive; team decision), A-07 OCR/handwriting (no local OCR evaluated), A-09 pairing and question bank, A-11 translation, A-12 extraction (needs a selected, evaluated local model).
 
-**Hand-off contract.** Draft [ingest-output.v0](../../packages/contracts/schemas/drafts/ingest-output.v0.json) with synthetic [fixtures](../../packages/contracts/fixtures/ingest/) for Dev 2. `ai/tests/test_contract_fixtures.py` checks the schema and the evidence rules: every field cites existing, non-struck segments; missing or not-asked answers are never filled; text is redacted.
+**Hand-off contract.** Extraction emits the shared [CentreExtractedInput](../../packages/contracts/schemas/centre-extracted-input.json) contract that Dev 2's scorer consumes (audio sources carry `chunkId`/`start`/`end`). Synthetic [fixtures](../../packages/contracts/fixtures/extracted-input/README.md) are checked against the schema and Dev 2's `prepare_input`; struck values are never evidence and missing answers are never filled. Dev 2's scorer uses `pii.find_pii` as its redaction guard.
 
 ## Tests
 

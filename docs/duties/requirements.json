@@ -14,10 +14,12 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "All six locale choices are usable; unavailable voices are explicit",
-    "status": "api_partial",
+    "status": "device_pending",
     "evidence": [
       "backend/src/modules/entrepreneur/README.md",
-      "backend/tests/entrepreneur.test.ts"
+      "backend/tests/entrepreneur.test.ts",
+      "app/lib/onboarding/language_screen.dart",
+      "app/test/onboarding_test.dart"
     ]
   },
   "M-02": {
@@ -54,10 +56,12 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Consent is recorded per purpose and can be withdrawn",
-    "status": "api_partial",
+    "status": "device_pending",
     "evidence": [
       "backend/src/modules/entrepreneur/README.md",
-      "backend/tests/entrepreneur.test.ts"
+      "backend/tests/entrepreneur.test.ts",
+      "app/lib/entrepreneur/consent_screen.dart",
+      "app/test/onboarding_test.dart"
     ]
   },
   "M-04": {
@@ -74,10 +78,12 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Profile edit persists without leaking sensitive attributes to models",
-    "status": "api_partial",
+    "status": "client_partial",
     "evidence": [
       "backend/src/modules/entrepreneur/README.md",
-      "backend/tests/entrepreneur.test.ts"
+      "backend/tests/entrepreneur.test.ts",
+      "app/lib/entrepreneur/profile_screen.dart",
+      "app/test/onboarding_test.dart"
     ]
   },
   "M-05": {
@@ -94,9 +100,14 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Each source format reaches the same submission pipeline",
-    "status": "planned",
+    "status": "client_partial",
     "evidence": [
-      "docs/duties/dev-1-intake-proposal.md"
+      "docs/duties/dev-1-intake-proposal.md",
+      "app/lib/intake/pitch_screen.dart",
+      "backend/src/modules/entrepreneur/intake-router.ts",
+      "backend/tests/intake.test.ts",
+      "app/test/outbox_test.dart",
+      "app/test/intake_ui_test.dart"
     ]
   },
   "M-06": {
@@ -113,10 +124,14 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Pause/re-record works and evidence retains timestamps",
-    "status": "planned",
+    "status": "client_partial",
     "evidence": [
       "data/seed/question-bank.json",
-      "ai/tests/test_question_bank.py"
+      "ai/tests/test_question_bank.py",
+      "app/lib/intake/record_tile.dart",
+      "backend/tests/intake.test.ts",
+      "app/test/outbox_test.dart",
+      "app/test/intake_ui_test.dart"
     ]
   },
   "M-07": {
@@ -201,9 +216,13 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Airplane-mode recording survives restart and uploads once",
-    "status": "planned",
+    "status": "device_pending",
     "evidence": [
-      "docs/duties/dev-1-intake-proposal.md"
+      "docs/duties/dev-1-intake-proposal.md",
+      "app/lib/intake/outbox.dart",
+      "backend/tests/intake.test.ts",
+      "app/test/outbox_test.dart",
+      "app/test/intake_ui_test.dart"
     ]
   },
   "M-12": {
@@ -220,9 +239,10 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Lifecycle updates remain scoped and refresh after reconnection",
-    "status": "planned",
+    "status": "client_partial",
     "evidence": [
-      "backend/tests/entrepreneur.test.ts"
+      "backend/tests/entrepreneur.test.ts",
+      "app/lib/entrepreneur/passport_screen.dart"
     ]
   },
   "M-13": {
@@ -274,10 +294,12 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Revoke and contact decline remove partner access immediately",
-    "status": "api_partial",
+    "status": "client_partial",
     "evidence": [
       "backend/src/modules/entrepreneur/README.md",
-      "backend/tests/entrepreneur.test.ts"
+      "backend/tests/entrepreneur.test.ts",
+      "app/lib/entrepreneur/passport_screen.dart",
+      "app/test/onboarding_test.dart"
     ]
   },
   "M-16": {
@@ -311,10 +333,15 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Separate applicants on shared devices and record consent evidence",
-    "status": "foundation_partial",
+    "status": "device_pending",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/src/modules/entrepreneur/assisted-router.ts",
+      "app/lib/facilitator/applicant_screen.dart",
+      "backend/tests/intake.test.ts",
+      "app/test/outbox_test.dart",
+      "app/test/intake_ui_test.dart"
     ]
   },
   "M-18": {
@@ -331,9 +358,13 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Restart/reconnect does not lose or mix applicants",
-    "status": "planned",
+    "status": "device_pending",
     "evidence": [
-      "backend/tests/entrepreneur.test.ts"
+      "backend/tests/entrepreneur.test.ts",
+      "app/lib/facilitator/facilitator_home.dart",
+      "backend/tests/intake.test.ts",
+      "app/test/outbox_test.dart",
+      "app/test/intake_ui_test.dart"
     ]
   },
   "M-19": {
@@ -566,7 +597,11 @@
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate centre review queue/lanes with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
     "status": "partial",
-    "evidence": ["backend/src/modules/centre/router.ts", "frontend/features/centre/CentreWorkspace.tsx", "backend/tests/centre.test.ts"]
+    "evidence": [
+      "backend/src/modules/centre/router.ts",
+      "frontend/features/centre/CentreWorkspace.tsx",
+      "backend/tests/centre.test.ts"
+    ]
   },
   "W-10": {
     "owner": "dev-2-centre-cohort",
@@ -582,7 +617,10 @@
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate evidence-linked consolidated idea card with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
     "status": "partial",
-    "evidence": ["frontend/features/centre/CentreWorkspace.tsx", "packages/contracts/schemas/centre-extracted-input.json"]
+    "evidence": [
+      "frontend/features/centre/CentreWorkspace.tsx",
+      "packages/contracts/schemas/centre-extracted-input.json"
+    ]
   },
   "W-11": {
     "owner": "dev-2-centre-cohort",
@@ -598,7 +636,10 @@
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate human decisions with override reasons with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
     "status": "partial",
-    "evidence": ["backend/src/modules/centre/router.ts", "backend/tests/centre.test.ts"]
+    "evidence": [
+      "backend/src/modules/centre/router.ts",
+      "backend/tests/centre.test.ts"
+    ]
   },
   "W-12": {
     "owner": "dev-2-centre-cohort",
@@ -614,7 +655,10 @@
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate editable feedback and delivery with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
     "status": "partial",
-    "evidence": ["backend/src/modules/centre/router.ts", "frontend/features/centre/CentreWorkspace.tsx"]
+    "evidence": [
+      "backend/src/modules/centre/router.ts",
+      "frontend/features/centre/CentreWorkspace.tsx"
+    ]
   },
   "W-13": {
     "owner": "dev-2-centre-cohort",
@@ -1017,9 +1061,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Saved original hashes match; no overwrite on retry",
-    "status": "planned",
+    "status": "api_partial",
     "evidence": [
-      "docs/duties/dev-1-intake-proposal.md"
+      "docs/duties/dev-1-intake-proposal.md",
+      "backend/src/modules/entrepreneur/storage.ts",
+      "backend/tests/intake.test.ts"
     ]
   },
   "A-02": {
@@ -1198,8 +1244,7 @@
     "acceptance_test": "At least 90% canonical field accuracy; drop uncited claims",
     "status": "planned",
     "evidence": [
-      "packages/contracts/schemas/drafts/ingest-output.v0.json",
-      "packages/contracts/fixtures/ingest/README.md"
+      "packages/contracts/fixtures/extracted-input/README.md"
     ]
   },
   "A-13": {
@@ -1215,7 +1260,10 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Missing recall ≥95%, precision ≥90%; fully irrelevant submissions unassessable",
     "status": "partial",
-    "evidence": ["ai/intel/scoring.py", "ai/tests/test_centre_scoring.py"]
+    "evidence": [
+      "ai/intel/scoring.py",
+      "ai/tests/test_centre_scoring.py"
+    ]
   },
   "A-14": {
     "owner": "dev-2-centre-cohort",
@@ -1230,7 +1278,10 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "All seeded financial errors detected with written/expected/formula evidence",
     "status": "partial",
-    "evidence": ["ai/intel/finance.py", "ai/tests/test_centre_scoring.py"]
+    "evidence": [
+      "ai/intel/finance.py",
+      "ai/tests/test_centre_scoring.py"
+    ]
   },
   "A-15": {
     "owner": "dev-2-centre-cohort",
@@ -1260,7 +1311,9 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "3–5 useful questions, original language, answers rerun correct stages",
     "status": "partial",
-    "evidence": ["ai/intel/narrative.py"]
+    "evidence": [
+      "ai/intel/narrative.py"
+    ]
   },
   "A-17": {
     "owner": "dev-2-centre-cohort",
@@ -1350,7 +1403,10 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Null for unassessed, correct potential/completeness/pathway; parity gap ≤5",
     "status": "partial",
-    "evidence": ["ai/intel/scoring.py", "ai/tests/test_centre_scoring.py"]
+    "evidence": [
+      "ai/intel/scoring.py",
+      "ai/tests/test_centre_scoring.py"
+    ]
   },
   "A-23": {
     "owner": "dev-2-centre-cohort",
@@ -1380,7 +1436,9 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Summary/full plan cites facts and read-back uses correct computed figures",
     "status": "partial",
-    "evidence": ["ai/intel/narrative.py"]
+    "evidence": [
+      "ai/intel/narrative.py"
+    ]
   },
   "A-25": {
     "owner": "dev-2-centre-cohort",
@@ -1395,7 +1453,10 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Ranks compare only the same rubric version and scoped population",
     "status": "partial",
-    "evidence": ["ai/intel/ranking.py", "ai/tests/test_centre_ranking_routing.py"]
+    "evidence": [
+      "ai/intel/ranking.py",
+      "ai/tests/test_centre_ranking_routing.py"
+    ]
   },
   "A-26": {
     "owner": "dev-2-centre-cohort",
@@ -1410,7 +1471,10 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "No verdict on applicant; selected language has one clear next step",
     "status": "partial",
-    "evidence": ["ai/intel/narrative.py", "backend/src/modules/centre/router.ts"]
+    "evidence": [
+      "ai/intel/narrative.py",
+      "backend/src/modules/centre/router.ts"
+    ]
   },
   "A-27": {
     "owner": "dev-2-centre-cohort",
@@ -1425,7 +1489,10 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Only eligible consented partners returned with reasons",
     "status": "partial",
-    "evidence": ["ai/intel/routing.py", "ai/tests/test_centre_ranking_routing.py"]
+    "evidence": [
+      "ai/intel/routing.py",
+      "ai/tests/test_centre_ranking_routing.py"
+    ]
   },
   "A-28": {
     "owner": "dev-3-hq-platform",
@@ -1473,6 +1540,9 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Report canonical ≥90%, missing recall ≥95%, parity gap ≤5, latency/RAM/licence",
     "status": "partial",
-    "evidence": ["ai/eval/harness.py", "ai/tests/test_centre_harness.py"]
+    "evidence": [
+      "ai/eval/harness.py",
+      "ai/tests/test_centre_harness.py"
+    ]
   }
 }

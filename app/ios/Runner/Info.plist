@@ -24,16 +24,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>PitchPrism records your spoken pitch answers, and an applicant's spoken consent in assisted mode.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<!-- Development API over the local network only (LAN IP or *.local). Internet hosts still require HTTPS. -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>PitchPrism connects to your team's PitchPrism server on this network.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -12,6 +12,8 @@ export const configSchema = z.object({
   MONGODB_DNS_SERVERS: z.string().default('').refine(value => !value || value.split(',').every(ip => isIP(ip.trim()) !== 0), 'Use comma-separated DNS server IP addresses'),
   JWT_SECRET: z.string().min(32, 'Set JWT_SECRET to at least 32 random characters in .env'),
   FIREBASE_PROJECT_ID: z.string().default(''),
+  // Unscoped in-request queries on tenant collections: warn while role modules adopt setOptions({ tenant }), then enforce.
+  TENANCY_MODE: z.enum(['enforce', 'warn', 'off']).default('warn'),
   // Entrepreneur personal fields are sealed with this key; blank disables profile storage (fails closed).
   PII_ENCRYPTION_KEY: z.string().default('').refine(value => !value || /^[a-f\d]{64}$/i.test(value), 'PII_ENCRYPTION_KEY must be 64 hex characters (32 random bytes)'),
 });

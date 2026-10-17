@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
 import type { Request, Response, NextFunction } from 'express';
-import type { OrgType, Role, SessionUser } from '@pitchprism/contracts';
+import { ROLE_ORG_TYPES, type OrgType, type Role, type SessionUser } from '@pitchprism/contracts';
 import { Org, Session, User } from '../models.js';
 import { HttpError } from '../errors.js';
 import type { Config } from '../config.js';
@@ -11,11 +11,8 @@ export const SESSION_SECONDS = 8 * 60 * 60;
 export interface AuthContext { user: SessionUser; sessionId: string; fundingMode?: string }
 declare global { namespace Express { interface Request { auth?: AuthContext } } }
 
-const roleOrgs: Record<Role, readonly OrgType[]> = {
-  entrepreneur: [], facilitator: ['centre', 'implementation_partner'],
-  centre_assessor: ['centre'], cohort_lead: ['centre'], hq_admin: ['hq'],
-  implementation_partner: ['implementation_partner'], sector_partner: ['sector_partner'], funding_partner: ['funding_partner'],
-};
+// Role-to-organisation rules come from the shared contracts so invitations and sign-in agree.
+const roleOrgs = ROLE_ORG_TYPES;
 export async function userContext(id: string): Promise<Omit<AuthContext, 'sessionId'>> {
   const user = await User.findById(id).lean();
   if (!user || user.disabled) throw new HttpError(401, 'Please sign in again.');

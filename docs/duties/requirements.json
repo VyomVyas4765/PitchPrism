@@ -643,57 +643,69 @@
     "owner": "dev-4-partners",
     "priority": "P0",
     "requirement": "Own submissions, first-level review, forward to the linked centre",
-    "implementation": "Implementation-partner own-org review",
+    "implementation": "Isolated own-org read queue/status totals and partner UI prepared; intake, first-level review and forwarding pending integration",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Shared intake/review services with sourceOrg scope; no browser-side hosted AI key or duplicate pipeline",
+    "local_strategy": "Read-only sourceOrg scope through shared session/permission/query guards; unmounted router/UI; reuse shared intake/review services when agreed; no duplicate AI pipeline",
     "dependencies": [
-      "Shared intake/review services with sourceOrg scope",
-      "Role/org/consent guards; shared contracts"
+      "Dev 1 intake and Dev 2 review/evidence services with sourceOrg scope",
+      "Dev 3 API mount, linked-centre relationship, generated read/domain contracts and audited transitions; separate dashboard integration"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate implementation-partner own-org review with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "foundation_partial",
+    "acceptance_test": "Read harness tests source-org items/totals, sibling denial, role/session changes, safe projection, filters and pagination; typecheck/build pass. Still verify mounted UI/loading/error/empty states, real intake, review persistence and linked-centre forwarding end to end; visual browser QA pending.",
+    "status": "feature_partial_unmounted",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/tests/partners.test.ts",
+      "backend/src/modules/partners/router.ts",
+      "frontend/features/partners/partner-workspace.tsx",
+      "backend/src/modules/partners/HANDOFF.md"
     ]
   },
   "W-17": {
     "owner": "dev-4-partners",
     "priority": "P0 (one partner type in demo)",
     "requirement": "Consented ideas in its sector; Express interest sends a contact request to the entrepreneur",
-    "implementation": "Sector-partner consented ideas/contact requests",
+    "implementation": "Isolated active-share opportunities list and partner UI prepared; sector eligibility, contact requests and mentoring integration pending",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Active shares and entrepreneur contact responses; no browser-side hosted AI key or duplicate pipeline",
+    "local_strategy": "Recheck active sector shares per read; list has no applicant fields; reuse protected detail projection and shared entrepreneur contact responses; no duplicate AI pipeline",
     "dependencies": [
-      "Active shares and entrepreneur contact responses",
-      "Role/org/consent guards; shared contracts"
+      "Dev 1 authoritative consent/contact request and entrepreneur response lifecycle",
+      "Dev 2 sector eligibility/routing and mentoring visibility; Dev 3 generated contracts, audit/notification transport and API mount; separate dashboard integration"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate sector-partner consented ideas/contact requests with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "foundation_partial",
+    "acceptance_test": "Read harness tests active-share org/type matching, immediate revocation on next read, role isolation and no applicant list fields. Still verify sector matching, mounted visual/loading/error/empty states, real contact acceptance before PII, request deduplication and mentoring visibility end to end.",
+    "status": "feature_partial_unmounted",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/tests/partners.test.ts",
+      "backend/src/modules/partners/router.ts",
+      "frontend/features/partners/partner-workspace.tsx",
+      "backend/src/modules/partners/HANDOFF.md"
     ]
   },
   "W-18": {
     "owner": "dev-4-partners",
     "priority": "P2",
     "requirement": "Consented loan-ready shortlist; CSR impact report with totals only, no personal data",
-    "implementation": "Funding shortlist and CSR aggregate report",
+    "implementation": "Isolated lender shortlist read UI/API prepared at P2; CSR individual access denied and aggregate report explicitly pending",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Funding-ready scoped shares; CSR aggregation only; no browser-side hosted AI key or duplicate pipeline",
+    "local_strategy": "Shared funding-ready/shortlisted/active-share scope and server-derived lender/CSR mode; no fabricated CSR totals or browser-side AI",
     "dependencies": [
-      "Funding-ready scoped shares; CSR aggregation only",
-      "Role/org/consent guards; shared contracts"
+      "Dev 2 funding-readiness evidence and approved aggregate impact metrics",
+      "Dev 3 programme/org scope, CSR privacy/aggregation contracts and API mount; Dev 1 active consent/contact lifecycle; separate dashboard integration"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate funding shortlist and csr aggregate report with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "foundation_partial",
+    "acceptance_test": "Read harness tests lender readiness/shortlist/consent together, status-filter bypass denial, server-derived funding mode and CSR list denial. Still verify mounted UI/visual states, authoritative readiness/consent and aggregate-only CSR scope/privacy end to end; no report is claimed.",
+    "status": "feature_partial_unmounted",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/tests/partners.test.ts",
+      "backend/src/modules/partners/router.ts",
+      "frontend/features/partners/partner-workspace.tsx",
+      "backend/src/modules/partners/HANDOFF.md"
     ]
   },
   "W-19": {

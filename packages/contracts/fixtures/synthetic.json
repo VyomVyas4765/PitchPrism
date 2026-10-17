@@ -998,5 +998,16 @@
         }
       ]
     }
+  ],
+  "reviewSamples": [
+    {
+      "_id": "6b1000000000000000000001",
+      "decisionId": "659000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "reviewerUserId": "651000000000000000000001",
+      "agrees": true,
+      "note": "Synthetic second review: asking for more information was right."
+    }
   ]
 }

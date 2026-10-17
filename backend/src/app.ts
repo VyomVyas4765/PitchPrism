@@ -19,6 +19,7 @@ import { entrepreneurRouter } from './modules/entrepreneur/index.js';
 import { partnerRouter } from './modules/partners/router.js';
 import { setTenancyMode, tenancyContext } from './platform/tenancy.js';
 import { hqRouter } from './modules/hq/admin.js';
+import { hqReportsRouter } from './modules/hq/reports.js';
 import { pipelineRouter } from './platform/pipeline.js';
 import { invitationAcceptRouter, staffRouter } from './modules/hq/staff.js';
 
@@ -87,6 +88,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
   app.use('/api/v1/centre', centreRouter(options.assessIdea));
   app.use('/api/v1/partners', partnerRouter()); // Dev 4 handoff: behind the shared session middleware
   app.use('/api/v1/hq', hqRouter());
+  app.use('/api/v1/hq/reports', hqReportsRouter());
   app.use('/api/v1/team', staffRouter(config));
   app.get('/api/v1/admin/overview', requirePermission('manage_platform'), async (_req, res) => {
     res.json({ organisations: await Org.countDocuments(), users: await User.countDocuments() });

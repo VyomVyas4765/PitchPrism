@@ -6,7 +6,7 @@ AI idea screening for Tata STRIVE, built for Code Odyssey 5.0. Entrepreneurs pit
 
 The repository now has a Flutter mobile app (Android + iOS development), Next.js dashboard, Express API, shared auth contracts and a Python worker scaffold. Staff can sign in/out and open protected role workspaces. Entrepreneurs exchange a verified Firebase phone token for an API session. Role, organisation and consent checks run on the server.
 
-Domain contracts v1 are published in [packages/contracts](packages/contracts/README.md): JSON Schemas for all 22 collections, generated TypeScript and Python types, contract-built Mongoose models and synthetic fixtures.
+Domain contracts v1 are published in [packages/contracts](packages/contracts/README.md): JSON Schemas for all 23 collections, generated TypeScript and Python types, contract-built Mongoose models and synthetic fixtures.
 
 The centre assessment slice now accepts redacted, extracted EDP Idea Brief evidence, runs deterministic checks and local-only scoring, and serves a scoped review card, queue, decisions and feedback draft. App PDF extraction, the durable queue, original-file viewer and the rest of the centre workflow remain integration work; see [centre evaluation](docs/centre-evaluation.md). The starter submission endpoint remains read-only for applicant data; no applicant submissions are seeded. Real OTP needs Firebase project configuration. See [local AI setup](ai/README.md) and the [88-requirement implementation matrix](docs/implementation-matrix.md).
 
@@ -20,9 +20,10 @@ pnpm install
 pnpm setup:env          # Creates ignored .env with random secrets; preserves an existing file
 pnpm dev:local          # Persistent local MongoDB + synthetic staff seed + API/dashboard
 pnpm fixtures:load      # Optional: contract fixtures (a submission, evaluation, events...) with fixture.* staff logins
+pnpm pipeline:replay    # Optional, dev only: replays fixture stage timings for queued jobs (live card, SSE) until the worker runs real stages
 ```
 
-Open http://localhost:3000. The API is at http://localhost:4000/api/v1. `pnpm dev:local` overrides the database URI for its child processes only; the private Atlas URI in `.env` is preserved. Local files live in ignored `local/mongodb/` and survive restarts. Ctrl+C stops the launcher without deleting data. Redis is removed. For a separately managed/Atlas database, use `pnpm seed` and `pnpm dev` after configuring a resolvable URI. Use a seeded email below and the `SEED_PASSWORD` value in your local `.env`. There are no committed credentials or public staff-registration endpoint. Re-running the seed preserves existing credentials/roles and never resets accounts. If `.env` already exists, compare it with `.env.example` and supply missing values yourself.
+Open http://localhost:3000. The API is at http://localhost:4000/api/v1. `pnpm dev:local` overrides the database URI for its child processes only; the private Atlas URI in `.env` is preserved. Local files live in ignored `local/mongodb/` and survive restarts. Ctrl+C stops the launcher without deleting data. Redis is removed. For a separately managed/Atlas database, use `pnpm seed` and `pnpm dev` after configuring a resolvable URI. Use a seeded email below and the `SEED_PASSWORD` value in your local `.env`. There are no committed credentials or open staff registration: new staff join through a one-time invitation link that HQ or their own organisation's staff create (Team tab), opened at `/invite/<token>`. Re-running the seed preserves existing credentials/roles and never resets accounts. If `.env` already exists, compare it with `.env.example` and supply missing values yourself.
 
 | Staff role | Seeded email | Developer |
 | --- | --- | --- |

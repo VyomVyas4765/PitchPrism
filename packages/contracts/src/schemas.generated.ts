@@ -14,6 +14,7 @@ export const COLLECTIONS = {
   "Outcome": "outcomes",
   "PipelineRun": "pipelineRuns",
   "Programme": "programmes",
+  "ReviewSample": "reviewSamples",
   "RoutingRule": "routingRules",
   "Rubric": "rubrics",
   "Share": "shares",
@@ -1801,6 +1802,55 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
               }
             }
           }
+        }
+      }
+    },
+    "ReviewSample": {
+      "title": "ReviewSample",
+      "description": "W-06 second-review sampling: HQ re-reads a sample of centre decisions and records whether it agrees. One verdict per decision; feeds the agreement rate per centre. Notes must not repeat applicant personal data.",
+      "x-collection": "reviewSamples",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decisionId",
+        "submissionId",
+        "ownerOrgId",
+        "reviewerUserId",
+        "agrees"
+      ],
+      "properties": {
+        "decisionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "reviewerUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "agrees": {
+          "type": "boolean"
+        },
+        "suggestedDecision": {
+          "type": "string",
+          "enum": [
+            "shortlist",
+            "not_yet",
+            "more_info"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
         }
       }
     },

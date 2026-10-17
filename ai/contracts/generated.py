@@ -367,6 +367,18 @@ QA = TypedDict("QA", {
     "overwrites": list["Overwrite"],
 }, total=False)
 
+ReviewSample = TypedDict("ReviewSample", {
+    "decisionId": Required[ObjectId],
+    "submissionId": Required[ObjectId],
+    "ownerOrgId": Required[ObjectId],
+    "reviewerUserId": Required[ObjectId],
+    "agrees": Required[bool],
+    "suggestedDecision": Literal["shortlist", "not_yet", "more_info"],
+    "note": str,
+    "createdAt": DateTime,
+    "updatedAt": DateTime,
+}, total=False)
+
 RoutingRule = TypedDict("RoutingRule", {
     "name": Required[str],
     "partnerOrgId": Required[ObjectId],
@@ -576,6 +588,7 @@ COLLECTIONS: dict[str, str] = {
     "Outcome": "outcomes",
     "PipelineRun": "pipelineRuns",
     "Programme": "programmes",
+    "ReviewSample": "reviewSamples",
     "RoutingRule": "routingRules",
     "Rubric": "rubrics",
     "Share": "shares",

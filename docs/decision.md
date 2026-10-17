@@ -4,7 +4,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 
 **Status key:** ✅ Decided · 🟡 Default (holds until someone objects with a reason) · ❓ Open
 
-**Current implementation:** D-26 now removes Redis and includes iOS development builds; earlier queue/platform entries are historical.  D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD. D-27 sets staff invitations; D-28 and D-30 define the shared domain contracts and how they absorbed the first role modules; D-29 details the MongoDB job and stage-event design.
+**Current implementation:** D-26 now removes Redis and includes iOS development builds; earlier queue/platform entries are historical.  D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD. D-27 sets staff invitations; D-28 and D-30 define the shared domain contracts and how they absorbed the first role modules; D-29 details the MongoDB job and stage-event design; D-31 refines its rerun rule and records the tenancy rollout.
 
 ## Index
 
@@ -40,6 +40,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-28 | Contracts v1: one bundle drives TypeScript, Python, models and fixtures | ✅ | Dev 3 |
 | D-29 | MongoDB job queue and stage-event design (details D-26) | ✅ | Dev 3 |
 | D-30 | Contracts absorb the first role modules' tested conventions | ✅ | Dev 3 |
+| D-31 | Second-review samples, rerun semantics and the tenancy rollout | ✅ | Dev 3 |
 
 ---
 
@@ -277,6 +278,8 @@ Current register after D-25. The complete answered/partial/open classification i
 - **Claiming.** The worker claims one job with an atomic `findOneAndUpdate` (queued, or leased with an expired lease, and `availableAt` reached → leased, `attempts + 1`). It extends the lease while working, then marks the job done or failed. A crashed worker's job returns to the queue when its lease expires. After `maxAttempts` the job is failed and stays visible; nothing is retried silently forever.
 - **Events.** The worker writes each `StageEvent` to a capped `stageEvents` collection and records timing and model use in the uncapped `pipelineRuns` collection (A-29). The API follows `stageEvents` with a tailable cursor and streams them over SSE, filtered by the viewer's organisation scope. A reconnecting client sends `Last-Event-ID`, and the API replays what it missed from persisted events, so reconnects neither lose nor invent completed stages (A-28 acceptance). Tailable cursors work on both the local single server and Atlas.
 
+**Refined in D-31.** The key also includes the rubric version, and it absorbs repeats only while a job is queued or running.
+
 **Consequences.** The `JobPayload` and `StageEvent` contracts keep their fields; only the transport changes. Q-14 becomes a test obligation: prove enqueue, claim, lease expiry, retry, terminal failure and SSE reconnect, with Dev 1 owning the Python consumer. Polling at about one second is enough for pilot volume and a single worker; revisit if several workers or much higher volume arrive.
 
 ### D-30 · Contracts absorb the first role modules' tested conventions ✅
@@ -291,3 +294,15 @@ Current register after D-25. The complete answered/partial/open classification i
 - Dev 4's partner router is mounted at `/api/v1/partners` behind the shared session middleware, as its handoff requested.
 
 **Consequences.** All 104 backend tests (all four roles) and 49 worker tests pass on the shared models. Role routes still compose scope by object spread in places; that is safe while no scope uses `_id`, but new code should use `scoped()`. Follow-ups: remove `applicant` (Dev 1, Dev 3), and route partner and consent writes through one share service when partner actions land (Devs 1, 4).
+
+### D-31 · Second-review samples, rerun semantics and the tenancy rollout ✅
+
+**Context.** W-06 needs HQ verdicts on sampled centre decisions, and no contract held them. D-29's idempotency key made any finished job block a deliberate rerun with the same inputs, for example after a model change. The tenancy guard (PRD §19) would break the role modules that still build scopes by object spread if it enforced from day one.
+
+**Decision.**
+- A `reviewSamples` contract (`ReviewSample`): one HQ verdict per decision (agrees, the decision HQ would have made, a short note with no personal data). It is tenant-scoped and audited as `decision.second_review`. The sample is stable for a week, about the requested percentage, and has at least one decision per centre.
+- The job idempotency key is submission, start stage, reason, input version and rubric version. It absorbs repeats only while a job is queued or leased. A done, failed or cancelled job frees the key, so a deliberate new request starts a fresh job and the old one keeps its history.
+- `TENANCY_MODE` defaults to `warn`. Dev 3's routes and tests run in `enforce`. `asSystem()` runs an already-authorised helper from another module, such as the consent check, outside request scope. Switch the default to `enforce` once every module passes its tests in enforce mode.
+- The SSE stream sends `Cache-Control: no-store, no-transform`, because compressing proxies, including the Next dev proxy, otherwise buffer it until the connection closes.
+
+**Consequences.** 23 stored collections. Rerunning an idea is always possible and always leaves a record. Role owners can see their unscoped call sites by running with `TENANCY_MODE=enforce`.

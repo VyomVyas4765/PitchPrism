@@ -36,19 +36,19 @@ Track implementation, execution, dependency, acceptance and status in [requireme
 
 Descriptions and acceptance details: [PRD](../../PitchPrism.md). Each ID has exactly one primary owner in [requirements.json](requirements.json); support dependencies do not change primary ownership.
 
-- [ ] **W-01** · HQ · P0
-- [ ] **W-02** · HQ · P0 (form), P1 (visual builder)
-- [ ] **W-03** · HQ · P0
-- [ ] **W-04** · HQ · P0
-- [ ] **W-05** · HQ · P0
-- [ ] **W-06** · HQ · P1
-- [ ] **W-07** · HQ · P1
-- [ ] **W-08** · HQ · P1
-- [ ] **W-27** · HQ · P1
-- [ ] **W-32** · HQ, Centre · P0
-- [ ] **W-33** · HQ · P1
-- [ ] **A-28** · Live card · P0
-- [ ] **A-29** · Cost and timing · P1
+- [x] **W-01** · HQ · P0
+- [ ] **W-02** · HQ · P0 (form), P1 (visual builder) · form done, visual builder pending
+- [x] **W-03** · HQ · P0
+- [x] **W-04** · HQ · P0
+- [x] **W-05** · HQ · P0
+- [x] **W-06** · HQ · P1
+- [x] **W-07** · HQ · P1
+- [x] **W-08** · HQ · P1
+- [ ] **W-27** · HQ · P1 · blocked on A-19 embeddings and clusters (Dev 2)
+- [x] **W-32** · HQ, Centre · P0
+- [ ] **W-33** · HQ · P1 · latest harness report shown; run history pending Dev 2 storing runs
+- [ ] **A-28** · Live card · P0 · platform done (queue, scoped SSE, resume); stage handlers and card UI pending (Devs 1, 2)
+- [x] **A-29** · Cost and timing · P1
 
 ## Acceptance and handoff
 
@@ -72,9 +72,17 @@ Not Dev 3 (integrate, don't duplicate): intake and AI stages (Dev 1); scoring, s
 
 ## In progress
 
-2026-10-17 · Phase 2, security foundations (tenancy plugin, permission matrix, audit middleware, role router mounting) · touches `backend/src/auth/`, `backend/src/models/`, `backend/src/app.ts`, `packages/contracts/src/index.ts` · contracts v1 awaiting review by Devs 1, 2 and 4.
+Nothing active. Open Dev 3 items: W-02 visual builder (P1), W-27 idea map (needs A-19), W-33 run history (needs stored eval runs), and turning `TENANCY_MODE` to `enforce` once Devs 1, 2 and 4 adopt `setOptions({ tenant })` (see `backend/src/modules/README.md`).
 
 ## Done
+
+- 2026-10-17 · Phase 5 HQ reporting (W-03, W-05, W-06, W-07, W-08, W-33, A-29): `/api/v1/hq/reports/*` for the cross-organisation pipeline (filters by centre, cohort, status, trade, band, language, channel; cursor pages; prefers `evaluations` and falls back to Dev 2's `centrecases`), funnel by centre or cohort with outcomes counted once per idea, pipeline health (queue, expired leases, stage p50/p95 and failure rate, model calls, time to card, hosted cost ₹0), fairness by language, channel and district (groups under five are shown, not compared; gap above 5 flagged), a weekly-stable second-review sample with HQ verdicts in the new `reviewSamples` contract, the audit log viewer, and the harness report from `ai/eval/harness.py`. HQ desk tabs with a live SSE stage feed. Verified: 8 report tests in enforce mode and live endpoint checks through the Next proxy. W-07 and W-33 fill in once evaluations and harness runs exist; W-27 waits for A-19.
+
+- 2026-10-17 · Phase 3 jobs and live events (A-28 platform, A-29 plumbing, Q-14): one queue protocol in `backend/src/platform/jobs.ts` and `ai/jobqueue.py` (idempotent enqueue that absorbs repeats only while a job is unfinished, atomic lease claim, heartbeat, retry with 5/20/80 s backoff, `capability_unavailable` failing at once, `attempts_exhausted` after crashes, stage events plus `pipelineRuns`). Consent-checked `POST /submissions/:id/process`, pipeline history, job cancel, and `GET /events` SSE following the capped collection with a tailable cursor, scope filtering and `Last-Event-ID` resume. `pnpm pipeline:replay` (dev only) replays fixture timings marked `replay: true`. Verified: 8 Node and 7 Python queue tests; live trigger → replay → SSE through the Next proxy (fixed: the proxy's gzip buffered the stream until close; SSE now sends `no-transform`).
+
+- 2026-10-17 · Phase 4 HQ admin (W-01, W-02 form, W-04, W-32): `/api/v1/hq` organisations, programmes, versioned rubrics, cohorts (centre-scoped), trades and routing rules; `/api/v1/team` staff and one-time invitations for every staff role in its own organisation; public `/api/v1/invitations/accept` and the `/invite/[token]` sign-up page. HQ desk, team panel for centre and partner staff, cohort panel for centres, and Dev 4's `PartnerWorkspace` now rendered for partner roles. Verified: 10 HQ tests in enforce mode, 20 live checks through the proxy (invite → accept → sign in, single use, cross-centre denial, deactivated centre signs staff out).
+
+- 2026-10-17 · Phase 2 security foundations: tenancy plugin on 14 tenant collections (`warn` by default, `enforce` in Dev 3 tests; `asSystem()` for authorised cross-module helpers), PRD permission matrix in contracts, append-only `recordAudit`, refinement messages returned to clients, Mongoose validation errors as 400. Teammates' routes still compose scopes by spread; migration notes in `backend/src/modules/README.md`.
 
 - 2026-10-17 · Phase 1 end-to-end verification on a live local stack (MongoDB 8.2 standalone, API, dashboard, worker): seed and new `pnpm fixtures:load` both idempotent; stored ObjectIds/Dates, capped `stageEvents`, indexes and encrypted applicant fields confirmed in MongoDB; 29 HTTP checks across seven roles (scope, partner projection, lender rules, origin checks, cookies, logout/revocation) pass twice in a row; dashboard sign-in, session and scoped reads through the Next proxy verified. Fixed: the login limiter counted successful sign-ins and locked out a shared IP after ten logins; it now counts failures only (new test). Not verified here: Docker Compose, Firebase OTP, Android build.
 

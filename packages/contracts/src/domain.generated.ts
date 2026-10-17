@@ -171,6 +171,7 @@ export interface PitchPrismDomain {
   Outcome?: Outcome;
   PipelineRun?: PipelineRun;
   Programme?: Programme;
+  ReviewSample?: ReviewSample;
   RoutingRule?: RoutingRule;
   Rubric?: Rubric;
   Share?: Share;
@@ -565,6 +566,23 @@ export interface Programme {
   languages?: Language[];
   districts?: string[];
   status: "draft" | "active" | "closed";
+  createdAt?: DateTime;
+  updatedAt?: DateTime;
+}
+/**
+ * W-06 second-review sampling: HQ re-reads a sample of centre decisions and records whether it agrees. One verdict per decision; feeds the agreement rate per centre. Notes must not repeat applicant personal data.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "ReviewSample".
+ */
+export interface ReviewSample {
+  decisionId: ObjectId;
+  submissionId: ObjectId;
+  ownerOrgId: ObjectId;
+  reviewerUserId: ObjectId;
+  agrees: boolean;
+  suggestedDecision?: "shortlist" | "not_yet" | "more_info";
+  note?: string;
   createdAt?: DateTime;
   updatedAt?: DateTime;
 }

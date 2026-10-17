@@ -26,8 +26,8 @@ export function useResource<T>(path: string | null) {
   return { data, error, loading: !data && !error, reload };
 }
 
-/** Run a write, then reload; returns the error message to show, if any. */
-export async function mutate(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown) {
+/** Send a write; callers reload the resources it changes. */
+export async function mutate(path: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown) {
   return api<unknown>(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
 

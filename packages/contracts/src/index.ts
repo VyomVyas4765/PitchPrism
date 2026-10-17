@@ -1,4 +1,5 @@
 export type { SessionUser, Role, OrgType } from './generated.js';
+export type { CentreExtractedInput } from './centre-generated.js';
 export { ROLES, ORG_TYPES } from './roles.js';
 
 import type { Role } from './generated.js';

@@ -11,18 +11,21 @@ import { sessionService, userContext, SESSION_COOKIE } from './auth/session.js';
 import { firebasePhoneVerifier, type VerifyPhoneToken } from './auth/firebase.js';
 import { hashPassword, verifyPassword } from './auth/password.js';
 import { requirePermission, submissionScope } from './auth/authorization.js';
+import { centreRouter } from './modules/centre/router.js';
+import type { AssessmentResult } from './modules/centre/runner.js';
+import type { CentreExtractedInput } from '@pitchprism/contracts';
 
 const loginInput = z.object({ email: z.email().max(254).transform(value => value.toLowerCase()), password: z.string().min(1).max(128), client: z.enum(['web', 'mobile']).default('web') }).strict();
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 const dummyHash = hashPassword('unused-random-timing-placeholder');
 
-export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPhoneToken } = {}) {
+export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPhoneToken; assessIdea?: (input: CentreExtractedInput) => Promise<AssessmentResult> } = {}) {
   const app = express();
   const sessions = sessionService(config);
   const verifyPhoneToken = options.verifyPhoneToken ?? firebasePhoneVerifier(config.FIREBASE_PROJECT_ID);
   app.disable('x-powered-by');
   app.use(helmet());
-  app.use(express.json({ limit: '16kb' }));
+  app.use(express.json({ limit: '128kb' }));
   app.use(cookieParser());
   app.use('/api/v1', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   // Browser clients use the Next same-origin proxy. Native clients use bearer tokens.
@@ -68,6 +71,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
     if (req.auth!.user.role !== role) throw new HttpError(403, 'This workspace belongs to a different role.');
     res.json({ role, permissions: ROLE_PERMISSIONS[role], message: `${ROLE_LABELS[role]} workspace is ready. Feature workflows are assigned in docs/duties.` });
   });
+  app.use('/api/v1/centre', centreRouter(options.assessIdea));
   app.get('/api/v1/admin/overview', requirePermission('manage_platform'), async (_req, res) => {
     res.json({ organisations: await Org.countDocuments(), users: await User.countDocuments() });
   });

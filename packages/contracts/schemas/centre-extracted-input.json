@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CentreExtractedInput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["template", "segments", "fields", "context"],
+  "properties": {
+    "template": { "const": "edp-idea-brief" },
+    "context": { "type": "object", "additionalProperties": false, "required": ["plannedBusinessLocation"], "properties": {
+      "businessType": { "type": "string", "maxLength": 120 },
+      "plannedBusinessLocation": { "type": "object", "additionalProperties": false,
+        "required": ["district", "state"], "properties": {
+          "village": { "type": "string", "maxLength": 120 },
+          "district": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "state": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "pincode": { "type": "string", "pattern": "^[1-9][0-9]{5}$" },
+          "source": { "enum": ["profile", "pdf", "confirmed_by_user"] },
+          "evidence": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "type": "string" } }
+        }
+      }
+    } },
+    "segments": { "type": "array", "minItems": 1, "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["segId", "textEn", "lang", "source"],
+      "properties": {
+        "segId": { "type": "string", "minLength": 1 },
+        "textEn": { "type": "string" },
+        "textOriginal": { "type": "string" },
+        "lang": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "struck": { "type": "boolean" },
+        "supersededBy": { "type": "string" },
+        "source": { "type": "object", "additionalProperties": false,
+          "required": ["type"], "properties": {
+            "type": { "enum": ["pdf", "text", "profile"] },
+            "documentId": { "type": "string" },
+            "page": { "type": "integer", "minimum": 1 },
+            "bbox": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "number" } }
+          }
+        }
+      }
+    } },
+    "fields": { "type": "object", "additionalProperties": { "$ref": "#/$defs/field" } },
+    "financials": { "type": "object", "additionalProperties": { "$ref": "#/$defs/number" } },
+    "rubric": { "type": "object", "additionalProperties": false,
+      "required": ["version", "completenessWeights"], "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "completenessWeights": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } }
+      }
+    }
+  },
+  "$defs": {
+    "field": { "type": "object", "additionalProperties": false, "required": ["state", "evidence"], "properties": {
+      "state": { "enum": ["answered", "missing", "not_asked", "irrelevant", "unreadable"] },
+      "evidence": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+    } },
+    "number": { "type": "object", "additionalProperties": false, "required": ["value", "segId"], "properties": {
+      "value": { "type": "number" }, "segId": { "type": "string" }
+    } }
+  }
+}

@@ -82,8 +82,10 @@ A feature is done when UI, API, persistence, permissions, loading/error states, 
 
 ## In progress
 
-None claimed. Before work, add: task · requirement IDs · touched modules/files · dependencies · handoff/status.
+Remaining full-duty work: Dev 1 PDF extraction/app upload and original viewer endpoint; Dev 3 durable queue, published rubrics, cohort/trade models and events; Dev 4 shared viewer. Dev 2 must still connect imports, similarity, open-data location/schemes, analytics/ranks, routing, exports, copilot and P1 workflows. The 55 private files are now ignored locally, but no redacted extraction sidecars exist; A-30 is incomplete. See [centre integration](../centre-evaluation.md).
 
 ## Done
+
+- 2026-10-17 · Partial Dev 2 evaluation slice: shared extracted-input schema; evidence-checked two-run local scoring; deterministic completeness/finance/pathway; follow-up and summary-plan drafts; centre-scoped queue/card, decisions and feedback draft; ranking/routing pure functions; private-data eval harness. Verified 43 backend tests, 23 Python tests, types/build and 88-owner matrix. No unverified local model or missing PDF pipeline is marked complete.
 
 - 2026-10-17 · First milestone foundation: Centre/cohort accounts, protected workspaces, scoped read-only submission access and cross-centre denial are implemented. Full intake/review/decision workflows remain pending.

@@ -34,7 +34,6 @@ export function createApp(config: Config, options: { assessIdea?: (input: Centre
   const app = express();
   const sessions = sessionService(config);
   const vault = piiVault(config.PII_ENCRYPTION_KEY);
-  const verifyPhoneToken = options.verifyPhoneToken ?? firebasePhoneVerifier(config.FIREBASE_PROJECT_ID);
   setTenancyMode(config.TENANCY_MODE);
   app.disable('x-powered-by');
   app.use(helmet());

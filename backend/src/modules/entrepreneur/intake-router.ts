@@ -239,7 +239,7 @@ export function intakeRouter(config: Config) {
   // M-08: the latest transcript version, in the speaker's own script with English beside it.
   router.get('/pitches/:id/transcript', canPitch, async (req, res) => {
     const pitch = await ownPitch(req, req.params.id as string);
-    const latest = await Transcript.findOne({ pitchId: pitch._id }).sort({ version: -1 }).lean();
+    const latest = await Transcript.findOne({ pitchId: pitch._id }).setOptions({ tenant: { pitchId: pitch._id } }).sort({ version: -1 }).lean();
     if (!latest) { res.json({ pipeline: pitch.pipeline, transcript: null }); return; }
     res.json({ pipeline: pitch.pipeline, transcript: { version: latest.version, status: latest.status, pending: latest.pending,
       segments: latest.segments, edited: latest.version > 1 } });
@@ -251,7 +251,7 @@ export function intakeRouter(config: Config) {
       segId: z.string().regex(/^s_\d{4,}$/), text: z.string().trim().min(1).max(4000).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]*$/),
     }).strict()).min(1).max(200) }).strict().parse(req.body);
     const pitch = await ownPitch(req, req.params.id as string);
-    const latest = await Transcript.findOne({ pitchId: pitch._id }).sort({ version: -1 }).lean();
+    const latest = await Transcript.findOne({ pitchId: pitch._id }).setOptions({ tenant: { pitchId: pitch._id } }).sort({ version: -1 }).lean();
     if (!latest) throw new HttpError(404, 'No transcript yet.');
     if (latest.version !== input.baseVersion) throw new HttpError(409, 'The transcript changed since you opened it. Reload and try again.');
     const edits = new Map(input.edits.map(edit => [edit.segId, edit.text]));
@@ -264,7 +264,7 @@ export function intakeRouter(config: Config) {
       throw new HttpError(400, 'Check the request fields and try again.');
     }
     try {
-      const next = await Transcript.create({ pitchId: pitch._id, submissionId: latest.submissionId, version: latest.version + 1,
+      const next = await Transcript.create({ pitchId: pitch._id, ownerOrgId: pitch.centreId!, submissionId: latest.submissionId, version: latest.version + 1,
         status: latest.status, segments, extracted: latest.extracted, pending: latest.pending, issues: latest.issues, blurBoxes: latest.blurBoxes, editedByUserId: req.auth!.user.id });
       res.json({ version: next.version, segments: next.segments, edited: true });
     } catch (error) {

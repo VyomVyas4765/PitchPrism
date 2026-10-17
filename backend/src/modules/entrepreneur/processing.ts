@@ -4,33 +4,21 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import mongoose, { Schema } from 'mongoose';
+import mongoose from 'mongoose';
+import { PitchReading as Transcript } from '../../models.js';
 import { Pitch, PitchDocument } from './intake-models.js';
 import { Entrepreneur } from './models.js';
 import { readOriginal } from './storage.js';
 import type { PiiVault, Sealed } from './pii-vault.js';
 
-// M-08: transcripts are versioned; version 1 is the machine reading and is never changed.
-const transcriptSchema = new Schema({
-  pitchId: { type: Schema.Types.ObjectId, required: true },
-  submissionId: Schema.Types.ObjectId,
-  version: { type: Number, required: true },
-  status: { type: String, enum: ['extracted', 'pending', 'failed'], required: true },
-  segments: { type: [Schema.Types.Mixed], default: [] },
-  extracted: Schema.Types.Mixed,     // CentreExtractedInput for Dev 2 when status is extracted
-  pending: { type: [Schema.Types.Mixed], default: [] },
-  issues: { type: [Schema.Types.Mixed], default: [] },
-  // A-10: page regions holding personal details, for blurring page images by role.
-  blurBoxes: { type: [Schema.Types.Mixed], default: [] },
-  editedByUserId: Schema.Types.ObjectId,
-}, { timestamps: true });
-transcriptSchema.index({ pitchId: 1, version: -1 }, { unique: true });
-export const Transcript = mongoose.model('Transcript', transcriptSchema);
+// M-08 pitch readings have their own contract and collection; shared submission transcripts are a different shape.
+export { Transcript };
 
 export type IngestJob = { documents: { documentId: string; kind: string; path: string; promptStep?: string }[];
   language: string; typedAnswers?: Record<string, string>; known?: Record<string, string[]>; profile?: Record<string, string> };
-export type IngestResult = { status: 'extracted' | 'pending' | 'failed' | 'invalid'; transcript?: unknown[]; extracted?: unknown;
-  pending?: unknown[]; issues?: unknown[]; blurBoxes?: unknown[] };
+export type IngestResult = { status: 'extracted' | 'pending' | 'failed' | 'invalid'; transcript?: Record<string, unknown>[];
+  extracted?: Record<string, unknown>; pending?: Record<string, unknown>[]; issues?: Record<string, unknown>[];
+  blurBoxes?: Record<string, unknown>[] };
 export type IngestRunner = (job: IngestJob) => Promise<IngestResult>;
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -77,15 +65,17 @@ export async function processPitch(pitchId: mongoose.Types.ObjectId, vault: PiiV
     }
     if (claimed.typedAnswers.length) job.typedAnswers = Object.fromEntries(claimed.typedAnswers.map(answer => [answer.step!, answer.text!]));
     // Known personal values are redacted before any model sees the text (A-10); they never leave this host.
-    const person = await Entrepreneur.findById(claimed.entrepreneurId).select('+personal').lean();
+    const person = await Entrepreneur.findById(claimed.entrepreneurId)
+      .setOptions({ tenant: { _id: claimed.entrepreneurId } }).select('+personal').lean();
     const personal = person?.personal && vault ? vault.open<{ name?: string }>(person.personal as Sealed, String(person._id)) : {};
     if (personal.name) job.known = { name: [personal.name] };
     if (person?.district && person.state) job.profile = { district: person.district, state: person.state, ...(person.pincode ? { pincode: person.pincode } : {}) };
     const result = await runner(job);
     const status = result.status === 'extracted' ? 'extracted' : result.status === 'pending' ? 'pending' : 'failed';
     // A retry after a pending or failed run adds the next version; earlier readings stay for audit.
-    const previous = await Transcript.findOne({ pitchId }).sort({ version: -1 }).select('version').lean();
-    await Transcript.create({ pitchId, submissionId: claimed.submissionId, version: (previous?.version ?? 0) + 1, status, segments: result.transcript ?? [],
+    const previous = await Transcript.findOne({ pitchId }).setOptions({ tenant: { pitchId } }).sort({ version: -1 }).select('version').lean();
+    await Transcript.create({ pitchId, ownerOrgId: claimed.centreId!, submissionId: claimed.submissionId ?? undefined,
+      version: (previous?.version ?? 0) + 1, status, segments: result.transcript ?? [],
       extracted: result.extracted, pending: result.pending ?? [], issues: result.issues ?? [], blurBoxes: result.blurBoxes ?? [] });
     await Pitch.updateOne({ _id: pitchId }, { $set: { pipeline: status === 'extracted' ? 'transcribed' : status === 'pending' ? 'pending_capability' : 'failed' } });
   } catch {

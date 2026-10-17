@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PitchReading",
+  "description": "Versioned private reading of a Dev 1 pitch draft, distinct from the shared submission transcript.",
+  "x-collection": "pitchReadings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pitchId", "ownerOrgId", "version", "status", "segments"],
+  "properties": {
+    "pitchId": { "$ref": "common.json#/definitions/ObjectId" },
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": { "type": "string", "enum": ["extracted", "pending", "failed"] },
+    "segments": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "extracted": { "type": "object", "additionalProperties": true },
+    "pending": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "issues": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "blurBoxes": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "editedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

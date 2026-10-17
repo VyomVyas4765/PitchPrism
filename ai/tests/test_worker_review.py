@@ -121,6 +121,14 @@ class WorkerReviewTests(unittest.TestCase):
         job = DB["jobs"].find_one()
         self.assertEqual((job["error"]["code"], job["error"]["stage"]), ("capability_unavailable", "ingest"))
 
+    def test_non_english_pitch_stops_at_translation_until_provider_is_available(self):
+        DB["pitches"].update_one({}, {"$set": {"language": "hi"}})
+        self.enqueue()
+        self.assertEqual(self.run_job(), "failed")
+        job = DB["jobs"].find_one()
+        self.assertEqual((job["error"]["code"], job["error"]["stage"]), ("capability_unavailable", "translate"))
+        self.assertIsNone(DB["centrecases"].find_one())
+
 
 if __name__ == "__main__":
     unittest.main()

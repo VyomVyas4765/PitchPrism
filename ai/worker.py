@@ -105,9 +105,9 @@ def read_original(db, storage_id) -> bytes:
 
 def pitch_text(db, job):
     """The submission's text pitch: an uploaded .txt or the typed answers. None when it has no text (audio, PDF, photo)."""
-    pitch = db["pitches"].find_one({"submissionId": job["submissionId"]}, {"_id": 1})
+    pitch = db["pitches"].find_one({"submissionId": job["submissionId"]}, {"_id": 1, "language": 1})
     if not pitch:
-        return None, None
+        return None, None, None
     parts, document_id = [], None
     for document in db["documents"].find({"pitchId": pitch["_id"], "purpose": "pitch", "state": "complete", "kind": "text"}).sort("_id", 1):
         content = read_original(db, document["storageId"]).decode("utf-8", errors="replace")
@@ -119,7 +119,7 @@ def pitch_text(db, job):
         parts.append(content.strip())
         document_id = document_id or str(document["_id"])
     text = "\n".join(part for part in parts if part)
-    return (text or None), document_id
+    return (text or None), document_id, pitch.get("language", "en")
 
 
 def save_review(db, job, session, processed):
@@ -163,7 +163,7 @@ def review_pitch(db, job, run, make_adapter):
             current.summary(answers=len(answers), round=session["round"])
     else:
         with run.stage("ingest") as current:
-            text, document_id = pitch_text(db, job)
+            text, document_id, language = pitch_text(db, job)
             if text is None:
                 raise CapabilityUnavailable("only text pitches can be read so far; audio, PDF and photo intake are not available")
             current.summary(characters=len(text), format="text")
@@ -184,6 +184,8 @@ def review_pitch(db, job, run, make_adapter):
                 raise InvalidInput("unredacted personal data in evidence")
             current.summary(redacted=redacted)
         with run.stage("translate") as current:
+            if language != "en":
+                raise CapabilityUnavailable("translation is not configured for this pitch language")
             current.skip()
             current.summary(language="en")
         with run.stage("extract") as current:

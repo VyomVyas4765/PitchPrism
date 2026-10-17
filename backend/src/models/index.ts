@@ -27,6 +27,7 @@ export const Entrepreneur = define<S.Entrepreneur>('Entrepreneur', { tenant: tru
   overrides: {
     userId: { unique: true, sparse: true },
     personal: { select: false }, // sealed; read only with .select('+personal')
+    onboarding: { select: false }, // sealed; read only with .select('+onboarding')
     district: { trim: true }, pincode: { trim: true }, trade: { trim: true },
   },
   indexes: [[{ contactHashes: 1 }], [{ homeOrgId: 1 }],
@@ -53,6 +54,8 @@ export const Submission = define<S.Submission>('Submission', { tenant: true,
 });
 export const Document = define<S.Document>('Document', { tenant: true, indexes: [[{ submissionId: 1 }], [{ sha256: 1 }]] });
 export const Transcript = define<S.Transcript>('Transcript', { tenant: true, indexes: [[{ submissionId: 1, version: -1 }, { unique: true }]] });
+export const PitchReading = define<S.PitchReading>('PitchReading', { tenant: true,
+  indexes: [[{ pitchId: 1, version: -1 }, { unique: true }]] });
 export const Evaluation = define<S.Evaluation>('Evaluation', { tenant: true, indexes: [[{ submissionId: 1, createdAt: -1 }], [{ ownerOrgId: 1 }]] });
 export const Decision = define<S.Decision>('Decision', { tenant: true, indexes: [[{ submissionId: 1, createdAt: -1 }]] });
 export const Share = define<S.Share>('Share', { tenant: true, indexes: [[{ toOrgId: 1, status: 1 }], [{ submissionId: 1 }]] });
@@ -95,5 +98,5 @@ const sessionSchema = new Schema({
 export const Session = mongoose.model('Session', sessionSchema);
 
 export const ALL_MODELS = [Org, User, Invitation, Entrepreneur, Consent, Programme, Cohort, Trade, Rubric, RoutingRule,
-  Submission, Document, Transcript, Evaluation, Decision, Share, Outcome, Job, StageEvent, PipelineRun, ReviewSample, EvalRun, PasswordReset, ReviewSession, AuditLog, ImportBatch, Session];
+  Submission, Document, Transcript, PitchReading, Evaluation, Decision, Share, Outcome, Job, StageEvent, PipelineRun, ReviewSample, EvalRun, PasswordReset, ReviewSession, AuditLog, ImportBatch, Session];
 export type * as Stored from './stored.generated.js';

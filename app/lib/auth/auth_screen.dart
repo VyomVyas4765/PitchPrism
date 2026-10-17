@@ -1,18 +1,17 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
 import '../core/speech.dart';
 import '../entrepreneur/common.dart';
 import '../entrepreneur/entrepreneur_shell.dart';
+import '../entrepreneur/offline_demo.dart';
 import '../facilitator/facilitator_home.dart';
 import '../intake/services.dart';
 import '../l10n/strings.dart';
 
-/// D-27: email and password is the only way in. Entrepreneurs create their own account (always as an
-/// entrepreneur); facilitators sign in with the account their organisation invited them to create.
+/// D-27: real accounts use email and password. The offline demo is a separate, device-only tour.
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, this.language = 'en', this.speech, this.onChangeLanguage, this.api});
   final String language;
@@ -30,9 +29,12 @@ class _AuthScreenState extends State<AuthScreen> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   Map<String, dynamic>? _user;
+  OfflineDemo? _demo;
+  int _authGeneration = 0;
   String? _error;
   bool _creating = false;
   bool _loading = true;
+  bool _submitting = false;
   late final Speech _speech = widget.speech ?? SystemSpeech();
 
   String t(String key) => tr(widget.language, key);
@@ -40,21 +42,19 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void initState() {
     super.initState();
-    if (kDebugMode) {
-      unawaited(_api.request('/health')
-          .then<void>((_) => debugPrint('PitchPrism development API: reachable'))
-          .catchError((Object _) => debugPrint('PitchPrism development API: unavailable')));
-    }
     _restore();
   }
 
   Future<void> _restore() async {
+    final generation = _authGeneration;
     try {
       if (!await _api.hasSession()) return;
       final user = (await _api.request('/auth/me'))['user'] as Map<String, dynamic>;
+      if (generation != _authGeneration) return;
       if (!['entrepreneur', 'facilitator'].contains(user['role'])) throw ApiException(t('staffUseWeb'), 403);
       if (mounted) setState(() => _user = user);
     } on ApiException catch (error) {
+      if (generation != _authGeneration) return;
       if ([401, 403].contains(error.status)) {
         await _api.clearToken();
         if (error.status == 403 && mounted) setState(() => _error = error.message);
@@ -62,21 +62,25 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() => _error = error.message);
       }
     } catch (_) {
+      if (generation != _authGeneration) return;
       if (mounted) setState(() => _error = 'Cannot reach PitchPrism. Check your connection and try again.');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && generation == _authGeneration) setState(() => _loading = false);
     }
   }
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
+    final generation = _authGeneration;
     setState(() {
       _loading = true;
+      _submitting = true;
       _error = null;
     });
     try {
       final body = {'email': _email.text.trim(), 'password': _password.text, 'client': 'mobile'};
       final response = await _api.request(_creating ? '/auth/register' : '/auth/login', body: body);
+      if (generation != _authGeneration) return;
       final user = response['user'] as Map<String, dynamic>;
       await _api.saveToken(response['accessToken'] as String);
       if (!['entrepreneur', 'facilitator'].contains(user['role'])) {
@@ -95,12 +99,31 @@ class _AuthScreenState extends State<AuthScreen> {
         });
       }
     } on ApiException catch (error) {
-      if (mounted) setState(() => _error = error.message);
+      if (mounted && generation == _authGeneration) setState(() => _error = error.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Cannot reach PitchPrism. Check your connection and try again.');
+      if (mounted && generation == _authGeneration) setState(() => _error = 'Cannot reach PitchPrism. Check your connection and try again.');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && generation == _authGeneration) setState(() {
+        _loading = false;
+        _submitting = false;
+      });
     }
+  }
+
+  void _startDemo() {
+    _authGeneration++;
+    setState(() {
+      _demo = OfflineDemo(widget.language);
+      _loading = false;
+      _error = null;
+    });
+  }
+
+  Future<void> _leaveDemo() async {
+    final demo = _demo;
+    if (demo == null) return;
+    if (mounted) setState(() => _demo = null);
+    await demo.dispose();
   }
 
   Future<void> _signOut() async {
@@ -115,6 +138,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   void dispose() {
+    if (_demo != null) unawaited(_demo!.dispose());
     _email.dispose();
     _password.dispose();
     _confirm.dispose();
@@ -123,6 +147,15 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final demo = _demo;
+    if (demo != null) {
+      return Banner(
+        message: 'OFFLINE DEMO', location: BannerLocation.topStart,
+        child: EntrepreneurShell(api: demo.api, speech: _speech, language: widget.language,
+          services: (_) => demo.services,
+          onChangeLanguage: widget.onChangeLanguage ?? () {}, onSignOut: _leaveDemo),
+      );
+    }
     final user = _user;
     if (user != null && user['role'] == 'entrepreneur') {
       return EntrepreneurShell(api: _api, speech: _speech, language: widget.language,
@@ -189,6 +222,18 @@ class _AuthScreenState extends State<AuthScreen> {
                       _error = null;
                     }),
                     child: Text(t(_creating ? 'haveAccount' : 'newHere')),
+                  ),
+                  const Divider(height: 32),
+                  OutlinedButton.icon(
+                    key: const Key('auth-demo'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                    onPressed: _submitting ? null : _startDemo,
+                    icon: const Icon(Icons.visibility_outlined),
+                    label: const Text('Explore offline demo'),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text('Sample data only. No account is created and nothing is sent to the server.'),
                   ),
                 ],
               ),

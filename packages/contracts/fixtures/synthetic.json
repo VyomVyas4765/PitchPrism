@@ -552,6 +552,16 @@
       "uploadedByUserId": "651000000000000000000004"
     }
   ],
+  "pitchReadings": [
+    {
+      "_id": "657100000000000000000001",
+      "pitchId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "version": 1,
+      "status": "extracted",
+      "segments": []
+    }
+  ],
   "transcripts": [
     {
       "_id": "657000000000000000000001",

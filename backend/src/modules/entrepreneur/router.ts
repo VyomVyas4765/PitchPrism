@@ -70,7 +70,7 @@ export function entrepreneurRouter(config: Config) {
   const self = (req: Request) => req.auth!.user.id;
 
   async function profileView(entrepreneurId: string) {
-    const record = await Entrepreneur.findById(entrepreneurId).select('+personal +onboarding').lean();
+    const record = await Entrepreneur.findById(entrepreneurId).setOptions({ tenant: { _id: entrepreneurId } }).select('+personal +onboarding').lean();
     if ((record?.personal || record?.onboarding) && !vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
     const personal = record?.personal && vault ? vault.open<{ name?: string; gender?: string | null }>(record.personal as Sealed, entrepreneurId) : {};
     const profile = {
@@ -94,7 +94,7 @@ export function entrepreneurRouter(config: Config) {
     if (!await hasProcessingConsent(id)) throw new HttpError(403, 'Give consent before saving onboarding details.');
     if (!vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
     const { name, gender, trade, district, state, pincode, ...answers } = input;
-    const current = await Entrepreneur.findById(id).select('+personal onboardingCompletedAt').lean();
+    const current = await Entrepreneur.findById(id).setOptions({ tenant: { _id: id } }).select('+personal onboardingCompletedAt').lean();
     if (current?.onboardingCompletedAt) throw new HttpError(409, 'Onboarding has already been completed.');
     const previousPersonal = current?.personal ? vault.open<{ gender?: string | null }>(current.personal as Sealed, id) : {};
     const personal = vault.seal({ ...previousPersonal, name, gender }, id);
@@ -104,9 +104,9 @@ export function entrepreneurRouter(config: Config) {
         onboardingCompletedAt: new Date(), trade, district, state, pincode,
       },
       $setOnInsert: { userId: id, createdVia: 'self' },
-    }, { upsert: false, runValidators: true });
+    }, { upsert: false, runValidators: true }).setOptions({ tenant: { _id: id } });
     if (!saved.matchedCount) {
-      const existing = await Entrepreneur.findById(id).select('onboardingCompletedAt').lean();
+      const existing = await Entrepreneur.findById(id).setOptions({ tenant: { _id: id } }).select('onboardingCompletedAt').lean();
       if (existing?.onboardingCompletedAt) throw new HttpError(409, 'Onboarding has already been completed.');
       try {
         await Entrepreneur.create({ _id: id, userId: id, createdVia: 'self', personal,

@@ -15,6 +15,7 @@ export const COLLECTIONS = {
   "Outcome": "outcomes",
   "PasswordReset": "passwordResets",
   "PipelineRun": "pipelineRuns",
+  "PitchReading": "pitchReadings",
   "Programme": "programmes",
   "ReviewSample": "reviewSamples",
   "ReviewSession": "reviewSessions",
@@ -815,6 +816,13 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
           "$ref": "#/definitions/Sealed",
           "description": "Sealed JSON: name, and when collected phone, email, gender and social category (Q-23)."
         },
+        "onboarding": {
+          "$ref": "#/definitions/Sealed",
+          "description": "Sealed one-time onboarding contact, background, location detail and EDP answers; never sent to models or partners."
+        },
+        "onboardingCompletedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
         "contactHashes": {
           "type": "array",
           "description": "Keyed HMAC-SHA256 of each normalised phone/email (backend/src/crypto.ts), hex.",
@@ -831,6 +839,10 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
           "$ref": "#/definitions/Language"
         },
         "district": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "state": {
           "type": "string",
           "maxLength": 80
         },
@@ -1891,6 +1903,84 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         "error": {
           "type": "string",
           "maxLength": 600
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "PitchReading": {
+      "title": "PitchReading",
+      "description": "Versioned private reading of a Dev 1 pitch draft, distinct from the shared submission transcript.",
+      "x-collection": "pitchReadings",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pitchId",
+        "ownerOrgId",
+        "version",
+        "status",
+        "segments"
+      ],
+      "properties": {
+        "pitchId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "extracted",
+            "pending",
+            "failed"
+          ]
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "extracted": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "pending": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "blurBoxes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "editedByUserId": {
+          "$ref": "#/definitions/ObjectId"
         },
         "createdAt": {
           "$ref": "#/definitions/DateTime"

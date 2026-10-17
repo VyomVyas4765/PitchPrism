@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +29,18 @@ class AuthApi extends PitchPrismApi {
     }
     throw ApiException('unexpected $path', 500);
   }
+}
+
+class PendingRestoreApi extends AuthApi {
+  PendingRestoreApi() : super('entrepreneur');
+  final restore = Completer<Map<String, dynamic>>();
+
+  @override
+  Future<bool> hasSession() async => true;
+
+  @override
+  Future<Map<String, dynamic>> request(String path, {Map<String, dynamic>? body, String? method}) =>
+      path == '/auth/me' ? restore.future : super.request(path, body: body, method: method);
 }
 
 void main() {
@@ -79,5 +93,56 @@ void main() {
     expect(find.text(tr('en', 'staffUseWeb')), findsOneWidget);
     expect(api.calls.map((call) => call.$1), contains('/auth/logout'));
     expect(await const FlutterSecureStorage().read(key: 'session'), isNull);
+  });
+
+  testWidgets('offline demo opens consent, onboarding and home without a server session', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await const FlutterSecureStorage().delete(key: 'session');
+    final api = AuthApi('entrepreneur');
+    await tester.pumpWidget(MaterialApp(home: AuthScreen(speech: SilentSpeech(), api: api)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('auth-demo')));
+    await tester.pumpAndSettle();
+    expect(find.byWidgetPredicate((widget) => widget is Banner && widget.message == 'OFFLINE DEMO'), findsOneWidget);
+    expect(find.text(tr('en', 'consentTitle')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('consent-processing')));
+    await tester.ensureVisible(find.byKey(const Key('consent-save')));
+    await tester.tap(find.byKey(const Key('consent-save')));
+    await tester.pumpAndSettle();
+    expect(find.text(tr('en', 'profileTitle')), findsOneWidget);
+    expect(tester.widget<TextFormField>(find.byKey(const Key('profile-name'))).controller!.text, 'Demo Entrepreneur');
+
+    await tester.ensureVisible(find.byKey(const Key('profile-save')));
+    await tester.tap(find.byKey(const Key('profile-save')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('home-type')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('home-type')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('pitch-centre')), findsOneWidget);
+    expect(find.byKey(const Key('answer-sell')), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(api.calls, isEmpty);
+    expect(await const FlutterSecureStorage().read(key: 'session'), isNull);
+
+    await tester.tap(find.byTooltip(tr('en', 'signOut')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('auth-email')), findsOneWidget);
+  });
+
+  testWidgets('offline demo remains available while an old session cannot be restored', (tester) async {
+    final api = PendingRestoreApi();
+    await tester.pumpWidget(MaterialApp(home: AuthScreen(speech: SilentSpeech(), api: api)));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('auth-demo')));
+    await tester.pumpAndSettle();
+    api.restore.complete({'user': {'id': 'real-user', 'role': 'entrepreneur'}});
+    await tester.pumpAndSettle();
+    expect(find.byWidgetPredicate((widget) => widget is Banner && widget.message == 'OFFLINE DEMO'), findsOneWidget);
+    expect(find.text(tr('en', 'consentTitle')), findsOneWidget);
   });
 }

@@ -176,6 +176,7 @@ export interface PitchPrismDomain {
   Outcome?: Outcome;
   PasswordReset?: PasswordReset;
   PipelineRun?: PipelineRun;
+  PitchReading?: PitchReading;
   Programme?: Programme;
   ReviewSample?: ReviewSample;
   ReviewSession?: ReviewSession;
@@ -315,6 +316,8 @@ export interface DocumentPage {
 export interface Entrepreneur {
   userId?: ObjectId;
   personal?: Sealed;
+  onboarding?: Sealed;
+  onboardingCompletedAt?: DateTime;
   /**
    * Keyed HMAC-SHA256 of each normalised phone/email (backend/src/crypto.ts), hex.
    */
@@ -325,6 +328,7 @@ export interface Entrepreneur {
   placeholderContact?: boolean;
   language?: Language;
   district?: string;
+  state?: string;
   pincode?: string;
   /**
    * Trade or skill as given; the normalised trade key lives on the submission.
@@ -626,6 +630,37 @@ export interface PipelineRun {
   computeSeconds?: number;
   hostedCostInr?: 0;
   error?: string;
+  createdAt?: DateTime;
+  updatedAt?: DateTime;
+}
+/**
+ * Versioned private reading of a Dev 1 pitch draft, distinct from the shared submission transcript.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PitchReading".
+ */
+export interface PitchReading {
+  pitchId: ObjectId;
+  submissionId?: ObjectId;
+  ownerOrgId: ObjectId;
+  version: number;
+  status: "extracted" | "pending" | "failed";
+  segments: {
+    [k: string]: unknown;
+  }[];
+  extracted?: {
+    [k: string]: unknown;
+  };
+  pending?: {
+    [k: string]: unknown;
+  }[];
+  issues?: {
+    [k: string]: unknown;
+  }[];
+  blurBoxes?: {
+    [k: string]: unknown;
+  }[];
+  editedByUserId?: ObjectId;
   createdAt?: DateTime;
   updatedAt?: DateTime;
 }

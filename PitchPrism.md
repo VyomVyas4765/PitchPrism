@@ -2,6 +2,8 @@
 
 v2 · Oct 17, 2026 · @Rayyan Shaikh
 
+**Implementation addendum · 17 October 2026.** [D-24](docs/decision.md) updates the provider/runtime strategy to local-only AI with zero hosted AI API spending and a lightweight Android client. This supersedes Sarvam/hosted-provider defaults below; all feature requirements, priorities, language/format support and acceptance targets remain unchanged. The four role-based developer assignments remain D-23. Track implementation and validation in [the complete requirement matrix](docs/implementation-matrix.md).
+
 **What changed in v2.** Rewritten against the organisers' revised problem statement and the 55 sample files they shared. The 18-section structure of v1 grew to 26 sections; v1 is kept unchanged in `PitchPrism.v1.md`. In short:
 
 - **New PS features:** similar-idea detection, nearby similar businesses, domain-, trade-, cohort- and cross-cohort ratings, and a rubric built on the PS's own parameters.
@@ -773,7 +775,7 @@ The product must work on a cheap phone over a weak connection, screen a whole in
 | Availability | 99% monthly during the pilot |
 | Languages | Mobile text and audio prompts in Hindi, Marathi, Telugu, Odia, Bengali and English; web in English, with originals shown in their own script and transliteration on request |
 | Accessibility | Web meets WCAG 2.1 AA contrast and keyboard use; mobile has screen-reader labels |
-| Data residency | Database, files and backend hosted in an India region; Sarvam is India-based; the LLM provider's data location is Q-04 |
+| Data residency | Local development AI runs on the team's worker host (D-24), with no hosted AI API fallback. Database, files, backend and worker production locations must be confirmed under Q-13 before claiming India-only deployment |
 | Cost visibility | AI cost per submission logged by stage, shown on the HQ dashboard |
 | Observability | Structured logs, a job queue dashboard, error tracking and alerts on failed pipeline stages |
 | External services | Overpass and Nominatim calls rate-limited and cached per their usage policies; map attribution shown |
@@ -789,18 +791,22 @@ The hackathon build covers the whole screening engine end to end, the multi-org 
 | V2 (pilot) | SMS fallback, quality checks, fairness monitor, audit log viewer, mentoring, outcome updates, visual rubric builder, platform integration | M-16; W-06 to W-08, W-14, W-15 |
 | Vision (pitch slide) | Funding-partner view and CSR impact reports, WhatsApp intake, scoring tuned with real outcomes, more languages, other incubators and CSR programmes as orgs | W-18, M-21 and new items |
 
-**Team of four, 30-hour build.** The detailed hour-by-hour project plan is the next document. Ownership:
+**Team of four, 30-hour build.** The team members are **Vyom, Rayyan, Arnav and Komal**. The role-based split is settled in D-23; which person takes each brief remains Q-01. Do not infer assignments or language expertise from the roster.
 
-1. **Everyone, first block.** Agree the API contract (section 20), the MongoDB schemas (section 19), the canonical field schema and question bank (Appendix B), and the demo script (section 24). Seed orgs, users, one programme, two cohorts, the trade list, one rubric and the schemes dataset.
-2. **AI ingestion engineer (Python).** A-01 to A-12: intake, audio chunking and Sarvam transcription, PDF layout parsing, quality gate, OCR and handwriting, overwrite detection, Q&A pairing, PII redaction, translation and extraction.
-3. **AI intelligence engineer (Python).** A-13 to A-30: quality and financial checks, duplicates, trade and location normalisation, similar ideas, local market and schemes, scoring and pathways, narrative, ranks, feedback, routing, and the eval harness on the organiser dataset.
-4. **API and mobile engineer (Node and Flutter).** Auth, scope plugin, queue producer, server-sent events, imports, admin and analytics endpoints; then the Flutter pitch flow, follow-ups, read-back, feedback, Idea Passport and assisted mode.
-5. **Web engineer (Next.js).** Login, bulk import, review queue and lanes, idea card v2 with page viewer and audio jump, quadrant, trade, cohort and cross-cohort views, map, decisions and feedback, routing, partner views, HQ setup and funnel.
-6. **Everyone, last block.** Run the eval harness and fix the worst failures; end-to-end run of the demo script three times on a real low-end phone, with a recorded backup video.
+| Brief | End-to-end product roles | Shared responsibility | Named developer |
+| --- | --- | --- | --- |
+| [Dev 1](docs/duties/dev-1-entrepreneur-facilitator.md) | Entrepreneur and field facilitator | Mobile, local ingestion and language providers | Unassigned · Q-01 |
+| [Dev 2](docs/duties/dev-2-centre-cohort.md) | Centre assessor and cohort lead | Local intelligence, scoring and evaluation | Unassigned · Q-01 |
+| [Dev 3](docs/duties/dev-3-hq-platform.md) | HQ programme admin | Auth, tenancy, contracts, database, queue and platform | Unassigned · Q-01 |
+| [Dev 4](docs/duties/dev-4-partners.md) | Implementation, sector and funding partner reviewers | Shared dashboard shell and UI/viewer primitives | Unassigned · Q-01 |
+
+Each owner implements their roles across UI, API, persistence, AI integration and tests, reusing the shared services. The [duty index](docs/duties/README.md) and [88-requirement matrix](docs/implementation-matrix.md) define the detailed responsibilities. Other agents may be working concurrently: check their progress notes and existing code before adding logic.
+
+**Everyone, first block:** agree shared contracts, evidence anchors, seed data and the demo script; begin local-model benchmarks and the Node/Python queue compatibility check. **Everyone, last block:** run the organiser evaluation, fix the worst failures, rehearse on the Android target and record a backup. Funding W-18 remains assigned at P2; an auth workspace is not a completed funding shortlist or CSR report.
 
 ## 24. Demo script
 
-The demo follows an intake from raw files to decisions, then one entrepreneur from a voice note to a partner match, in about 8 minutes, switching between the dashboard and the phone. Adjust timing once the demo length is known (Q-02).
+The demo follows an intake from raw files to decisions, then one entrepreneur from a voice note to a partner match, in about 8 minutes, switching between the dashboard and the phone. The **mentor review is 5 minutes**; the final demo length and any screening round are still unconfirmed (Q-02). The script below is an 8-minute working version, not a confirmed final slot; shorten it to 5 minutes for mentor review.
 
 1. **The problem (30 s).** Show what assessors receive today: an 11-page handwritten Hindi business plan, a Telugu PDF with garbled text, a struck-through English form and an Odia voice note.
 2. **Bulk import (45 s).** Drop the organisers' ZIP on the Varanasi and Telangana cohorts. The queue fills in live with language and format chips; cards stream in; lanes sort into Ready, Needs attention, Unassessable and Possible duplicate.
@@ -836,35 +842,61 @@ The biggest risks are wrong reading (transcripts, OCR, handwriting) leading to w
 | Scope across two halves (engine and network) eats build time | Core flow unfinished | Engine first; only HQ, two centres, one implementation partner and one sector partner live; others seeded |
 | AI cost grows with volume | Unaffordable at scale | Cost logged per stage; open-weights models; cheaper model for extraction, stronger model only for scoring |
 
-## 26. Open questions for the team
+## 26. Decision status and remaining questions
 
-These decisions change scope, data model or the demo; each has a default the PRD assumes until the team answers.
+Updated 17 October 2026 against D-23/D-24, the authentication foundation and the team information supplied. **Seven answered or superseded questions have been removed from the open list; 16 still need an answer or validation.** IDs are retained so older references remain meaningful. A working default, selected architecture or smoke test is not proof of production deployment or full feature correctness.
 
-| ID | Question | Why it matters | Default or status |
+### 26.1 Answered or superseded — no longer open
+
+| ID | Settled item | Current answer | Basis |
 | --- | --- | --- | --- |
-| Q-01 | Who is strongest in Flutter, Next.js, Node, Python and prompt writing? | Decides the build split | **Partly answered:** four developers; split as in section 23 until skills are confirmed |
-| Q-02 | How long is the demo and pitch slot? Is there a screening round first? | Decides the demo script | **Partly answered:** 30-hour build; demo assumed 8 minutes |
-| Q-03 | Will organisers share the actual EDP rubric and real volumes? | Real rubrics beat guessed ones with judges | **Partly answered:** real templates and 55 sample files shared; rubric and volumes still unknown, so section 13 applies |
-| Q-04 | Which LLM and vision model for extraction, scoring and handwriting? Who has API credits, and where is data processed? | Cost, quality, data residency, PS consideration (f) | Adapter; open-weights by default; pick by the eval harness |
-| Q-05 | Which languages will you demo live, and who can check Odia and Bengali transcripts? | Audio ground truth needs real speakers | Hindi, Telugu and Marathi live; Odia and Bengali from organiser audio |
-| Q-06 | Android only, or must the app also run on iOS? | Testing time | Android only |
-| Q-07 | Do assessors need the mobile app, or only the web dashboard? | Extra screens | Web only |
-| Q-08 | Can one entrepreneur apply to several programmes or centres at once? | Changes ownership rules in the data model | One active submission per programme; centre assigned by district |
-| Q-09 | When a partner collects an idea, who owns the relationship: the partner or the centre? | Changes who sees and decides | Centre owns; partner is recorded as the source |
-| Q-10 | Should funding partners see anything in the MVP? | Extra view and consent type | No; vision slide only |
-| Q-11 | Phone OTP via Firebase Auth, or an Indian SMS provider? | Setup time and SMS cost | Firebase Auth |
-| Q-12 | Have 2026 amendments changed DPDP consent or timelines? Mondaq lists a 2026 Removal of Difficulties Order on consent and data audits | The compliance slide must be current | Design to the November 2025 Rules; verify before the pitch |
-| Q-13 | Where will you host? | Data residency claim | MongoDB Atlas and backend in an India region |
-| Q-14 | Does BullMQ's Python package cover what the worker needs (rate limits, progress events)? | Node and Python share one queue | BullMQ with hosted Redis; fall back to Redis Streams if not |
-| Q-15 | Must PitchPrism connect to any existing Tata STRIVE system, such as their learning platform? | Integration work | Link out only |
-| Q-16 | What are the judging criteria and their weights? | Where to spend the last hours | Equal weight to impact, feasibility, innovation and demo |
-| Q-17 | Product name? | Branding in the deck and app | Decided: PitchPrism |
-| Q-18 | Is there a Google Places API key or budget? | Coverage of nearby businesses | OpenStreetMap only |
-| Q-19 | Can we get an export or API from the application platform that produced the forms (program "Nanounicorn for testing")? | Automatic intake instead of manual upload | Manual and bulk upload |
-| Q-20 | Does Tata STRIVE have an official trade list and cohort definitions? | Trade-wise and cohort-wise ratings | Our NIC-mapped trade list; cohort = centre and intake month |
-| Q-21 | May the organiser files, including the real handwritten plans, appear in the public demo? | Privacy | Only with redaction on, and only if organisers agree |
-| Q-22 | Which loan ceiling applies: the ₹1,00,000 in the Business Plan's formula N, or the ₹2 lakh cited by Tata Trusts? | Feasibility and funding pathway rules | Use the template's own formula for checks; ₹2 lakh for the funding pathway; confirm |
-| Q-23 | Does Tata STRIVE want social category used at all (for scheme eligibility), or ignored? | Sensitive data handling | Optional, encrypted, eligibility and aggregate monitoring only |
+| Q-06 | Android only | Android is the chosen mobile target; iOS is outside the current build. Android 8+/2 GB performance is still an acceptance target, not a verified result. | D-20, D-23; Flutter Android scaffold |
+| Q-07 | Assessors use the web dashboard | Centre, cohort and HQ assessment workflows belong on the web; entrepreneur/facilitator workflows use mobile. | D-20, D-23; current role briefs |
+| Q-09 | Centre owns partner-collected submissions | The centre owns the submission; the collecting implementation partner is its source, with scoped access. | §5; shared ownership/access foundation |
+| Q-10 | Funding scope is retained at P2 | W-18 belongs to Dev 4 at P2. Funding auth/access foundations exist; the full shortlist and CSR reports are pending. The old binary MVP question is replaced by explicit P2 scheduling, with no change to its priority. | D-01, D-23; W-18 and its duty brief |
+| Q-11 | Firebase phone authentication | Firebase phone-token verification is implemented for entrepreneurs; staff use password/JWT sessions. Firebase project/device setup is pending, not the provider choice. | D-21, D-23; auth implementation |
+| Q-17 | Product name is PitchPrism | Naming is settled. | Current product/repository name |
+| Q-18 | OpenStreetMap baseline | OSM is the selected baseline. A Google Places key is not needed to proceed; any future alternative needs an explicit cost/privacy decision. No Google budget or key is claimed. | D-15; local/open-data architecture |
+
+### 26.2 Partly answered — retain only the missing part
+
+| ID | Remaining question | Already established | Still missing / action |
+| --- | --- | --- | --- |
+| Q-01 | Which person takes each of the four role-based developer briefs? | Vyom, Rayyan, Arnav and Komal are the team; the four role-based responsibility groups are defined. | Named assignment to each brief; relevant skills and language-review availability. Assign before parallel role implementation. |
+| Q-02 | How long is the final demo, and is there a screening round? | 30-hour build; mentor review is 5 minutes. | Organiser-confirmed final slot and screening format. The §24 final script still assumes 8 minutes; use a shortened 5-minute mentor version. |
+| Q-03 | What are the official EDP rubric and real application volumes? | Real form templates and 55 sample files are available. | Official scoring rubric and actual scale. §13 rubric and §22 pilot volumes remain provisional. |
+| Q-04 | Which local LLM and vision models pass the required evaluation? | ₹0 hosted AI API policy; heavy compute stays on the local Python worker. M2/8 GiB host and Ollama adapter exist; llama3.2 passed only a synthetic JSON smoke test. API credits are no longer relevant. | Licence, peak RAM, latency and six-language/format results; approved reasoning and vision models. Benchmark early; retain H14 as the original first-eval selection gate. Production processing location is Q-13. |
+| Q-13 | Where will the production API, worker, database and private files run? | Development runs locally; MongoDB/Redis have local Compose configuration. India-region deployment remains the intended production target. | Actual hosts, regions, access, resource capacity and operating budget. Do not claim deployed India-only processing or permanently free hosting before verification. |
+
+### 26.3 Team decisions or technical validation still open
+
+| ID | Question | Working default / current evidence | Owner and next action |
+| --- | --- | --- | --- |
+| Q-05 | Which languages are live, and who validates Odia/Bengali transcripts? | Hindi, Telugu and Marathi live; Odia/Bengali organiser samples. All six launch languages remain required. | Dev 1 + Dev 2 with the team: confirm live choices and named qualified validators before language-quality claims. |
+| Q-08 | Are multiple simultaneous programme/centre applications allowed? | One active submission per programme; centre assigned by district. This is an unconfirmed policy, not a completed constraint. | Team, confirmed with organisers if needed: settle before freezing submission uniqueness and ownership contracts. |
+| Q-14 | Does the Node/Python BullMQ integration satisfy the worker contract? | BullMQ on local Redis; Redis Streams fallback if compatibility fails. No consumer or cross-runtime integration has been validated. | Dev 3 with Devs 1/2: prove enqueue, consume, retry, progress and failure behavior by H4, then record the final choice. |
+
+### 26.4 Organiser or Tata STRIVE answers still needed
+
+These need external confirmation; the defaults below are not recorded as organiser answers. Q-02 and Q-03 above also require organiser confirmation.
+
+| ID | Question | Default until confirmed |
+| --- | --- | --- |
+| Q-15 | Is integration with an existing Tata STRIVE system required? | Link out only; no confirmed integration requirement. |
+| Q-16 | What are the official judging criteria and weights? | Equal weights for impact, feasibility, innovation and demo are a planning assumption, not official criteria. |
+| Q-19 | Can the application platform provide an export or API? | Manual and bulk upload until an authorised integration is available. |
+| Q-20 | Is there an official trade list and cohort definition? | Our NIC-mapped trade list; cohort based on centre and intake month, pending the official definition. |
+| Q-21 | May organiser files, including handwritten plans, appear publicly? | Only with redaction and organiser permission. Permission has not been established; use synthetic public-demo fixtures until cleared. |
+| Q-22 | Which loan ceiling applies to funding recommendations? | Use the form’s ₹1 lakh ceiling for formula checks; the ₹2 lakh funding suggestion remains provisional until confirmed. |
+| Q-23 | May social category be collected/used, and for which purposes? | Optional, encrypted; scheme eligibility and aggregate fairness only, never scoring. Confirm with Tata STRIVE before relying on this policy. |
+
+### 26.5 Check before making claims
+
+| ID | Verification | Current status |
+| --- | --- | --- |
+| Q-12 | What data-protection/consent rules and timelines apply at the demo and pilot? | The older PRD used the November 2025 framework as its design reference. Current applicability/amendments require authoritative review before any compliance claim; this edit does not verify the law. |
+
+**Immediate priorities:** assign the named developers (Q-01); begin the local-model evaluation (Q-04, H14 selection gate); prove the queue handoff (Q-14, H4). H4/H14 are build-plan checkpoints, not claims that those checks have already passed.
 
 ## Appendix A. Organiser dataset
 

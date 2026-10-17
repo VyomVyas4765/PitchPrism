@@ -35,7 +35,7 @@ Everything else is quiet ink on paper so that the spectrum is the only colour th
 
 ## 3. Tokens
 
-Two editions: **Day** (warm newsprint) and **Night** (the late edition: deep ink-blue paper, cream type). Paste into `apps/web/app/globals.css`.
+Two editions: **Day** (warm newsprint) and **Night** (the late edition: deep ink-blue paper, cream type). Paste into `frontend/app/globals.css`.
 
 ```css
 :root {

@@ -4,6 +4,8 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 
 **Status key:** ✅ Decided · 🟡 Default (holds until someone objects with a reason) · ❓ Open
 
+**Current implementation:** D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD.
+
 ## Index
 
 | ID | Decision | Status | Owner |
@@ -30,6 +32,9 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-20 | Android only; assessors use web only | 🟡 | Dev 3 |
 | D-21 | Staff auth by JWT cookie; entrepreneurs by Firebase OTP | 🟡 | Dev 3 |
 | D-22 | Demo runs on cached results with a live path | ✅ | All |
+| D-23 | Auth-first foundation; role-based duties and requested folder names | ✅ | All |
+| D-24 | Full scope, local-only AI; lean Android; explicit cost/capability evidence | ✅ | All |
+| D-25 | Reconcile answered, superseded and still-open PRD questions | ✅ | All |
 
 ---
 
@@ -160,12 +165,64 @@ Per Q-11. Seeded staff accounts per role for the demo, with one-click role switc
 
 ---
 
-## Open decisions ❓
+## Remaining decisions and confirmations ❓
 
-| ID | Question | Needed by | Who decides |
+Current register after D-25. The complete answered/partial/open classification is in [PRD §26](../PitchPrism.md#26-decision-status-and-remaining-questions). A default is not an answer, and local runtime availability is not model validation. Historical references in earlier entries are preserved.
+
+| ID | Remaining question | Needed by | Owner / current status |
 | --- | --- | --- | --- |
-| Q-04 | Which LLM and vision model | H14 (after first eval run) | Dev 2 with the eval report |
-| Q-14 | BullMQ Python package or Redis Streams | H4 | Dev 3 |
-| Q-18 | Google Places key | H12 | Team lead |
-| Q-21 | Can organiser files appear in a public demo? | Before the pitch | Ask organisers |
-| Q-22 | Loan ceiling for the funding pathway (₹1 lakh vs ₹2 lakh) | H16 | Team lead |
+| Q-01 | Assign Vyom, Rayyan, Arnav and Komal to the four existing role briefs | Before parallel role work | Team; roster/split known, named assignments missing |
+| Q-02 | Confirm final demo duration and screening round | Before final rehearsal | Organisers; mentor review is 5 min, final script assumes 8 min |
+| Q-03 | Obtain actual EDP rubric and application volumes | Before rubric/scale claims | Organisers / Tata STRIVE; templates and 55 files already supplied |
+| Q-04 | Approve local LLM/vision models from licence/RAM/language/format evaluation | Benchmark early; original H14 eval gate | Dev 2 with Dev 1; runtime/budget settled, no model approved |
+| Q-05 | Confirm live languages and named Odia/Bengali transcript validators | Before language-quality claims and rehearsal | Dev 1 + Dev 2 / team; Hindi/Telugu/Marathi remain the live default |
+| Q-08 | Confirm simultaneous application and centre-assignment policy | Before domain-contract freeze | Team, with organiser input if needed; one active submission/programme is provisional |
+| Q-12 | Verify applicable data-protection rules and consent timelines | Before pitch/pilot compliance claims | Team obtains authoritative review; no new legal conclusion recorded |
+| Q-13 | Confirm production hosts, actual regions, resources and operating budget | Before deployment/residency claims | Dev 3 / team; local development exists, India production target unverified |
+| Q-14 | Validate BullMQ Python handoff or select Redis Streams fallback | H4 | Dev 3 with Devs 1/2; consumer/retry/progress behavior not yet tested |
+| Q-15 | Confirm required Tata STRIVE system integrations | Before integration scope is locked | Organisers / Tata STRIVE; link out is only the default |
+| Q-16 | Confirm judging criteria and weights | Before final pitch priorities | Organisers; equal weights are provisional |
+| Q-19 | Confirm application-platform export/API availability | Before promising automated integration | Organisers; manual/bulk upload baseline |
+| Q-20 | Obtain official trade list and cohort definition | Before taxonomy/benchmark claims | Tata STRIVE; local NIC list/cohort definition provisional |
+| Q-21 | Obtain permission for public use of organiser files | Before public demo/publication | Organisers; redaction alone does not grant permission |
+| Q-22 | Confirm funding-recommendation loan ceiling | H16 / before recommendation claims | Organisers / Tata STRIVE; form arithmetic ₹1 lakh, funding suggestion ₹2 lakh provisional |
+| Q-23 | Confirm social-category collection/use policy | Before relying on collection/eligibility policy | Tata STRIVE; optional/encrypted/scheme-or-aggregate-only is provisional |
+
+
+### D-23 · Auth-first foundation, role-based duties and requested folder names ✅
+
+**Context.** The team requested a basic starter with `app/`, `frontend/`, `backend/` and `ai/`, then chose authentication/authorization as the first milestone before role-specific feature work.
+
+**Decision.** This supersedes D-02's directory names and the technical-specialty staffing split in the original build plan; runtime choices remain Flutter, Next.js, Express/Mongoose and Python. Dev 1 owns entrepreneur/facilitator workflows and shared ingestion/language services; Dev 2 owns centre/cohort workflows and shared intelligence/eval; Dev 3 owns HQ workflows plus auth/contracts/platform; Dev 4 owns all partner subtypes plus the shared dashboard shell/UI. Every role owner implements UI, API, data, integrations and tests for their workflows. PRD roles, permissions, priorities and requirements remain unchanged. Cohort lead is a centre-scoped role; CSR and lender remain funding-organisation modes.
+
+**Foundation.** Password-based staff auth and Firebase phone-token exchange; database-backed expiring/revocable JWT sessions, role/org-type validation, permission guards, scope-aware read access and consent/contact-aware partner projection. Shared auth roles/types come from JSON Schema. Domain schemas and Python model generation remain D-03 follow-up work; the read-only submission model is a starter boundary demonstration, not the frozen domain contract. Real Firebase OTP needs project/device configuration.
+
+**Coordination.** Other agents may work concurrently: check owner briefs, In progress logs, Git changes and existing implementations before adding logic. Reuse shared services and coordinate shared edits with their primary owner. The current duty index and one-owner requirement mapping are authoritative for build ownership; earlier Dev-number references are historical. No product role is removed or merged because one developer owns several related roles.
+
+**Current phase.** Scaffold/auth first, verify access boundaries, then implement each role's assigned PRD workflows. Docker Compose provisions local MongoDB/Redis. No queue consumer, SSE stream or AI stage is claimed by the scaffold. The updated [duty index](duties/README.md) owns future work; [auth.md](auth.md) documents the initial API.
+
+
+### D-24 · Local-only AI, full scope and lightweight Android ✅
+
+**Context.** The revised architecture requires all original features while spending ₹0 on hosted AI APIs and keeping Android lightweight. This supersedes D-07's hosted Sarvam requirement, D-08's hosted-provider default, and provider-dependent paths in the original architecture. It does not reinstate the technical-specialty developer split: the user-approved four role-based assignments in D-23 remain.
+
+**Decision.** Keep Node auth/organisation/consent APIs and the Python worker. Android captures voice/text/files, stores offline drafts and a durable sync queue, and uses system speech/TTS only after actual per-locale/offline validation. Main LLM/OCR/translation/embedding compute stays on the worker. All six launch languages, handwriting, evidence links, deterministic finance/scoring, duplicate review, nearby context and complete organisation workflows remain required.
+
+**Provider boundary.** Local-only configuration rejects hosted inference, remote endpoints/cloud model selectors, redirects and environment proxy forwarding. No automatic downloads or paid fallback. Missing capability remains pending/failed visibly. The first adapter targets already installed local Ollama weights and validates structured JSON; local STT/OCR/translation/transliteration/embedding/TTS model choices remain unevaluated. Configure the daemon itself with cloud disabled too. Licence, RAM, latency and organiser-language accuracy must be measured before adopting models.
+
+**Evidence and budget.** The observed development machine has an M2, 8 CPU cores and 8 GiB memory. An existing ~2 GB llama3.2 model passed a tiny English JSON smoke test in ~10 seconds, not the 55-file evaluation. File size is not peak RAM. Start with one worker job at a time once a queue exists. The Nothing Phone (3a) is a target test device, not an assumed inference server. Hosted AI API cost is zero by policy; compute/electricity, storage, identity/SMS/WhatsApp and production hosting remain separate costs with no guaranteed free tiers.
+
+**Tracking.** Every requirement has an implementation/local strategy, execution location, dependencies, owner, cost exposure, acceptance and status in [the matrix](implementation-matrix.md). Preserve existing metrics and priorities. No pipeline stage is marked complete just because its interface exists. [Runtime evidence](benchmarks/local-runtime-2026-10-17.json) and [local AI setup](../ai/README.md) record the actual verification limits.
+
+
+### D-25 · Reconcile the PRD question register with established decisions ✅
+
+**Context.** The original Q-01–Q-23 register mixed chosen baselines, obsolete questions, unanswered external policy questions and technical checks that have not run. It also retained the old technical-specialty staffing description after D-23 and the API-credit question after D-24.
+
+**Decision.** Remove Q-06, Q-07, Q-09, Q-10, Q-11, Q-17 and Q-18 from the open register and keep their answers in PRD §26.1. Android-only and web assessor access, centre ownership, Firebase and the PitchPrism name are established choices. OSM is the current baseline; no Google key is needed to proceed. Funding W-18 remains owned by Dev 4 at P2; existing auth/access foundations do not mean the shortlist or CSR reports are complete. This supersedes the old binary funding/vision-only and Google-key questions for the current baseline without changing requirement priorities.
+
+**Partly answered.** The four developers are Vyom, Rayyan, Arnav and Komal; their assignment to the four role-based briefs remains Q-01. The mentor review is five minutes; final demo/screening format remains Q-02. Real templates and 55 sample files do not answer Q-03's official rubric/volume questions. Q-04 no longer asks for API credits: local-only processing and the ₹0 hosted AI budget are settled, while reasoning/vision selection, licences and required evaluation remain open. Q-13 distinguishes actual local development from unverified production hosts/regions/costs.
+
+**Still open.** Preserve Q-05, Q-08, Q-12, Q-14, Q-15, Q-16 and Q-19–Q-23. Do not convert working defaults into organiser approvals, use a local JSON smoke test to approve multilingual/vision models, or treat Redis availability as a BullMQ compatibility test. Retain Q-04's original H14 first-eval gate and Q-14's H4 checkpoint; benchmark locally early. These are planned checkpoints, not results. No legal review, organiser contact, person-to-role assignment or new runtime implementation occurred in this documentation update.
+
+**Consequences.** PRD §23 now describes the current role split with named assignments explicitly unfilled. PRD §24 separates the confirmed five-minute mentor review from the assumed eight-minute final script. PRD §26 contains seven settled/superseded items and 16 genuinely pending questions, mirrored in the current register above. Original question IDs and earlier decision entries remain intact for traceability.

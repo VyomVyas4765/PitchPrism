@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import { HttpError } from '../../errors.js';
-import { Org, Submission } from '../../models.js';
+import { enqueueJob } from '../../platform/jobs.js';
+import { Job, Org, Submission } from '../../models.js';
 import { requirePermission } from '../../auth/authorization.js';
 import { hasProcessingConsent } from './consent.js';
 import { Entrepreneur, LANGUAGES } from './models.js';
@@ -203,6 +204,8 @@ export function intakeRouter() {
     const updated = await Pitch.findOneAndUpdate({ _id: pitch._id, status: 'DRAFT' },
       { $set: { status: 'SUBMITTED', submissionId: submission._id, pipeline: 'pending_queue', submittedAt: new Date() } }, { returnDocument: 'after' });
     if (!updated) { await Submission.deleteOne({ _id: submission._id }).setOptions({ tenant: { createdByUserId: pitch.createdByUserId } }); throw new HttpError(409, 'This pitch was already submitted.'); }
+    // Processing starts at once (consent was checked above); the worker records each stage for the live card.
+    await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(pitch.centreId), fromStage: 'ingest', reason: 'new', requestedByUserId: String(pitch.createdByUserId) });
     res.status(201).json(pitchView(updated, await PitchDocument.find({ pitchId: pitch._id })));
   });
 

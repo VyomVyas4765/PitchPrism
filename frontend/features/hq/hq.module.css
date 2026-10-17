@@ -1,10 +1,5 @@
 /* HQ desk (Dev 3). Broadsheet: hairline rules, ledger tables, figures in tabular numerals. */
 .desk { border-top: 1px solid var(--rule); padding: 32px 0 72px; }
-.deskHead { display: flex; justify-content: space-between; align-items: end; gap: 20px; flex-wrap: wrap; }
-.deskHead h2 { font-size: clamp(28px, 4vw, 38px); margin: 0; letter-spacing: -.03em; }
-.tabs { display: flex; gap: 0; flex-wrap: wrap; border-bottom: 1px solid var(--ink); margin: 24px 0 28px; }
-.tab { background: transparent; color: var(--ink-2); border: 0; border-bottom: 3px solid transparent; border-radius: 0; padding: 10px 16px; min-height: 44px; }
-.tab[aria-selected='true'] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 700; }
 .section { margin-bottom: 40px; }
 .section h3 { font-size: 24px; margin: 0 0 6px; }
 .lede { color: var(--ink-2); line-height: 1.6; max-width: 66ch; margin-bottom: 18px; }

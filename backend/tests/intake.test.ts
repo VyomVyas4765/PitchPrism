@@ -7,7 +7,7 @@ import { createApp } from '../src/app.js';
 import { sessionService } from '../src/auth/session.js';
 import { configSchema } from '../src/config.js';
 import { connectDatabase } from '../src/database.js';
-import { Org, Session, Submission, User } from '../src/models.js';
+import { AuditLog, Job, Org, Session, Submission, User } from '../src/models.js';
 import { Consent, CONSENT_NOTICE_VERSION, Entrepreneur } from '../src/modules/entrepreneur/models.js';
 import { DocumentChunk, Pitch, PitchDocument } from '../src/modules/entrepreneur/intake-models.js';
 import { readOriginal } from '../src/modules/entrepreneur/storage.js';
@@ -142,12 +142,16 @@ describe('self-service pitch', () => {
     expect(submitted.body.documents).toEqual([expect.objectContaining({ kind: 'text', state: 'complete' })]);
     expect((await submit().expect(200)).body.submissionId).toBe(submitted.body.submissionId);
     expect(await Submission.countDocuments()).toBe(1);
+    // Submitting queues processing once; a repeated submit does not queue again.
+    expect(await Job.countDocuments({ submissionId: submitted.body.submissionId, fromStage: 'ingest' })).toBe(1);
+    expect((await Submission.findById(submitted.body.submissionId).lean())!.status).toBe('QUEUED');
     await request(app).put(`/api/v1/pitches/${pitch.body.id}/answers`).set('Authorization', auth).send({ answers: [] }).expect(409);
     const mine = await request(app).get('/api/v1/me/submissions').set('Authorization', auth).expect(200);
     expect(mine.body.submissions.map((item: { id: string }) => item.id)).toEqual([submitted.body.submissionId]);
     const assessor = await User.create({ displayName: 'Synthetic assessor', email: 'a@pitchprism.test', role: 'centre_assessor', orgId: centre._id });
     const siblingAssessor = await User.create({ displayName: 'Synthetic sibling', email: 's@pitchprism.test', role: 'centre_assessor', orgId: sibling._id });
     await request(app).get(`/api/v1/submissions/${submitted.body.submissionId}`).set('Authorization', await as(assessor)).expect(200);
+    expect(await AuditLog.countDocuments({ action: 'submission.view', targetId: submitted.body.submissionId })).toBeGreaterThanOrEqual(1);
     await request(app).get(`/api/v1/submissions/${submitted.body.submissionId}`).set('Authorization', await as(siblingAssessor)).expect(404);
   });
 });

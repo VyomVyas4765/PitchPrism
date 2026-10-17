@@ -8,6 +8,7 @@ import type { Config } from './config.js';
 import { errorHandler, HttpError } from './errors.js';
 import { Entrepreneur, Org, Session, Submission, User } from './models.js';
 import { piiVault, type Sealed } from './modules/entrepreneur/pii-vault.js';
+
 import { sessionService, userContext, SESSION_COOKIE } from './auth/session.js';
 import { firebasePhoneVerifier, type VerifyPhoneToken } from './auth/firebase.js';
 import { hashPassword, verifyPassword } from './auth/password.js';
@@ -21,6 +22,7 @@ import { setTenancyMode, tenancyContext } from './platform/tenancy.js';
 import { hqRouter } from './modules/hq/admin.js';
 import { hqReportsRouter } from './modules/hq/reports.js';
 import { pipelineRouter } from './platform/pipeline.js';
+import { recordAudit } from './platform/audit.js';
 import { accountRouter, invitationAcceptRouter, passwordResetRouter, staffRouter } from './modules/hq/staff.js';
 
 const loginInput = z.object({ email: z.email().max(254).transform(value => value.toLowerCase()), password: z.string().min(1).max(128), client: z.enum(['web', 'mobile']).default('web') }).strict();
@@ -93,7 +95,22 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
   app.use('/api/v1/team', staffRouter(config));
   app.use('/api/v1/account', accountRouter());
   app.get('/api/v1/admin/overview', requirePermission('manage_platform'), async (_req, res) => {
-    res.json({ organisations: await Org.countDocuments(), users: await User.countDocuments() });
+    const [organisations, activeOrganisations, users, activeUsers, submissions, byStatus, byOrganisation] = await Promise.all([
+      Org.countDocuments(), Org.countDocuments({ active: true }), User.countDocuments({ role: { $ne: 'entrepreneur' } }),
+      User.countDocuments({ role: { $ne: 'entrepreneur' }, disabled: { $ne: true } }), Submission.countDocuments().setOptions({ tenant: {} }),
+      Submission.aggregate<{ _id: string; count: number }>([{ $group: { _id: '$status', count: { $sum: 1 } } }, { $sort: { count: -1 } }]).option({ tenant: {} } as never),
+      Submission.aggregate<{ name: string; type: string; submissions: number }>([
+        { $group: { _id: '$ownerOrgId', submissions: { $sum: 1 } } },
+        { $lookup: { from: 'orgs', localField: '_id', foreignField: '_id', as: 'org' } },
+        { $unwind: '$org' }, { $project: { _id: 0, name: '$org.name', type: '$org.type', submissions: 1 } },
+        { $sort: { submissions: -1, name: 1 } }, { $limit: 100 },
+      ]).option({ tenant: {} } as never),
+    ]);
+    res.json({
+      organisations, activeOrganisations, users, activeUsers, submissions,
+      byStatus: byStatus.map(item => ({ status: item._id, count: item.count })),
+      byOrganisation: byOrganisation.map(item => ({ name: item.name, type: item.type, submissions: item.submissions })),
+    });
   });
   app.get('/api/v1/orgs/:id/workspace', async (req, res) => {
     const id = objectId.parse(req.params.id);
@@ -107,6 +124,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
     const id = objectId.parse(req.params.id);
     const submission = await Submission.findOne({ _id: id }).setOptions({ tenant: submissionScope(req.auth!) }).lean();
     if (!submission) throw new HttpError(404, 'Submission not found.');
+    await recordAudit(req.auth, 'submission.view', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) });
     const user = req.auth!.user;
     const partner = user.role === 'sector_partner' || user.role === 'funding_partner';
     const contactAccepted = submission.shares?.some(share => String(share.orgId) === user.orgId && share.active && share.partnerType === user.role && share.contactAccepted);

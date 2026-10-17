@@ -4,6 +4,7 @@ import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { HttpError } from '../../errors.js';
 import { requirePermission, submissionScope } from '../../auth/authorization.js';
 import { Submission } from '../../models.js';
+import { recordAudit } from '../../platform/audit.js';
 import { CentreCase } from './model.js';
 import { assessLocally, type AssessmentResult } from './runner.js';
 
@@ -81,6 +82,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     if (result.status === 'assessed' && ['DRAFT', 'READY', 'UNASSESSABLE'].includes(submission.status)) {
       submission.status = state === 'UNASSESSABLE' ? 'UNASSESSABLE' : 'READY'; await submission.save();
     }
+    await recordAudit(req.auth, 'submission.score', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, { state });
     res.status(previous ? 200 : 201).json({ submissionId, state: record!.state, evaluation: record!.evaluation,
       quality: record!.quality, financialChecks: record!.financialChecks, followUps: record!.followUps,
       planDraft: record!.planDraft, reason: record!.reason });
@@ -119,6 +121,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     await item.save();
     submission.status = input.decision === 'shortlist' ? 'SHORTLISTED' : input.decision === 'not_yet' ? 'NOT_YET' : 'MORE_INFO';
     await submission.save();
+    await recordAudit(req.auth, 'decision.record', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, { decision: input.decision, override: !!(override || bandOverride) });
     res.json({ decision: item.decision, status: submission.status });
   });
 

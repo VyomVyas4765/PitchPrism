@@ -84,7 +84,7 @@ class LocalJsonAdapter:
         ensure_redacted(prompt)
         self._check_model()
         body = {"model": self.settings.model, "prompt": prompt, "format": schema, "stream": False,
-                "keep_alive": 0, "options": {"temperature": temperature, "num_ctx": 2048, "num_predict": 512}}
+                "keep_alive": 0, "options": {"temperature": temperature, "num_ctx": self.settings.num_ctx, "num_predict": self.settings.num_predict}}
         if images is not None:
             body["images"] = images
         started = time.monotonic()

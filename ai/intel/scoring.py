@@ -184,7 +184,11 @@ def evaluate(idea: dict[str, Any], adapter: LocalJsonAdapter | None = None,
     domains = []
     for key, (weight, _) in DOMAINS.items():
         if key not in score_keys:
-            domains.append({"key": key, "weight": weight, "score": None, "runs": [], "reason": "Not assessed: no cited evidence", "evidence": [], "confidence": "none"})
+            reason = ("Not assessed: no validated training, experience, or completed-action evidence was mapped "
+                      "from this PDF. Ask the applicant before scoring readiness." if key == "entrepreneur_readiness"
+                      else "Not assessed: no cited evidence")
+            domains.append({"key": key, "weight": weight, "score": None, "runs": [], "reason": reason,
+                            "evidence": [], "confidence": "none"})
             continue
         first, second = runs[0][key], runs[1][key]
         score = _round(Decimal(first["score"] + second["score"]) / 2)

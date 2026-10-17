@@ -98,7 +98,7 @@ def _fillup_rows(pdf: Any) -> list[tuple[str, int, float, float]]:
             labels.append((key, line["top"]))
         labels.sort(key=lambda item: item[1])
         for index, (key, top) in enumerate(labels):
-            if key not in FIELDS:
+            if key not in FIELDS and key != "existing_business":
                 continue
             bottom = labels[index + 1][1] - 0.5 if index + 1 < len(labels) else min(page.height - 30, top + 90)
             if not 10 <= bottom - top <= 100:
@@ -149,6 +149,13 @@ def extract_edp_pdf(pdf_bytes: bytes, *, district: str, applicant_name: str = ""
             raw = (answer_box.extract_text() or "").strip()
             if len(raw) > 1800:
                 raise UnsupportedEdpPdf("answer_unreadable")
+            # A stated existing business is direct evidence of experience.
+            # "No" or an empty box says nothing about other skills/training, so
+            # it must not become a weak Readiness score.
+            if key == "existing_business":
+                if not re.match(r"^yes\b", raw, re.I):
+                    continue
+                key = "experience"
             if len(raw) < 2:
                 fields[key] = {"state": "missing", "evidence": []}
                 continue

@@ -38,8 +38,14 @@ def followups(idea: dict[str, Any]) -> list[dict[str, Any]]:
     missing = [key for key in FIELDS if fields.get(key, {}).get("state") != "answered"]
     # High-impact omissions first; each question remains tied to one canonical field.
     priority = {key: i for i, key in enumerate(("offering", "customers", "location", "funding", "unit_price", "monthly_revenue", "market_research", "competition", "suppliers", "raw_materials"))}
-    return [{"field": key, "questionEn": QUESTIONS[key], "reason": fields.get(key, {}).get("state", "not_asked")}
-            for key in sorted(missing, key=lambda item: priority[item])[:5]]
+    questions = []
+    if not any(fields.get(key, {}).get("state") == "answered" for key in ("skills", "experience")):
+        questions.append({"field": "experience", "questionEn":
+                          "What relevant training or work experience do you have, and what have you already tested, sold, saved, or started for this idea?",
+                          "reason": "readiness_not_assessed"})
+    questions.extend({"field": key, "questionEn": QUESTIONS[key], "reason": fields.get(key, {}).get("state", "not_asked")}
+                     for key in sorted(missing, key=lambda item: priority[item]))
+    return questions[:5]
 
 
 def summary_plan(idea: dict[str, Any]) -> dict[str, Any]:

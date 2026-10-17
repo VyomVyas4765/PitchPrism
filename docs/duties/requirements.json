@@ -614,7 +614,7 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Idea card v2. Header with trade, sector, cohort, district, language and format chips, and data-quality flags. Recommendation strip with band, pathway and quadrant position. English summary and canonical fields. Domain scores, each with the quote that earned it. Strengths, gaps, risks and items to validate. Financial checks. Similar ideas. Local market. Trade and cohort rank. Original and translation side by side. Audio player and page viewer that jump to the quoted moment or region",
-    "implementation": "One-view evaluator card with non-production unsaved PDF-to-results preview, safe allowlisted extraction/worker failure reasons and selected-file diagnostics, private stored-plan original, recorded-consent handoff, evidence/domain chart, quadrant, decision drawer and scoped API; highlighted boxes and full intelligence remain pending",
+    "implementation": "One-view evaluator card with non-production unsaved PDF-to-results preview, safe allowlisted extraction/worker failure reasons and selected-file diagnostics, private stored-plan original, recorded-consent handoff, evidence/domain chart with each cited redacted PDF answer and page link, explicit unscored-readiness explanation and follow-up, quadrant, decision drawer and scoped API; highlighted boxes and full intelligence remain pending",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Shared viewer plus centre PDF Groq exception (D-31); demo preview is unsaved and disabled in production, while stored assessments require active consent; no browser-side key or fabricated score",
     "dependencies": [
@@ -622,7 +622,7 @@
       "Role/org/consent guards; shared contracts"
     ],
     "cost_exposure": "Dashboard itself has no model cost; the user-requested centre Groq scoring action incurs metered hosted inference (D-31).",
-    "acceptance_test": "Demonstrate evidence-linked consolidated idea card with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
+    "acceptance_test": "Upload different supported PDFs and verify each scored domain displays its own cited redacted answer and opens the cited PDF page; test loading/error/empty states, PRD role scope, cross-org denial and permitted projection. Precise region highlighting remains pending.",
     "status": "partial",
     "evidence": [
       "frontend/features/centre/CentreWorkspace.tsx",
@@ -1148,14 +1148,14 @@
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Extract text spans with bounding box, font and colour, plus drawn lines and table rules; rebuild question and answer cells from the layout, not the content-stream order",
-    "implementation": "English digital EDP and Business Idea form-fillup families: EDP fixed anchors and form-fillup printed-question/right-column pairing with source boxes, missing/not-asked states, local redaction and fail-closed mapping; general PDFs/OCR pending Dev 1",
+    "implementation": "English digital EDP and Business Idea form-fillup families: EDP fixed anchors and form-fillup printed-question/right-column pairing with source boxes, missing/not-asked states, affirmative existing-business experience evidence, local redaction and fail-closed mapping; general PDFs/OCR pending Dev 1",
     "execution": "worker",
     "local_strategy": "pdfplumber text-layer extraction with printed-question anchors for the English form-fillup family; no hosted document API",
     "dependencies": [
       "Private PDFs; source-anchor contract"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
-    "acceptance_test": "EDP and six local English form-fillup examples map recognized answers with page/bbox anchors and safe redaction; blank/omitted fields remain unscored and unsupported forms fail. Broader layout and six-language accuracy still pending.",
+    "acceptance_test": "EDP and six local English form-fillup examples map recognized answers with page/bbox anchors and safe redaction; a synthetic affirmative existing-business answer supplies cited experience, while negative/blank/omitted answers do not. Unsupported forms fail. Broader layout and six-language accuracy still pending.",
     "status": "worker_partial",
     "evidence": [
       "ai/ingest/edp_pdf.py",
@@ -1427,7 +1427,7 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Score each domain 1 to 5 with a reason, evidence segment IDs and a confidence level. Run twice; if any domain differs by more than 1 point, flag for close review. Potential, completeness, band, quadrant and pathway are computed in code, not by the LLM",
-    "implementation": "Two-run cited provisional domain scoring; live Groq centre PDF adapter with strict schema and deterministic totals. Supplied English sample passes scored 80, 83 and 80/100 at 90% domain coverage; organiser accuracy and parity remain unverified.",
+    "implementation": "Two-run cited provisional domain scoring; live Groq centre PDF adapter with strict schema and deterministic totals. Readiness remains unscored without cited skills/experience evidence, with an explicit reason and follow-up. Supplied English sample passes scored 80, 83 and 80/100 at 90% domain coverage; organiser accuracy and parity remain unverified.",
     "execution": "worker",
     "local_strategy": "User-requested D-31 exception: Groq only for redacted centre EDP domain judgements; all totals and missing-domain rules remain local code",
     "dependencies": [
@@ -1436,7 +1436,7 @@
       "Working Groq project key and official rubric"
     ],
     "cost_exposure": "Metered Groq input/output tokens for two model calls per assessment; rate and volume to be measured. Other AI tasks remain local.",
-    "acceptance_test": "Synthetic guard/access tests and private live sample report (80 potential, 100 completeness, 90 coverage); still compare against official ground truth and verify language/format parity gap ≤5.",
+    "acceptance_test": "Synthetic guard/access tests prove missing Readiness stays unscored and cited experience enables it; private live sample report (80 potential, 100 completeness, 90 coverage) remains provisional. Still compare against official ground truth and verify language/format parity gap ≤5.",
     "status": "partial",
     "evidence": [
       "ai/intel/scoring.py",
@@ -1452,16 +1452,19 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Strengths, gaps, risks, items to validate and interview questions, each citing segments or checks",
-    "implementation": "Cited narrative and interview questions",
+    "implementation": "Missing-field follow-up questions now include an explicit training/experience/completed-action question when Readiness is unscored; full cited strengths, gaps, risks and validation narrative remain pending",
     "execution": "worker",
     "local_strategy": "Local structured generator + evidence validation",
     "dependencies": [
       "Evaluation/flags/segments"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
-    "acceptance_test": "Every strength/gap/risk/claim cites a segment or computed check",
-    "status": "planned",
-    "evidence": []
+    "acceptance_test": "Readiness follow-up appears without validated skills/experience and disappears when cited experience exists; complete strengths/gaps/risks must each cite a segment or computed check before A-23 is complete",
+    "status": "worker_partial",
+    "evidence": [
+      "ai/intel/narrative.py",
+      "ai/tests/test_edp_groq.py"
+    ]
   },
   "A-24": {
     "owner": "dev-2-centre-cohort",

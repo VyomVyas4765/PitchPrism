@@ -7,7 +7,8 @@ from unittest.mock import patch
 from ai.config import PolicyViolation
 from ai.ingest.edp_pdf import FILLUP_LABELS, ROWS, UnsupportedEdpPdf, extract_edp_pdf
 from ai.intel.groq import GroqEdpAdapter
-from ai.intel.scoring import FIELDS, _score_schema, quality
+from ai.intel.narrative import followups
+from ai.intel.scoring import FIELDS, _score_schema, evaluate, quality
 from ai.llm.adapter import ModelOutputError
 
 
@@ -64,13 +65,14 @@ class _FillupPage:
             (54, 104, 123, 162, 191, 210, 230))
 
     def __init__(self, index, bad_question=False, shift=0, missing_answer=False, address_answer=False,
-                 omit_keys=()):
+                 omit_keys=(), existing_business_answer='No'):
         self.index = index
         self.bad_question = bad_question
         self.shift = shift
         self.missing_answer = missing_answer
         self.address_answer = address_answer
         self.omit_keys = omit_keys
+        self.existing_business_answer = existing_business_answer
 
     def extract_text_lines(self):
         lines = []
@@ -94,6 +96,8 @@ class _FillupPage:
             return _Crop('')
         if self.address_answer and key == 'competition':
             return _Crop('Synthetic local alternative. Meet buyers at House 12, East Road.')
+        if key == 'existing_business':
+            return _Crop(self.existing_business_answer)
         return _Crop('Nila Das offers useful services. Contact 9876543210.' if key == 'offering'
                      else f'Synthetic answer for {key} with a practical detail.')
 
@@ -144,6 +148,26 @@ class ExtractorTests(unittest.TestCase):
         self.assertEqual(idea['segments'][-1]['source']['page'], 2)
         self.assertNotIn('Nila Das', json.dumps(idea))
         self.assertNotIn('9876543210', json.dumps(idea))
+        self.assertNotIn('experience', idea['fields'])
+        self.assertEqual(followups(idea)[0]['field'], 'experience')
+
+    @patch('ai.ingest.edp_pdf.pdfplumber.open', return_value=_FillupPdf(existing_business_answer='Yes, I already run a synthetic tailoring service.'))
+    def test_existing_business_supplies_cited_readiness_experience(self, _open):
+        idea = extract_edp_pdf(b'%PDF-synthetic', district='Pune')
+        citation = idea['fields']['experience']['evidence'][0]
+        source = next(segment for segment in idea['segments'] if segment['segId'] == citation)
+        self.assertEqual(source['source']['page'], 2)
+        self.assertIn('already run', source['textEn'])
+        self.assertNotIn('experience', [question['field'] for question in followups(idea)])
+        def cited_scorer(prompt, _schema):
+            payload = json.loads(prompt[prompt.index('{'):])
+            return {'domains': [{'key': key, 'score': 3, 'reason': 'Specific synthetic claim',
+                                 'evidence': [payload['evidence'][key][0]['segId']], 'confidence': 'medium'}
+                                for key in payload['domains']]}
+        readiness = next(domain for domain in evaluate(idea, scorer=cited_scorer)['domains']
+                         if domain['key'] == 'entrepreneur_readiness')
+        self.assertEqual(readiness['score'], 3)
+        self.assertEqual(readiness['evidence'], [citation])
 
     @patch('ai.ingest.edp_pdf.pdfplumber.open', return_value=_FillupPdf(shift=-11, missing_answer=True, address_answer=True))
     def test_shifted_rows_keep_citations_and_mark_missing_without_address_leak(self, _open):

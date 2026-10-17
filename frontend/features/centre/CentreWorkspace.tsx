@@ -45,6 +45,7 @@ export default function CentreWorkspace() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [card, setCard] = useState<Card | null>(null);
   const [evidence, setEvidence] = useState<string | null>(null);
+  const [sourcePage, setSourcePage] = useState<number | null>(null);
   const [lane, setLane] = useState('all');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('updated');
@@ -71,7 +72,7 @@ export default function CentreWorkspace() {
   }, []);
   const open = useCallback(async (item: QueueItem) => {
     if (previewUrl.current) { URL.revokeObjectURL(previewUrl.current); previewUrl.current = null; }
-    setSelected(item.submissionId); setPlan(null); setCard(null); setEvidence(null); setError(''); setTab('assessment');
+    setSelected(item.submissionId); setPlan(null); setCard(null); setEvidence(null); setSourcePage(null); setError(''); setTab('assessment');
     setConsentFile(null); setConsentConfirmed(false);
     try {
       const [planResult, cardResult] = await Promise.all([
@@ -132,7 +133,7 @@ export default function CentreWorkspace() {
       }) | null;
       if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
       previewUrl.current = URL.createObjectURL(pdf);
-      setSelected('preview'); setDetailOpen(false); setTab('assessment'); setEvidence(null);
+      setSelected('preview'); setDetailOpen(false); setTab('assessment'); setEvidence(null); setSourcePage(null);
       setPlan({ submissionId: 'preview', title: pdf.name.replace(/\.pdf$/i, ''), status: 'PREVIEW', processingConsent: false,
         applicant: { name: null, phone: null }, details: { district: null, trade: null, language: 'en', format: 'pdf' },
         document: { id: 'preview', bytes: result.document.bytes, pages: result.document.pages, sha256: '', url: previewUrl.current } });
@@ -214,6 +215,9 @@ export default function CentreWorkspace() {
   const waitingCount = items.filter(item => !item.reviewAvailable).length;
   const reviewCount = items.filter(item => item.state === 'NEEDS_ATTENTION').length;
   const lookup = new Map(evaluation?.domains.map(domain => [domain.key, domain]) ?? []);
+  const segmentsById = new Map(card?.input.segments.map(segment => [segment.segId, segment]) ?? []);
+  const documentUrl = plan?.document?.url;
+  const viewedDocumentUrl = documentUrl && sourcePage ? `${documentUrl.split('#')[0]}#page=${sourcePage}` : documentUrl;
 
   return <section className={styles.desk} aria-label="Centre evaluator dashboard">
     <header className={styles.overviewHeader}>
@@ -273,8 +277,9 @@ export default function CentreWorkspace() {
               {rubric.map(([key, name, color]) => { const domain = lookup.get(key); const value = key === 'completeness'
                 ? evaluation?.completeness ?? card?.quality?.completeness ?? null : domain?.score ?? null;
                 const percent = value === null ? 0 : key === 'completeness' ? value : value * 20;
-                return <div className={styles.overviewBar} key={key}><span><i style={{ backgroundColor: color }} />{name}</span><div><i style={{ width: `${percent}%`, backgroundColor: color }} /></div><strong>{value === null ? '—' : key === 'completeness' ? `${value}%` : `${value}/5`}</strong></div>;
-              })}</section>
+                return <div className={styles.overviewBar} key={key}><span><i style={{ backgroundColor: color }} />{name}</span><div><i style={{ width: `${percent}%`, backgroundColor: color }} /></div><strong>{value === null ? evaluation && key !== 'completeness' ? 'Not assessed' : '—' : key === 'completeness' ? `${value}%` : `${value}/5`}</strong></div>;
+              })}
+              {evaluation && lookup.get('entrepreneur_readiness')?.score === null && <p className={styles.readinessNote}>Readiness needs evidence of skills, experience, or action already taken. Ask the applicant before scoring it.</p>}</section>
           </div>
           <div className={styles.overviewBottom}>
             <section className={styles.overviewQuadrant}><div className={styles.overviewCardTop}><span className={styles.cardKicker}>SCREENING QUADRANT</span><span>Potential ↑ &nbsp; Completeness →</span></div>
@@ -337,7 +342,7 @@ export default function CentreWorkspace() {
                 {rubric.map(([key, name, color]) => { const domain = lookup.get(key); const value = key === 'completeness'
                   ? evaluation?.completeness ?? card?.quality?.completeness ?? null : domain?.score ?? null;
                   const percent = value === null ? 0 : key === 'completeness' ? value : value * 20;
-                  return <div className={styles.barRow} key={key}><span><i style={{ backgroundColor: color }} />{name}</span><div className={styles.barTrack}><i style={{ width: `${percent}%`, backgroundColor: color }} /></div><strong>{value === null ? '—' : key === 'completeness' ? `${value}%` : `${value}/5`}</strong></div>;
+                  return <div className={styles.barRow} key={key}><span><i style={{ backgroundColor: color }} />{name}</span><div className={styles.barTrack}><i style={{ width: `${percent}%`, backgroundColor: color }} /></div><strong>{value === null ? evaluation && key !== 'completeness' ? 'Not assessed' : '—' : key === 'completeness' ? `${value}%` : `${value}/5`}</strong></div>;
                 })}
                 <p className={styles.chartFoot}>Missing evidence is left unscored. A human makes the final decision.</p>
               </section>
@@ -362,13 +367,24 @@ export default function CentreWorkspace() {
             {evaluation && <section className={styles.evidenceSection}><span className={styles.cardKicker}>05 / WHY THESE SCORES</span><h4>Trace the judgement</h4>
               <div className={styles.domainReasons}>{evaluation.domains.map(domain => <div key={domain.key}><div><strong>{nice(domain.key)}</strong><span>{domain.score === null ? 'Not scored' : `${domain.score}/5`}</span></div>
                 <p>{domain.reason}</p><small>Confidence: {domain.confidence}{domain.runs.length ? ` · runs ${domain.runs.join(', ')}` : ''}</small>
-                <div className={styles.citationLinks}>{domain.evidence.map(id => <button key={id} onClick={() => { setEvidence(id); setTab('notes'); }}>View source {id} ↗</button>)}</div></div>)}</div></section>}
+                {domain.evidence.length > 0 && <div className={styles.domainSources} aria-label={`${nice(domain.key)} source evidence`}>
+                  {domain.evidence.map(id => { const source = segmentsById.get(id);
+                    return <div key={id} className={styles.domainSource}>
+                      <span>{source?.source.type === 'pdf' && source.source.page ? `PDF page ${source.source.page}` : `Source ${id}`}</span>
+                      <blockquote>{source?.textEn ?? 'Source text unavailable'}</blockquote>
+                      {source && <div className={styles.citationLinks}>
+                        <button onClick={() => { setEvidence(id); setTab('notes'); }}>Inspect cited answer ↗</button>
+                        {source.source.type === 'pdf' && source.source.page && plan.document && <button onClick={() => { setSourcePage(source.source.page ?? null); setTab('document'); }}>Open PDF page {source.source.page} ↗</button>}
+                      </div>}
+                    </div>;
+                  })}
+                </div>}</div>)}</div></section>}
           </div>}
           {tab === 'document' && <div className={styles.documentView}>{plan.document ? <>
             <div className={styles.documentMeta}><div><span className={styles.cardKicker}>ORIGINAL SOURCE / PDF</span><h4>Entrepreneur&apos;s pitch plan</h4>
               <p>{plan.document.pages} pages · {(plan.document.bytes / 1024).toFixed(0)} KB · {selected === 'preview' ? 'Browser-local demo preview' : 'Private to this centre'}</p></div>
-              <a href={plan.document.url} target="_blank" rel="noopener noreferrer">Open original ↗</a></div>
-            <iframe src={plan.document.url} title="Original two-page pitch plan" className={styles.pdfFrame} /></>
+              <a href={viewedDocumentUrl} target="_blank" rel="noopener noreferrer">Open original{sourcePage ? ` at page ${sourcePage}` : ''} ↗</a></div>
+            <iframe key={viewedDocumentUrl} src={viewedDocumentUrl} title={sourcePage ? `Original pitch plan, page ${sourcePage}` : 'Original two-page pitch plan'} className={styles.pdfFrame} /></>
             : <div className={styles.selectEmpty}><h4>Original document pending</h4><p>This record has no centre-uploaded PDF linked yet.</p></div>}</div>}
           {tab === 'notes' && <div className={styles.notesView}>
             {selected !== 'preview' && !plan.processingConsent && plan.document && plan.details.language === 'en' && <section className={styles.consentPanel}>
@@ -387,7 +403,7 @@ export default function CentreWorkspace() {
               {cited.textOriginal && <p lang={cited.lang}>{cited.struck ? <del>{cited.textOriginal}</del> : cited.textOriginal}</p>}
               <blockquote>{cited.textEn}</blockquote><small>{cited.source.type === 'pdf' ? `PDF page ${cited.source.page ?? 'unknown'}` : nice(cited.source.type)} · {cited.lang}
                 {cited.confidence !== undefined ? ` · read confidence ${Math.round(cited.confidence * 100)}%` : ''}</small>
-              {plan.document && <button onClick={() => setTab('document')}>View original plan ↗</button>}</section>}
+              {plan.document && <button onClick={() => { setSourcePage(cited.source.page ?? null); setTab('document'); }}>View original{cited.source.page ? ` page ${cited.source.page}` : ' plan'} ↗</button>}</section>}
             {card?.financialChecks && card.financialChecks.length > 0 && <section><span className={styles.cardKicker}>FINANCIAL CHECKS</span><h4>Numbers to verify</h4>
               {card.financialChecks.map((check, index) => <p key={`${check.field}-${index}`}>{check.field}: written {check.written}; expected {check.expected} ({check.formula}).</p>)}</section>}
             {card?.followUps && card.followUps.length > 0 && <section><span className={styles.cardKicker}>FOLLOW-UP QUESTIONS</span><h4>Ask the entrepreneur</h4>

@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RoutingRule",
+  "description": "W-04: which partner organisation receives which trades, sectors and districts. Suggestions are still limited by the entrepreneur's consent.",
+  "x-collection": "routingRules",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "partnerOrgId", "partnerType", "active"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "partnerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "partnerType": { "$ref": "common.json#/definitions/PartnerType" },
+    "tradeKeys": { "type": "array", "items": { "type": "string", "maxLength": 60 } },
+    "sectors": { "type": "array", "items": { "type": "string", "maxLength": 80 } },
+    "districts": { "type": "array", "items": { "type": "string", "maxLength": 80 } },
+    "active": { "type": "boolean" },
+    "createdByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

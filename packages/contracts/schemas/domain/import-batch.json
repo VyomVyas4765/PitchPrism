@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ImportBatch",
+  "description": "Bulk import progress (W-19, owned by Dev 2). File names can contain applicant names, so items keep only an index and type.",
+  "x-collection": "importBatches",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["orgId", "cohortId", "uploadedByUserId", "fileCount", "status"],
+  "properties": {
+    "orgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "cohortId": { "$ref": "common.json#/definitions/ObjectId" },
+    "uploadedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "fileCount": { "type": "integer", "minimum": 0 },
+    "status": { "type": "string", "enum": ["uploading", "processing", "done", "failed"] },
+    "items": {
+      "type": "array",
+      "items": {
+        "title": "ImportItem",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "status"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0 },
+          "kind": { "type": "string", "enum": ["audio", "pdf", "image", "text"] },
+          "documentId": { "$ref": "common.json#/definitions/ObjectId" },
+          "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+          "status": { "type": "string", "enum": ["pending", "queued", "done", "failed", "skipped"] },
+          "error": { "type": "string", "maxLength": 300 }
+        }
+      }
+    },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

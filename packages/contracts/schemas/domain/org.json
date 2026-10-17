@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Org",
+  "description": "An organisation in the hub-and-spoke network (PRD section 5). HQ has no parent; centres report to HQ; implementation partners report to a centre.",
+  "x-collection": "orgs",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "type"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "type": { "$ref": "../session-user.json#/definitions/OrgType" },
+    "parentOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "active": { "type": "boolean", "default": true },
+    "fundingMode": { "$ref": "common.json#/definitions/FundingMode" },
+    "state": { "type": "string", "maxLength": 80 },
+    "districts": { "type": "array", "items": { "type": "string", "maxLength": 80 } },
+    "languages": { "type": "array", "items": { "$ref": "common.json#/definitions/Language" } },
+    "sectors": { "type": "array", "items": { "type": "string", "maxLength": 80 } },
+    "tradeKeys": { "type": "array", "items": { "type": "string", "maxLength": 60 } },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

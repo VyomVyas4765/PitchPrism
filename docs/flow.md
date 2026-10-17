@@ -22,7 +22,7 @@ flowchart LR
         F["Facilitator queue<br/>(Dev 1)"]
     end
     API["Node API<br/>(Dev 3)"]
-    Q[["BullMQ"]]
+    Q[["MongoDB jobs<br/>(D-26)"]]
     subgraph W["Python worker"]
         R["Read · structure · redact · translate · extract<br/>(Dev 1)"]
         I["Check · compare · locate · score · narrate · rank<br/>(Dev 2)"]
@@ -102,10 +102,10 @@ If `quality` marks a submission Unassessable, stages 10–17 are skipped except 
 These are summaries; the JSON Schemas in `packages/contracts/schemas/` are authoritative (D-03).
 
 ```jsonc
-// JobPayload — API → worker (queue "pipeline")
+// JobPayload — API → worker (MongoDB "jobs" collection, claimed with an atomic lease; D-26)
 { "jobId": "uuid", "submissionId": "ObjectId", "fromStage": "ingest", "reason": "new|followup|rescore|retry", "rubricVersionId": "ObjectId", "requestedBy": "userId|entrepreneurId" }
 
-// StageEvent — worker → API (Redis channel "stage-events") → SSE event "stage"
+// StageEvent — worker → MongoDB capped "stageEvents" collection → API tailable cursor → SSE event "stage" (D-26)
 { "submissionId": "ObjectId", "ownerOrgId": "ObjectId", "stage": "translate", "status": "started|done|skipped|failed", "at": "ISO", "ms": 812, "summary": { "segments": 24, "languages": ["te", "en"] } }
 
 // Segment — the unit every claim points to
@@ -204,7 +204,7 @@ Everyone stops for 10 minutes at each checkpoint: show what runs, name what is b
 
 | Hour | Milestone | Proof it's done |
 | --- | --- | --- |
-| H0–H2 | **Kickoff.** Repo, contracts v1, seed data, Docker for Mongo and Redis, demo script agreed | `pnpm dev` and `make worker` both start; schemas generate types |
+| H0–H2 | **Kickoff.** Repo, contracts v1, seed data, Docker for MongoDB, demo script agreed | `pnpm dev` and `make worker` both start; schemas generate types |
 | H2 | ✅ **M1 · Contracts frozen** | `packages/contracts` tagged v1 |
 | H8 | ✅ **M2 · Walking skeleton** | Upload one English Idea Brief PDF in the dashboard → worker reads, extracts, scores with a stub → card renders with live stage events |
 | H14 | ✅ **M3 · Every format reads** | All three sets go through: digital PDF, handwritten scan, audio. First eval run published. Mobile records and uploads a pitch |

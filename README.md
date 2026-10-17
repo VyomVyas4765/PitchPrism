@@ -6,18 +6,20 @@ AI idea screening for Tata STRIVE, built for Code Odyssey 5.0. Entrepreneurs pit
 
 The repository now has a Flutter Android app, Next.js dashboard, Express API, shared auth contracts and a Python worker scaffold. Staff can sign in/out and open protected role workspaces. Entrepreneurs exchange a verified Firebase phone token for an API session. Role, organisation and consent checks run on the server.
 
-Business workflows, domain-contract expansion, AI stages, queue consumers and SSE are still assigned work. The starter submission endpoint is read-only and exists to exercise access boundaries; no applicant submissions are seeded. Real OTP needs Firebase project configuration. The revised AI direction is local-only with no hosted API fallback; see [local AI setup](ai/README.md) and the [88-requirement implementation matrix](docs/implementation-matrix.md).
+Domain contracts v1 are published in [packages/contracts](packages/contracts/README.md): JSON Schemas for all 22 collections, generated TypeScript and Python types, contract-built Mongoose models and synthetic fixtures. Business workflows, AI stages, queue consumers and SSE are still assigned work. The starter submission endpoint is read-only and exists to exercise access boundaries; no applicant submissions are seeded. Real OTP needs Firebase project configuration. The revised AI direction is local-only with no hosted API fallback; see [local AI setup](ai/README.md) and the [88-requirement implementation matrix](docs/implementation-matrix.md).
 
 ## Quick start
 
 Requirements: Node 22 (see `.nvmrc`), pnpm 10.17.1, and Docker Compose. Flutter 3.47+/Dart 3.13+ for Android; Python 3.11+ for the worker scaffold.
 
 ```bash
+git config core.hooksPath .githooks   # once per clone: enables the repo's commit hooks
 pnpm install
 pnpm setup:env          # Creates ignored .env with random secrets; preserves an existing file
 # Start Docker Desktop / your Docker daemon first.
 docker compose up -d --wait
 pnpm seed               # Synthetic organisations + one staff account for each role below
+pnpm fixtures:load      # Optional: contract fixtures (a submission, evaluation, events…) with fixture.* staff logins
 pnpm dev                # Dashboard :3000, API :4000
 ```
 
@@ -81,7 +83,7 @@ pnpm build
 
 `pnpm build` produces the contracts, API and web build. Start the API with `pnpm --filter @pitchprism/backend start`, and the dashboard with `pnpm --filter @pitchprism/frontend start`. Configure `NODE_ENV=production`, a random `JWT_SECRET`, HTTPS `WEB_ORIGIN`, and the real database. Set `API_PROXY_TARGET` in `frontend/.env.local` (see its example) when the API is not at the default address. Configure the actual proxy chain explicitly before deployment; the API does not blindly trust forwarded client IPs.
 
-Auth roles come from `packages/contracts/schemas/session-user.json`; generated TypeScript output is committed. The Python AI worker does not handle authentication; domain schemas and Pydantic generation remain a shared-platform duty under D-03.
+Auth roles come from `packages/contracts/schemas/session-user.json` and domain types from `packages/contracts/schemas/domain/`; `pnpm contracts:generate` writes the TypeScript types, the backend storage types and the worker's `ai/contracts` module, all committed. The Python AI worker does not handle authentication.
 
 ## Read these first
 

@@ -9,7 +9,7 @@ The PRD's roles, permissions, priorities and feature scope are unchanged. Four d
 | Dev 3 | HQ programme admin | [HQ and platform](dev-3-hq-platform.md) |
 | Dev 4 | Implementation, sector and funding partner reviewers | [Partners](dev-4-partners.md) |
 
-**Named assignment pending (Q-01):** the team is Vyom, Rayyan, Arnav and Komal. None has yet been assigned to a numbered brief in the recorded decisions. Choose the mapping before parallel role work; the Dev 1–4 responsibility groups above remain unchanged.
+**Named assignment partly settled (Q-01):** the team is Vyom, Rayyan, Arnav and Komal. Vyom has taken Dev 3 (HQ and platform); Devs 1, 2 and 4 are not yet assigned. Choose the mapping before parallel role work; the Dev 1–4 responsibility groups above remain unchanged.
 
 ## Shared implementations and integration owners
 

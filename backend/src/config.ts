@@ -11,6 +11,7 @@ export const configSchema = z.object({
   MONGODB_TIMEOUT_MS: z.coerce.number().int().min(500).max(60000).default(10000),
   MONGODB_DNS_SERVERS: z.string().default('').refine(value => !value || value.split(',').every(ip => isIP(ip.trim()) !== 0), 'Use comma-separated DNS server IP addresses'),
   JWT_SECRET: z.string().min(32, 'Set JWT_SECRET to at least 32 random characters in .env'),
+  DATA_ENCRYPTION_KEY: z.string().min(32, 'Set DATA_ENCRYPTION_KEY to at least 32 random characters in .env (run pnpm setup:env to add it)'),
   FIREBASE_PROJECT_ID: z.string().default(''),
 });
 export type Config = z.infer<typeof configSchema>;

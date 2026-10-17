@@ -4,7 +4,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 
 **Status key:** ✅ Decided · 🟡 Default (holds until someone objects with a reason) · ❓ Open
 
-**Current implementation:** D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD.
+**Current implementation:** D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. D-26 replaces Redis/BullMQ with a MongoDB-only queue and event transport. Product requirements/permissions remain in the PRD.
 
 ## Index
 
@@ -35,6 +35,9 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-23 | Auth-first foundation; role-based duties and requested folder names | ✅ | All |
 | D-24 | Full scope, local-only AI; lean Android; explicit cost/capability evidence | ✅ | All |
 | D-25 | Reconcile answered, superseded and still-open PRD questions | ✅ | All |
+| D-26 | MongoDB-only job queue and stage events (supersedes D-05) | ✅ | Dev 3 |
+| D-27 | Staff invitations by one-time copyable link | ✅ | Dev 3 |
+| D-28 | Contracts v1: one bundle drives TypeScript, Python, models and fixtures | ✅ | Dev 3 |
 
 ---
 
@@ -171,7 +174,7 @@ Current register after D-25. The complete answered/partial/open classification i
 
 | ID | Remaining question | Needed by | Owner / current status |
 | --- | --- | --- | --- |
-| Q-01 | Assign Vyom, Rayyan, Arnav and Komal to the four existing role briefs | Before parallel role work | Team; roster/split known, named assignments missing |
+| Q-01 | Assign Vyom, Rayyan, Arnav and Komal to the four existing role briefs | Before parallel role work | Team; Vyom took Dev 3 on 2026-10-17; Devs 1, 2 and 4 still to be mapped |
 | Q-02 | Confirm final demo duration and screening round | Before final rehearsal | Organisers; mentor review is 5 min, final script assumes 8 min |
 | Q-03 | Obtain actual EDP rubric and application volumes | Before rubric/scale claims | Organisers / Tata STRIVE; templates and 55 files already supplied |
 | Q-04 | Approve local LLM/vision models from licence/RAM/language/format evaluation | Benchmark early; original H14 eval gate | Dev 2 with Dev 1; runtime/budget settled, no model approved |
@@ -179,7 +182,7 @@ Current register after D-25. The complete answered/partial/open classification i
 | Q-08 | Confirm simultaneous application and centre-assignment policy | Before domain-contract freeze | Team, with organiser input if needed; one active submission/programme is provisional |
 | Q-12 | Verify applicable data-protection rules and consent timelines | Before pitch/pilot compliance claims | Team obtains authoritative review; no new legal conclusion recorded |
 | Q-13 | Confirm production hosts, actual regions, resources and operating budget | Before deployment/residency claims | Dev 3 / team; local development exists, India production target unverified |
-| Q-14 | Validate BullMQ Python handoff or select Redis Streams fallback | H4 | Dev 3 with Devs 1/2; consumer/retry/progress behavior not yet tested |
+| Q-14 | Prove the MongoDB job handoff (D-26): enqueue, claim, lease expiry, retry, failure and SSE reconnect | H4 | Dev 3 with Dev 1 (Python consumer); transport chosen, behavior not yet tested |
 | Q-15 | Confirm required Tata STRIVE system integrations | Before integration scope is locked | Organisers / Tata STRIVE; link out is only the default |
 | Q-16 | Confirm judging criteria and weights | Before final pitch priorities | Organisers; equal weights are provisional |
 | Q-19 | Confirm application-platform export/API availability | Before promising automated integration | Organisers; manual/bulk upload baseline |
@@ -226,3 +229,36 @@ Current register after D-25. The complete answered/partial/open classification i
 **Still open.** Preserve Q-05, Q-08, Q-12, Q-14, Q-15, Q-16 and Q-19–Q-23. Do not convert working defaults into organiser approvals, use a local JSON smoke test to approve multilingual/vision models, or treat Redis availability as a BullMQ compatibility test. Retain Q-04's original H14 first-eval gate and Q-14's H4 checkpoint; benchmark locally early. These are planned checkpoints, not results. No legal review, organiser contact, person-to-role assignment or new runtime implementation occurred in this documentation update.
 
 **Consequences.** PRD §23 now describes the current role split with named assignments explicitly unfilled. PRD §24 separates the confirmed five-minute mentor review from the assumed eight-minute final script. PRD §26 contains seven settled/superseded items and 16 genuinely pending questions, mirrored in the current register above. Original question IDs and earlier decision entries remain intact for traceability.
+
+
+### D-26 · MongoDB-only job queue and stage events ✅
+
+**Context.** D-05 chose BullMQ on Redis, but its Python consumer was never validated (Q-14). D-24 runs one local worker job at a time, and Redis has no other use in the system. Local development runs MongoDB as a single server, so change streams (which need a replica set) are not available there.
+
+**Decision.** This supersedes D-05 and settles Q-14's transport choice.
+
+- **Jobs.** A `jobs` collection holds each `JobPayload` with `status` (queued, leased, done, failed, cancelled), `attempts`, `maxAttempts`, `availableAt`, `leaseUntil`, `workerId` and `error`. The API enqueues with an idempotency key (submission, from-stage, reason, input version), so a double click cannot create two jobs.
+- **Claiming.** The worker claims one job with an atomic `findOneAndUpdate` (queued, or leased with an expired lease, and `availableAt` reached → leased, `attempts + 1`). It extends the lease while working, then marks the job done or failed. A crashed worker's job returns to the queue when its lease expires. After `maxAttempts` the job is failed and stays visible; nothing is retried silently forever.
+- **Events.** The worker writes each `StageEvent` to a capped `stageEvents` collection and records timing and model use in the uncapped `pipelineRuns` collection (A-29). The API follows `stageEvents` with a tailable cursor and streams them over SSE, filtered by the viewer's organisation scope. A reconnecting client sends `Last-Event-ID`, and the API replays what it missed from persisted events, so reconnects neither lose nor invent completed stages (A-28 acceptance). Tailable cursors work on both the local single server and Atlas.
+
+**Consequences.** The `JobPayload` and `StageEvent` contracts keep their fields; only the transport changes. Redis leaves `docker-compose.yml`, `.env.example` and the README when the queue lands; until then Compose still starts it, unused. Q-14 becomes a test obligation: prove enqueue, claim, lease expiry, retry, terminal failure and SSE reconnect, with Dev 1 owning the Python consumer. Polling at about one second is enough for pilot volume and a single worker; revisit if several workers or much higher volume arrive.
+
+### D-27 · Staff invitations by one-time copyable link ✅
+
+**Context.** W-01 needs HQ (and centres or partners, for their own users) to invite staff. There is no email or SMS service in the ₹0 budget, and the scaffold deliberately has no public sign-up.
+
+**Decision.** An invitation is a random token stored only as a hash, with an expiry (72 hours by default), single use, and bound to the role and organisation the inviter chose. The server checks that the inviter is allowed to grant that role in that organisation; the client never chooses its own grant. The inviter copies the link and shares it themselves; the invitee sets their name and password. Expired, revoked or reused tokens are rejected. An email sender can be added later behind the same endpoint without changing the flow.
+
+### D-28 · Contracts v1: one bundle drives TypeScript, Python, models and fixtures ✅
+
+**Context.** D-03 chose JSON Schema generated into TypeScript and Pydantic. The worker already validates with `jsonschema` and has no Pydantic dependency (D-24 keeps it lean), and hand-written Mongoose models would drift from the schemas.
+
+**Decision.** This refines D-03. `packages/contracts/schemas/domain/` holds one JSON Schema per domain type (22 stored collections plus embedded types). `pnpm contracts:generate` bundles them into one schema and writes TypeScript types, storage types for the backend, and a Python module of TypedDicts with `validate()` over the same bundle, so the worker needs no new dependency. The backend builds every Mongoose model from the bundle at startup (`backend/src/models/schema.ts`), adding only storage concerns such as indexes and hidden fields. Unknown fields are rejected (`strict: 'throw'`). `fixtures/synthetic.json` holds a valid example per collection; backend and Python tests check those fixtures against the schemas and the models, so the three cannot disagree silently.
+
+**Modelling choices.**
+- **The applicant is an `Entrepreneur` record, separate from sign-in `User`s.** Imported and facilitator-assisted applicants never sign in. Personal fields are AES-256-GCM encrypted and bound to their field, with keyed contact hashes for duplicate matching and placeholder detection. Submissions hold no personal data.
+- **Partner access uses a denormalised `Submission.partnerAccess` index**, written only by the platform share-sync service from `shares` and `consents`. Scope stays a single query filter.
+- **Scope is combined with route filters via `scoped()` (`$and`), never by object spread.** A spread let a route's `_id` override the "match nothing" scope during development; the access tests now guard it.
+- **The status lifecycle follows `docs/flow.md` §1.2.** Funding lenders see SHORTLISTED or SHARED ideas.
+
+**Consequences.** Contracts v1 is published for review by Devs 1, 2 and 4; changes go through Dev 3 and regenerate all outputs. A new secret, `DATA_ENCRYPTION_KEY`, is required; `pnpm setup:env` adds it to an existing `.env`. Q-08 (several programmes per entrepreneur) is still open, so no uniqueness rule ties an entrepreneur to one programme yet.

@@ -621,19 +621,19 @@ flowchart LR
     WEB["Next.js dashboard"] --> API
     API["Node.js API<br/>Express · Zod · scope plugin"] --> DB[("MongoDB Atlas<br/>+ Vector Search")]
     API --> S3[("Object storage<br/>India region")]
-    API -->|"enqueue jobs"| Q[["Redis + BullMQ"]]
+    API -->|"enqueue jobs"| Q[["MongoDB jobs<br/>(atomic leases)"]]
     Q --> W["Python AI worker"]
     W --> DB
     W --> S3
     W --> SV["Sarvam AI<br/>STT · translate · TTS · Vision"]
     W --> LLM["LLM and VLM adapter"]
     W --> GEO["OpenStreetMap Overpass · Nominatim<br/>Google Places (optional)"]
-    W -->|"stage progress (pub/sub)"| Q
+    W -->|"stage events (capped collection)"| DB
     API -->|"server-sent events"| WEB
     API -->|"FCM push"| APP
 ```
 
-The worker writes results back to MongoDB and publishes stage progress over Redis; the API pushes status to the phone through Firebase and streams the live card to the dashboard through server-sent events.
+The worker writes results back to MongoDB and appends stage progress to a capped `stageEvents` collection that the API follows with a tailable cursor (D-26); the API pushes status to the phone through Firebase and streams the live card to the dashboard through server-sent events.
 
 | Layer | Choice | Why |
 | --- | --- | --- |
@@ -641,7 +641,7 @@ The worker writes results back to MongoDB and publishes stage progress over Redi
 | Web | Next.js (App Router, TypeScript), Tailwind CSS, TanStack Query, Recharts, Leaflet with OpenStreetMap tiles, PDF.js for the page viewer | Fast to build role-based dashboards with maps and charts |
 | API | Node.js LTS, Express, TypeScript, Zod validation, Mongoose | Team's chosen stack for the API |
 | AI worker | Python 3.11+, pydantic, httpx, PyMuPDF, ffmpeg, Silero VAD, sentence-transformers, scikit-learn (HDBSCAN), umap-learn, rapidfuzz; FastAPI for health and admin endpoints | The document, audio and ML libraries PitchPrism needs are Python-first |
-| Queue | Redis with BullMQ; the Node API produces jobs and the worker consumes them with BullMQ's Python package (Q-14) | Retries, rate limiting, job dashboard, one queue for both languages |
+| Queue | MongoDB `jobs` collection with atomic leases, retries and terminal failure; capped `stageEvents` collection for progress (D-26, Q-14) | No extra service; works the same from Node and Python; fits one local worker job at a time |
 | Database | MongoDB Atlas in an India region, with Atlas Vector Search and 2dsphere geo indexes | Flexible documents, vectors and geo in one store |
 | File storage | S3-compatible bucket in an India region | Private files behind signed URLs |
 | Voice and language | Sarvam AI: Saaras v3, translation, transliteration, Bulbul v3, Document AI | Built for Indian languages |
@@ -651,7 +651,7 @@ The worker writes results back to MongoDB and publishes stage progress over Redi
 | Auth | Firebase phone OTP for entrepreneurs; JWT in an httpOnly cookie for staff | Simple OTP on Flutter; staff roles stay in our API |
 | Notifications | Firebase Cloud Messaging; SMS later (M-16) | Free push; SMS for feature-phone reach |
 | Hosting | Vercel for Next.js; API and worker on a container host; India region for the pilot (Q-13) | Quick to deploy during the hackathon |
-| Monitoring | Sentry, structured logs, BullMQ dashboard, per-stage cost and timing (A-29) | See pipeline failures and cost quickly |
+| Monitoring | Sentry, structured logs, job and stage views on the HQ dashboard, per-stage cost and timing (A-29) | See pipeline failures and cost quickly |
 
 ## 19. Data model (MongoDB)
 
@@ -797,7 +797,7 @@ The hackathon build covers the whole screening engine end to end, the multi-org 
 | --- | --- | --- | --- |
 | [Dev 1](docs/duties/dev-1-entrepreneur-facilitator.md) | Entrepreneur and field facilitator | Mobile, local ingestion and language providers | Unassigned · Q-01 |
 | [Dev 2](docs/duties/dev-2-centre-cohort.md) | Centre assessor and cohort lead | Local intelligence, scoring and evaluation | Unassigned · Q-01 |
-| [Dev 3](docs/duties/dev-3-hq-platform.md) | HQ programme admin | Auth, tenancy, contracts, database, queue and platform | Unassigned · Q-01 |
+| [Dev 3](docs/duties/dev-3-hq-platform.md) | HQ programme admin | Auth, tenancy, contracts, database, queue and platform | Vyom |
 | [Dev 4](docs/duties/dev-4-partners.md) | Implementation, sector and funding partner reviewers | Shared dashboard shell and UI/viewer primitives | Unassigned · Q-01 |
 
 Each owner implements their roles across UI, API, persistence, AI integration and tests, reusing the shared services. The [duty index](docs/duties/README.md) and [88-requirement matrix](docs/implementation-matrix.md) define the detailed responsibilities. Other agents may be working concurrently: check their progress notes and existing code before adding logic.
@@ -862,7 +862,7 @@ Updated 17 October 2026 against D-23/D-24, the authentication foundation and the
 
 | ID | Remaining question | Already established | Still missing / action |
 | --- | --- | --- | --- |
-| Q-01 | Which person takes each of the four role-based developer briefs? | Vyom, Rayyan, Arnav and Komal are the team; the four role-based responsibility groups are defined. | Named assignment to each brief; relevant skills and language-review availability. Assign before parallel role implementation. |
+| Q-01 | Which person takes each of the four role-based developer briefs? | Vyom, Rayyan, Arnav and Komal are the team; the four role-based responsibility groups are defined. Vyom takes Dev 3 (HQ and platform). | Named assignment for Devs 1, 2 and 4; relevant skills and language-review availability. Assign before parallel role implementation. |
 | Q-02 | How long is the final demo, and is there a screening round? | 30-hour build; mentor review is 5 minutes. | Organiser-confirmed final slot and screening format. The §24 final script still assumes 8 minutes; use a shortened 5-minute mentor version. |
 | Q-03 | What are the official EDP rubric and real application volumes? | Real form templates and 55 sample files are available. | Official scoring rubric and actual scale. §13 rubric and §22 pilot volumes remain provisional. |
 | Q-04 | Which local LLM and vision models pass the required evaluation? | ₹0 hosted AI API policy; heavy compute stays on the local Python worker. M2/8 GiB host and Ollama adapter exist; llama3.2 passed only a synthetic JSON smoke test. API credits are no longer relevant. | Licence, peak RAM, latency and six-language/format results; approved reasoning and vision models. Benchmark early; retain H14 as the original first-eval selection gate. Production processing location is Q-13. |
@@ -874,7 +874,7 @@ Updated 17 October 2026 against D-23/D-24, the authentication foundation and the
 | --- | --- | --- | --- |
 | Q-05 | Which languages are live, and who validates Odia/Bengali transcripts? | Hindi, Telugu and Marathi live; Odia/Bengali organiser samples. All six launch languages remain required. | Dev 1 + Dev 2 with the team: confirm live choices and named qualified validators before language-quality claims. |
 | Q-08 | Are multiple simultaneous programme/centre applications allowed? | One active submission per programme; centre assigned by district. This is an unconfirmed policy, not a completed constraint. | Team, confirmed with organisers if needed: settle before freezing submission uniqueness and ownership contracts. |
-| Q-14 | Does the Node/Python BullMQ integration satisfy the worker contract? | BullMQ on local Redis; Redis Streams fallback if compatibility fails. No consumer or cross-runtime integration has been validated. | Dev 3 with Devs 1/2: prove enqueue, consume, retry, progress and failure behavior by H4, then record the final choice. |
+| Q-14 | Does the MongoDB job handoff satisfy the worker contract? | Transport chosen in D-26: a MongoDB `jobs` collection with atomic leases and a capped `stageEvents` collection streamed over SSE. Redis/BullMQ is superseded. No consumer or cross-runtime integration has been validated. | Dev 3 with Dev 1 (Python consumer): prove enqueue, claim, lease expiry, retry, terminal failure and SSE reconnect by H4. |
 
 ### 26.4 Organiser or Tata STRIVE answers still needed
 

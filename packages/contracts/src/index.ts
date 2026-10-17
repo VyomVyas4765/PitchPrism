@@ -1,5 +1,8 @@
 export type { SessionUser, Role, OrgType } from './generated.js';
 export { ROLES, ORG_TYPES } from './roles.js';
+// Domain contracts (D-03): generated from schemas/domain/*.json by `pnpm contracts:generate`.
+export type * from './domain.generated.js';
+export { COLLECTIONS, domainSchema, type EntityName } from './schemas.generated.js';
 
 import type { Role } from './generated.js';
 export const ROLE_LABELS: Record<Role, string> = {

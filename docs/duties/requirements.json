@@ -1379,7 +1379,7 @@
     "requirement": "Publish each stage's result as it finishes, so the dashboard card fills in progressively over server-sent events",
     "implementation": "Live incremental card and stage events",
     "execution": "worker + API + web",
-    "local_strategy": "Queue/Redis/SSE transport; no model",
+    "local_strategy": "MongoDB job queue and capped stageEvents collection streamed over SSE (D-26); no model",
     "dependencies": [
       "StageEvent contract; tenancy; persisted results"
     ],

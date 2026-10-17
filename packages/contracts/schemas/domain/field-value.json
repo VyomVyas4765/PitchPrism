@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FieldValue",
+  "description": "One canonical idea field after extraction. Every value cites segments or it is dropped (D-09).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["state", "segIds"],
+  "properties": {
+    "state": { "$ref": "common.json#/definitions/AnswerState" },
+    "value": { "type": "string", "maxLength": 4000, "description": "In the original language." },
+    "valueEn": { "type": "string", "maxLength": 4000 },
+    "number": { "type": "number", "description": "Parsed numeric value where the field is a quantity (prices, revenue, investment)." },
+    "segIds": { "type": "array", "items": { "type": "string", "pattern": "^s_\\d{4,}$" } },
+    "source": { "type": "string", "enum": ["extract", "profile", "manual"] }
+  }
+}

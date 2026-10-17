@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StageEvent",
+  "description": "Progress of one pipeline stage (A-28, D-26). Written by the worker to the capped stageEvents collection; the API streams it over SSE to viewers whose scope includes ownerOrgId. summary must not contain personal data or model prompts.",
+  "x-collection": "stageEvents",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jobId", "submissionId", "ownerOrgId", "stage", "status", "at"],
+  "properties": {
+    "jobId": { "$ref": "common.json#/definitions/ObjectId" },
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "stage": { "$ref": "common.json#/definitions/Stage" },
+    "status": { "$ref": "common.json#/definitions/StageStatus" },
+    "at": { "$ref": "common.json#/definitions/DateTime" },
+    "ms": { "type": "integer", "minimum": 0 },
+    "summary": { "type": "object", "description": "Small, non-personal counts such as segments or languages for the live card." },
+    "error": { "type": "string", "maxLength": 600 }
+  }
+}

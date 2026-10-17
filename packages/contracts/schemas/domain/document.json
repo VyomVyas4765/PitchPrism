@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Document",
+  "description": "An original file. Originals are immutable (A-01); derived page images and crops are separate keys.",
+  "x-collection": "documents",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["submissionId", "ownerOrgId", "kind", "mime", "storageKey", "sha256", "bytes"],
+  "properties": {
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "kind": { "type": "string", "enum": ["audio", "pdf", "image", "text"] },
+    "purpose": { "type": "string", "enum": ["pitch", "followup_answer", "consent_evidence", "feedback_audio", "question_audio"], "default": "pitch" },
+    "mime": { "type": "string", "maxLength": 120 },
+    "storageKey": { "type": "string", "maxLength": 500 },
+    "sha256": { "type": "string", "pattern": "^[a-f\\d]{64}$" },
+    "bytes": { "type": "integer", "minimum": 0 },
+    "pages": {
+      "type": "array",
+      "items": {
+        "title": "DocumentPage",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["n"],
+        "properties": {
+          "n": { "type": "integer", "minimum": 1 },
+          "imageKey": { "type": "string", "maxLength": 500 },
+          "textLayerQuality": { "type": "number", "minimum": 0, "maximum": 1 },
+          "readBy": { "type": "string", "enum": ["text_layer", "ocr", "vision", "unread"] },
+          "blurScore": { "type": "number", "minimum": 0 },
+          "blurBoxes": { "type": "array", "description": "Regions holding personal data, blurred for roles that may not see them (A-10).", "items": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 } }
+        }
+      }
+    },
+    "durationSec": { "type": "number", "minimum": 0 },
+    "codec": { "type": "string", "maxLength": 40 },
+    "uploadedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

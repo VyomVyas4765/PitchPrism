@@ -10,17 +10,27 @@ export function requirePermission(permission: Permission): RequestHandler {
     next();
   };
 }
+// Matches nothing: used when a role has no records yet (for example an entrepreneur without a profile).
+const NONE = { _id: { $exists: false } };
+/**
+ * Combine a scope with a route's own filter. Always use this instead of spreading ({ ...scope, _id }):
+ * a spread lets a route key silently overwrite a scope key with the same name and widen access.
+ */
+export function scoped(scope: Record<string, unknown>, filter: Record<string, unknown>) {
+  return { $and: [scope, filter] };
+}
 // Every resource query must include this scope; client-supplied org IDs never select access.
-export function submissionScope({ user, fundingMode }: AuthContext): Record<string, unknown> {
+// Partner access reads Submission.partnerAccess, which only the platform share-sync service writes.
+export function submissionScope({ user, fundingMode, entrepreneurId }: AuthContext): Record<string, unknown> {
   switch (user.role) {
     case 'hq_admin': return {};
     case 'centre_assessor': case 'cohort_lead': return { ownerOrgId: user.orgId };
-    case 'entrepreneur': return { entrepreneurId: user.id };
+    case 'entrepreneur': return entrepreneurId ? { entrepreneurId } : NONE;
     case 'facilitator': return { createdByUserId: user.id };
     case 'implementation_partner': return { sourceOrgId: user.orgId };
-    case 'sector_partner': return { shares: { $elemMatch: { orgId: user.orgId, partnerType: 'sector_partner', active: true } } };
+    case 'sector_partner': return { partnerAccess: { $elemMatch: { orgId: user.orgId, partnerType: 'sector_partner', active: true } } };
     case 'funding_partner':
       if (fundingMode !== 'lender') throw new HttpError(403, 'This account has access to aggregate impact reports only.');
-      return { status: 'SHORTLISTED', fundingReady: true, shares: { $elemMatch: { orgId: user.orgId, partnerType: 'funding_partner', active: true } } };
+      return { status: { $in: ['SHORTLISTED', 'SHARED'] }, fundingReady: true, partnerAccess: { $elemMatch: { orgId: user.orgId, partnerType: 'funding_partner', active: true } } };
   }
 }

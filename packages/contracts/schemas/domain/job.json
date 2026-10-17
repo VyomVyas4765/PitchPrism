@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Job",
+  "description": "A pipeline job in the MongoDB queue (D-26). The API enqueues; the worker claims with an atomic lease, extends it while working, then marks done or failed. idempotencyKey stops double enqueues.",
+  "x-collection": "jobs",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["submissionId", "ownerOrgId", "fromStage", "reason", "idempotencyKey", "status", "attempts", "maxAttempts", "availableAt"],
+  "properties": {
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "fromStage": { "$ref": "common.json#/definitions/Stage" },
+    "reason": { "type": "string", "enum": ["new", "followup", "transcript_edit", "rescore", "retry"] },
+    "rubricKey": { "type": "string", "maxLength": 60 },
+    "rubricVersion": { "type": "integer", "minimum": 1 },
+    "inputVersion": { "type": "integer", "minimum": 1 },
+    "requestedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "idempotencyKey": { "type": "string", "maxLength": 200 },
+    "status": { "type": "string", "enum": ["queued", "leased", "done", "failed", "cancelled"] },
+    "attempts": { "type": "integer", "minimum": 0 },
+    "maxAttempts": { "type": "integer", "minimum": 1 },
+    "availableAt": { "$ref": "common.json#/definitions/DateTime" },
+    "leaseUntil": { "$ref": "common.json#/definitions/DateTime" },
+    "workerId": { "type": "string", "maxLength": 120 },
+    "currentStage": { "$ref": "common.json#/definitions/Stage" },
+    "error": {
+      "title": "JobError",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "maxLength": 60, "description": "For example capability_unavailable (D-24), invalid_input, timeout." },
+        "message": { "type": "string", "maxLength": 600, "description": "Safe to show staff: no prompts, personal data or raw stack traces." },
+        "stage": { "$ref": "common.json#/definitions/Stage" }
+      }
+    },
+    "finishedAt": { "$ref": "common.json#/definitions/DateTime" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

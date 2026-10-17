@@ -13,6 +13,7 @@
     "typecheck": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend typecheck && pnpm --filter @pitchprism/frontend typecheck",
     "test": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend test",
     "contracts:generate": "pnpm --filter @pitchprism/contracts generate",
-    "seed": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend seed"
+    "seed": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend seed",
+    "fixtures:load": "pnpm --filter @pitchprism/contracts build && pnpm --filter @pitchprism/backend fixtures:load"
   }
 }

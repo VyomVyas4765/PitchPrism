@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Entrepreneur",
+  "description": "The applicant as a person, separate from any sign-in account: imported and facilitator-assisted applicants may never sign in. Personal fields are encrypted; contactHash is a keyed hash for duplicate matching (D-14). Nothing here is sent to models or map services (D-13).",
+  "x-collection": "entrepreneurs",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["homeOrgId", "createdVia"],
+  "properties": {
+    "userId": { "$ref": "common.json#/definitions/ObjectId", "description": "Linked entrepreneur sign-in account, once the person signs in with their phone." },
+    "nameEnc": { "$ref": "common.json#/definitions/Encrypted" },
+    "phoneEnc": { "$ref": "common.json#/definitions/Encrypted" },
+    "emailEnc": { "$ref": "common.json#/definitions/Encrypted" },
+    "addressEnc": { "$ref": "common.json#/definitions/Encrypted" },
+    "socialCategoryEnc": { "$ref": "common.json#/definitions/Encrypted", "description": "Optional; scheme eligibility and aggregate monitoring only (Q-23)." },
+    "contactHashes": { "type": "array", "description": "HMAC-SHA256 of each normalised phone/email, hex. Lets duplicate matching work without decrypting.", "items": { "type": "string", "pattern": "^[a-f\\d]{64}$" } },
+    "placeholderContact": { "type": "boolean", "description": "True when the contact is a known dummy (for example 9000000080 or @demo.com), so it is excluded from duplicate matching." },
+    "language": { "$ref": "common.json#/definitions/Language" },
+    "district": { "type": "string", "maxLength": 80 },
+    "pincode": { "type": "string", "pattern": "^\\d{6}$" },
+    "tradeKey": { "type": "string", "maxLength": 60 },
+    "education": { "type": "string", "maxLength": 120 },
+    "gender": { "type": "string", "enum": ["female", "male", "other", "undisclosed"], "description": "Optional; aggregate fairness monitoring only." },
+    "homeOrgId": { "$ref": "common.json#/definitions/ObjectId", "description": "Centre that owns the relationship." },
+    "createdVia": { "$ref": "common.json#/definitions/Channel" },
+    "facilitatorUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

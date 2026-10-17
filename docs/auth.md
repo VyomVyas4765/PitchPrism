@@ -20,22 +20,26 @@ Browser requests use the Next.js same-origin proxy; tokens are never put in brow
 
 Session lifetime is eight hours. JWT contains the subject and session ID; every request verifies its signature/issuer/audience/expiry, active Mongo session, current user and current organisation. Logout invalidates the token in Mongo immediately; database TTL cleanup is not relied on for expiry. Role changes, account disablement and inactive organisations are checked on every request. Role-to-org-type mismatches are denied.
 
-Cookies are HttpOnly, SameSite=Lax, and Secure in production. Mutation origins must match `WEB_ORIGIN`; cookie-authenticated mutations also require that Origin. Native bearer requests do not require a browser Origin. Sign-in uses salted scrypt password hashes and a per-process IP limiter (10 attempts / 15 minutes, shared across password/phone exchange). A multi-instance deployment needs a shared limiter store and explicit reverse-proxy configuration.
+Cookies are HttpOnly, SameSite=Lax, and Secure in production. Mutation origins must match `WEB_ORIGIN`; cookie-authenticated mutations also require that Origin. Native bearer requests do not require a browser Origin. Sign-in uses salted scrypt password hashes and a per-process IP limiter (10 failed attempts / 15 minutes, shared across password/phone exchange; successful sign-ins are not counted, so a team sharing one IP is not locked out). A multi-instance deployment needs a shared limiter store and explicit reverse-proxy configuration.
 
 ## Resource access
 
 | Role | Starter submission scope |
 | --- | --- |
-| Entrepreneur | Its own entrepreneur ID |
+| Entrepreneur | Submissions of the applicant profile linked to its sign-in; none without a profile |
 | Facilitator | Submissions created by that user |
 | Centre assessor / cohort lead | Owning centre equals its organisation |
 | HQ admin | All submissions |
 | Implementation partner | Source organisation equals its organisation |
 | Sector partner | Active sector share for its organisation |
-| Funding lender | Active funding share, SHORTLISTED status and funding-ready flag |
+| Funding lender | Active funding share, SHORTLISTED or SHARED status and funding-ready flag |
 | Funding CSR | No individual submissions; aggregate reports are future work |
 
-Partners receive an explicit minimal projection. Applicant name/phone appear only after contact acceptance on the current active share. Shares/internal ownership identifiers never appear in that partner response. Revoking the share removes access on the next request. Consent/contact write endpoints remain assigned work; tests change synthetic share state directly to verify the read boundary. The prototype stores no real applicant fixtures, and the seed creates only synthetic orgs/staff.
+Partners receive an explicit minimal projection. Applicant name/phone appear only after contact acceptance on the current active share. Partner access reads `Submission.partnerAccess`, a denormalised index that only the platform share-sync service writes from the `shares` and `consents` collections; access-list and internal ownership identifiers never appear in that partner response. Revoking the share removes access on the next request. Funding lenders see shortlisted or shared, funding-ready ideas with an active funding share. Consent/contact write endpoints remain assigned work; tests change synthetic access state directly to verify the read boundary. The seed creates only synthetic orgs/staff.
+
+**Personal data.** Applicant name, phone, email, address and social category live only on the `Entrepreneur` record, encrypted with AES-256-GCM bound to the field (`backend/src/crypto.ts`). Keys derive from `DATA_ENCRYPTION_KEY` in the ignored root `.env`; losing it makes stored personal data unreadable. Duplicate matching uses keyed hashes of normalised contacts, and known placeholder contacts are excluded. An entrepreneur sign-in sees submissions linked to its applicant profile; without a profile it sees none.
+
+**Composing scope.** Always pass `scoped(submissionScope(auth), { _id: id, ... })`. Spreading a route filter over a scope lets a key with the same name (such as `_id`) silently replace the scope and widen access; an access test guards this.
 
 `backend/src/auth/authorization.ts` is the shared scope/permission integration point. Every future resource route must include its scope and safe projection. The starter capability list is deliberately coarse; implement each full PRD action with its specific permission and scope. Client redirects/navigation are convenience, never the access boundary.
 

@@ -1,0 +1,67 @@
+# Private working folder (notes, scratch files, secrets, local exports)
+/local/
+
+# Organiser datasets: contain real applicants' personal data (docs/decision.md D-19).
+# Only the catalogue is shared; get the files from the team drive.
+/datasets/*
+!/datasets/manifest.json
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+
+# Node / Next.js
+node_modules/
+.pnpm-store/
+.next/
+out/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.turbo/
+.vercel/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Flutter / Dart / Android
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+apps/mobile/build/
+*.iml
+.gradle/
+local.properties
+*.jks
+*.keystore
+
+# Worker caches and eval output
+services/worker/.cache/
+services/worker/eval/reports/
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+__MACOSX/
+*.log

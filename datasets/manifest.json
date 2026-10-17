@@ -1,0 +1,2011 @@
+{
+  "version": 1,
+  "generated": "2026-10-17",
+  "source": "Code Odyssey 5.0 organiser datasets (datasets/datasets/*.zip). Extracted to datasets/raw/ with trailing spaces stripped from path components and \"Telegu\" folders renamed \"telugu\". The zips are untouched.",
+  "privacy": "pdfs/hindi/* are scans of real applicants' handwritten business plans with real names, phone numbers and email addresses. Treat them as personal data: keep the repository private, never push them to a public remote, and never show them unredacted in a public demo.",
+  "canonicalFields": {
+    "location": "Where will you set up the business? (village, block, district, PIN)",
+    "offering": "Which products or services will you provide?",
+    "customers": "Who are your target customers? (age, gender, segment)",
+    "market_research": "Have you done market research in your target market? Details.",
+    "raw_materials": "What raw materials will you need?",
+    "suppliers": "Who will supply them?",
+    "funding": "Which avenues will you use to raise funds, and why would they lend to you?",
+    "competition": "Is there competition for your business? Details.",
+    "unit_price": "What is the price per unit of your main product or service?",
+    "monthly_revenue": "How much do you expect to earn every month?"
+  },
+  "templates": {
+    "edp-idea-brief": "Tata STRIVE EDP \"Business Idea Brief\": name, mobile, interested business, 10 canonical questions in English. 2 pages.",
+    "edp-business-plan": "Tata STRIVE EDP \"Business Plan\" in Hindi, handwritten on paper and scanned: profile, product/service, customers, competitors, resources, location, 3-phase financial model (A-N formulas), promotion plan, annexures A-C (cash books). 11 pages.",
+    "platform-form-en": "Application platform export (ReportLab): profile incl. category, business type, domain, investment / self / loan; customer gender, age and segment; market type; existing business.",
+    "platform-form-hi": "Application platform export (program \"Nanounicorn for testing\", downloaded 14 Oct 2026) with Hindi prompts and \"[Left Blank]\" / \"[Not Answered]\" markers.",
+    "platform-form-hi-v2": "Alternate one-page layout of the Hindi platform form (\"Business Idea Submission\").",
+    "platform-form-te": "Telugu variant of the platform export.",
+    "edp-form-mr": "Marathi form: profile incl. social category (OBC/SC/NT/General) and the 10 questions in Marathi.",
+    "edp-form-mr-custom": "Marathi form with 10 sector-specific technical questions replacing the standard ones.",
+    "case-study-paper-te": "Telugu case-study evaluation paper (sections A and B); not an applicant form."
+  },
+  "groups": {
+    "parityGroup": "Same idea in different languages or formats; scores should agree within 5 points.",
+    "duplicateGroup": "Same applicant and same idea submitted more than once.",
+    "clusterGroup": "Different applicants with similar ideas in the same area.",
+    "contactGroup": "Files sharing a phone number. C0-placeholder is a dummy contact (9000000080 / student80@demo.com). Groups C2 and C3 span different people and ideas, so a contact match alone must never merge records."
+  },
+  "files": [
+    {
+      "id": "pdf-en-1",
+      "path": "datasets/raw/pdfs/english/Scenario 1 - Accurate answers.pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/English/Scenario 1 - Accurate answers.pdf",
+      "bytes": 15327,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en"
+        ]
+      },
+      "scenario": "accurate",
+      "persona": "Rahul Verma",
+      "businessType": "Tailoring & garment stitching unit",
+      "location": "Kothapally, Hayathnagar, Ranga Reddy, Telangana 501505",
+      "parityGroup": "tailoring",
+      "contactGroup": null,
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "pdf-en-2",
+      "path": "datasets/raw/pdfs/english/Scenario 2 - Some fields answers are missing.pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/English/Scenario 2 - Some fields answers are missing.pdf",
+      "bytes": 13929,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en"
+        ]
+      },
+      "scenario": "missing-answers",
+      "persona": "Sunita Devi",
+      "businessType": "Dairy and milk products",
+      "location": "Rampur, Sadar, Patna, Bihar",
+      "parityGroup": "dairy",
+      "contactGroup": "C2",
+      "expect": {
+        "missing": [
+          "customers",
+          "market_research",
+          "suppliers",
+          "funding",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "missing"
+        ]
+      }
+    },
+    {
+      "id": "pdf-en-3",
+      "path": "datasets/raw/pdfs/english/Scenario 3 - Irrelevant answers.pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/English/Scenario 3 - Irrelevant answers.pdf",
+      "bytes": 14414,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en"
+        ]
+      },
+      "scenario": "irrelevant-answers",
+      "persona": "Mohan Lal",
+      "businessType": "Mobile repair shop",
+      "location": null,
+      "parityGroup": "mobile-repair",
+      "contactGroup": "C3",
+      "expect": {
+        "irrelevant": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "state": "unassessable",
+        "flags": [
+          "irrelevant"
+        ]
+      }
+    },
+    {
+      "id": "pdf-en-4",
+      "path": "datasets/raw/pdfs/english/Scenario 4 - Written in two different languages.pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/English/Scenario 4 - Written in two different languages.pdf",
+      "bytes": 20829,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en",
+          "hi"
+        ]
+      },
+      "scenario": "code-mixed-answers",
+      "persona": "Anita Kumari",
+      "businessType": "Beauty parlour & mehendi services",
+      "location": "Sarai, Bhagwanpur, Vaishali, Bihar",
+      "parityGroup": "beauty-parlour",
+      "contactGroup": "C4",
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "code-mixed"
+        ],
+        "note": "Each answer mixes English and Hindi; both halves must be translated and merged, not dropped."
+      }
+    },
+    {
+      "id": "pdf-en-5",
+      "path": "datasets/raw/pdfs/english/Scenario 5 - Overwritten answers.pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/English/Scenario 5 - Overwritten answers.pdf",
+      "bytes": 21734,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en"
+        ]
+      },
+      "scenario": "overwritten-answers",
+      "persona": "Suresh Reddy",
+      "businessType": "Poultry farming",
+      "location": "Gopalpur, Nandigama, Krishna, Andhra Pradesh",
+      "parityGroup": "poultry",
+      "contactGroup": "C5",
+      "expect": {
+        "flags": [
+          "overwritten"
+        ],
+        "finalValues": {
+          "location": "Village Gopalpur, Block Nandigama, District Krishna, Andhra Pradesh",
+          "offering": "Chicken, eggs and poultry manure",
+          "customers": "Local families and small hotels",
+          "market_research": "No, not done.",
+          "raw_materials": "Chicks, feed, vaccines, water pipes, cages",
+          "suppliers": "Local hatchery suppliers.",
+          "funding": "Bank loan.",
+          "competition": "Yes, competition is high",
+          "unit_price": "Rs 150 per kg",
+          "monthly_revenue": "Rs 60,000 per month"
+        },
+        "struck": {
+          "offering": [
+            "Chicken only",
+            "fish"
+          ],
+          "raw_materials": [
+            "Chicks, feed, medicines"
+          ],
+          "competition": [
+            "No competition",
+            "very low"
+          ],
+          "monthly_revenue": [
+            "Rs 20,000"
+          ]
+        },
+        "note": "Struck text is grey (0.267) with a stroked line through it; corrections are blue. Four answers are drawn late in the content stream, so stream order is not reading order."
+      }
+    },
+    {
+      "id": "pdf-mr-1",
+      "path": "datasets/raw/pdfs/marathi/Scenario 1 - Accurate answers (Marathi).pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Marathi/Scenario 1 - Accurate answers (Marathi).pdf",
+      "bytes": 23824,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "mr"
+        ]
+      },
+      "scenario": "accurate",
+      "persona": "Sanjay Patil",
+      "businessType": "Tailoring & garment stitching unit",
+      "location": "Kothrud, Mulshi, Pune, Maharashtra 412108",
+      "parityGroup": "tailoring",
+      "contactGroup": null,
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [],
+        "note": "Text layer drops pre-base matras; the quality gate should route it to OCR."
+      }
+    },
+    {
+      "id": "pdf-mr-2",
+      "path": "datasets/raw/pdfs/marathi/Scenario 2 - Some fields answers are missing (Marathi).pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Marathi/Scenario 2 - Some fields answers are missing (Marathi).pdf",
+      "bytes": 18333,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "mr"
+        ]
+      },
+      "scenario": "missing-answers",
+      "persona": "Sunita Jadhav",
+      "businessType": "Dairy and milk products",
+      "location": "Rampur, Sadar, Satara, Maharashtra",
+      "parityGroup": "dairy",
+      "contactGroup": null,
+      "expect": {
+        "missing": [
+          "customers",
+          "market_research",
+          "suppliers",
+          "funding",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "missing"
+        ]
+      }
+    },
+    {
+      "id": "pdf-mr-3",
+      "path": "datasets/raw/pdfs/marathi/Scenario 3 - Irrelevant answers (Marathi).pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Marathi/Scenario 3 - Irrelevant answers (Marathi).pdf",
+      "bytes": 20363,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "mr"
+        ]
+      },
+      "scenario": "irrelevant-answers",
+      "persona": "Mohan Kadam",
+      "businessType": "Mobile repair shop",
+      "location": null,
+      "parityGroup": "mobile-repair",
+      "contactGroup": "C3",
+      "expect": {
+        "irrelevant": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "state": "unassessable",
+        "flags": [
+          "irrelevant"
+        ]
+      }
+    },
+    {
+      "id": "pdf-mr-4",
+      "path": "datasets/raw/pdfs/marathi/Scenario 4 - Written in two different languages (Marathi).pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Marathi/Scenario 4 - Written in two different languages (Marathi).pdf",
+      "bytes": 21150,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en",
+          "mr"
+        ]
+      },
+      "scenario": "code-mixed-answers",
+      "persona": "Anita Pawar",
+      "businessType": "Beauty parlour & mehendi services",
+      "location": "Sarai, Haveli, Pune, Maharashtra",
+      "parityGroup": "beauty-parlour",
+      "contactGroup": "C4",
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "code-mixed"
+        ]
+      }
+    },
+    {
+      "id": "pdf-mr-5",
+      "path": "datasets/raw/pdfs/marathi/Scenario 5 - Overwritten answers (Marathi).pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Marathi/Scenario 5 - Overwritten answers (Marathi).pdf",
+      "bytes": 31166,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "mr"
+        ]
+      },
+      "scenario": "overwritten-answers",
+      "persona": "Suresh Shinde",
+      "businessType": "Poultry farming",
+      "location": "Gopalpur, Niphad, Nashik, Maharashtra",
+      "parityGroup": "poultry",
+      "contactGroup": "C5",
+      "expect": {
+        "flags": [
+          "overwritten"
+        ],
+        "note": "Same overwrite pattern as pdf-en-5, in Marathi."
+      }
+    },
+    {
+      "id": "pdf-te-1",
+      "path": "datasets/raw/pdfs/telugu/Scenario 1 - Accurate answers (Telugu).pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Telegu/Scenario 1 - Accurate answers (Telugu).pdf",
+      "bytes": 30589,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "accurate",
+      "persona": "Ramesh Goud",
+      "businessType": "Tailoring & garment stitching unit",
+      "location": "Kothapally, Hayathnagar, Ranga Reddy, Telangana 501505",
+      "parityGroup": "tailoring",
+      "contactGroup": null,
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [],
+        "similarTo": [
+          "pdf-en-1"
+        ],
+        "note": "Same idea and village as pdf-en-1 under a different name. Telugu text layer is badly corrupted (e.g. \"తెలంణ\" for \"తెలంగాణ\")."
+      }
+    },
+    {
+      "id": "pdf-te-2",
+      "path": "datasets/raw/pdfs/telugu/Scenario 2 - Some fields answers are missing (Telugu).pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Telegu/Scenario 2 - Some fields answers are missing (Telugu).pdf",
+      "bytes": 22977,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "missing-answers",
+      "persona": "Sunitha Reddy",
+      "businessType": "Dairy and milk products",
+      "location": "Rampur, Sadar, Karimnagar, Telangana",
+      "parityGroup": "dairy",
+      "contactGroup": "C2",
+      "expect": {
+        "missing": [
+          "customers",
+          "market_research",
+          "suppliers",
+          "funding",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "missing"
+        ]
+      }
+    },
+    {
+      "id": "pdf-te-3",
+      "path": "datasets/raw/pdfs/telugu/Scenario 3 - Irrelevant answers (Telugu).pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Telegu/Scenario 3 - Irrelevant answers (Telugu).pdf",
+      "bytes": 27487,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "irrelevant-answers",
+      "persona": "Mohan Rao",
+      "businessType": "Mobile repair shop",
+      "location": null,
+      "parityGroup": "mobile-repair",
+      "contactGroup": "C3",
+      "expect": {
+        "irrelevant": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "state": "unassessable",
+        "flags": [
+          "irrelevant"
+        ]
+      }
+    },
+    {
+      "id": "pdf-te-4",
+      "path": "datasets/raw/pdfs/telugu/Scenario 4 - Written in two different languages (Telugu).pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Telegu/Scenario 4 - Written in two different languages (Telugu).pdf",
+      "bytes": 26781,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en",
+          "te"
+        ]
+      },
+      "scenario": "code-mixed-answers",
+      "persona": "Anitha Kumari",
+      "businessType": "Beauty parlour & mehendi services",
+      "location": "Sarai, Bhagwanpur, Warangal, Telangana",
+      "parityGroup": "beauty-parlour",
+      "contactGroup": "C4",
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "code-mixed"
+        ]
+      }
+    },
+    {
+      "id": "pdf-te-5",
+      "path": "datasets/raw/pdfs/telugu/Scenario 5 - Overwritten answers (Telugu).pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Telegu/Scenario 5 - Overwritten answers (Telugu).pdf",
+      "bytes": 42970,
+      "set": "pdfs",
+      "format": "pdf-digital",
+      "template": "edp-idea-brief",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "overwritten-answers",
+      "persona": "Suresh Reddy",
+      "businessType": "Poultry farming",
+      "location": "Gopalpuram, Nandigama, Krishna, Andhra Pradesh",
+      "parityGroup": "poultry",
+      "contactGroup": "C5",
+      "expect": {
+        "flags": [
+          "overwritten"
+        ],
+        "note": "Same overwrite pattern as pdf-en-5, in Telugu."
+      }
+    },
+    {
+      "id": "pdf-hi-1",
+      "path": "datasets/raw/pdfs/hindi/Scenario 1 - Missing answers.pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Hindi /Scenario 1 - Missing answers.pdf",
+      "bytes": 3286319,
+      "set": "pdfs",
+      "format": "pdf-scanned-handwritten",
+      "template": "edp-business-plan",
+      "languages": {
+        "questions": [
+          "hi"
+        ],
+        "answers": [
+          "hi",
+          "en"
+        ]
+      },
+      "scenario": "missing-answers",
+      "persona": "Applicant H1 (real person; PII withheld)",
+      "businessType": "Cafe (tea and snacks)",
+      "location": "Shivpur, Varanasi, Uttar Pradesh",
+      "clusterGroup": "varanasi-food",
+      "containsRealPII": true,
+      "expect": {
+        "flags": [
+          "missing",
+          "handwritten"
+        ]
+      }
+    },
+    {
+      "id": "pdf-hi-2",
+      "path": "datasets/raw/pdfs/hindi/Scenario 2 - Accurate answer.pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Hindi /Scenario 2 - Accurate answer.pdf",
+      "bytes": 3564274,
+      "set": "pdfs",
+      "format": "pdf-scanned-handwritten",
+      "template": "edp-business-plan",
+      "languages": {
+        "questions": [
+          "hi"
+        ],
+        "answers": [
+          "hi"
+        ]
+      },
+      "scenario": "accurate",
+      "persona": "Applicant H2 (real person; PII withheld)",
+      "businessType": "Snack and tea/coffee cafe",
+      "location": "Shivpur, Varanasi, Uttar Pradesh",
+      "clusterGroup": "varanasi-food",
+      "containsRealPII": true,
+      "expect": {
+        "flags": [
+          "handwritten",
+          "financial-inconsistency",
+          "blurred-page"
+        ],
+        "financial": {
+          "A_setup_cost": 100000,
+          "B_own_investment": 50000,
+          "C_shortfall_expected": 50000,
+          "D_loan_written": 10000,
+          "E_monthly_fixed_cost": 50000,
+          "F_monthly_profit_target": 10000,
+          "G_monthly_sales": 60000,
+          "H_daily_sales": 2000,
+          "I_sustain_loan": 300000,
+          "J_growth_fixed_cost": 100000,
+          "K_growth_profit": 20000,
+          "L_growth_sales": 120000
+        },
+        "financialErrors": [
+          "D (10,000) should equal C (50,000)",
+          "Projected profit F*6 should be 60,000; written 3,00,000 (10,000 x 30)",
+          "M = L/30 should be 4,000; written 40,000",
+          "N = min(1,00,000 - D - I, J*5) computed as 1,00,000 x 5 = 5,00,000",
+          "Annexure A total 48,500 does not match A (1,00,000)",
+          "Annexure B total 3,50,000 does not match E*6 (3,00,000)"
+        ],
+        "note": "Page 5 is motion-blurred; annexure rows use ditto marks; some printed headers render as tofu boxes."
+      }
+    },
+    {
+      "id": "pdf-hi-3",
+      "path": "datasets/raw/pdfs/hindi/Scenario 3 - Over written answer.pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Hindi /Scenario 3 - Over written answer.pdf",
+      "bytes": 3985231,
+      "set": "pdfs",
+      "format": "pdf-scanned-handwritten",
+      "template": "edp-business-plan",
+      "languages": {
+        "questions": [
+          "hi"
+        ],
+        "answers": [
+          "hi"
+        ]
+      },
+      "scenario": "overwritten-answers",
+      "persona": "Applicant H3 (real person; PII withheld)",
+      "businessType": "Bag house (school bags)",
+      "location": "Shivpur, Varanasi, Uttar Pradesh",
+      "containsRealPII": true,
+      "expect": {
+        "flags": [
+          "overwritten",
+          "handwritten"
+        ],
+        "note": "Scribbled-over words (e.g. in the customers answer); hard handwriting."
+      }
+    },
+    {
+      "id": "pdf-hi-4",
+      "path": "datasets/raw/pdfs/hindi/Scenario 4 - Few fills empty.pdf",
+      "originalPath": "PDFs-20261017T054359Z-1-001.zip::PDFs/Hindi /Scenario 4 - Few fills empty.pdf",
+      "bytes": 5362502,
+      "set": "pdfs",
+      "format": "pdf-scanned-handwritten",
+      "template": "edp-business-plan",
+      "languages": {
+        "questions": [
+          "hi"
+        ],
+        "answers": [
+          "hi",
+          "en"
+        ]
+      },
+      "scenario": "missing-answers",
+      "persona": "Applicant H4 (real person; PII withheld)",
+      "businessType": "Fast food (rolls, sandwiches, burgers, chowmein, fried rice)",
+      "location": "Bhelupura, Varanasi, Uttar Pradesh",
+      "clusterGroup": "varanasi-food",
+      "containsRealPII": true,
+      "expect": {
+        "flags": [
+          "missing",
+          "handwritten"
+        ],
+        "note": "Mixed-script handwriting (Latin name and address, Devanagari answers) and a hand-drawn logo."
+      }
+    },
+    {
+      "id": "form-en-1",
+      "path": "datasets/raw/form-fillups/english/Business_Idea_Example_1_English.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/English/Business_Idea_Example_1_English.pdf",
+      "bytes": 29990,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-en",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en"
+        ]
+      },
+      "scenario": "accurate",
+      "persona": "Ananya Sharma",
+      "businessType": "Home-based tiffin service",
+      "sector": "Food service / Retail",
+      "location": "Kothrud, Pune City, Pune, Maharashtra 411038",
+      "investment": {
+        "required": 25000,
+        "self": 15000,
+        "loan": 10000
+      },
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "form-en-2",
+      "path": "datasets/raw/form-fillups/english/Business_Idea_Example_2_English.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/English/Business_Idea_Example_2_English.pdf",
+      "bytes": 29692,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-en",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en"
+        ]
+      },
+      "scenario": "missing-answers",
+      "persona": "Kavita Patel",
+      "businessType": "Tailoring and clothing alteration service",
+      "sector": "Services / Retail",
+      "location": "Maninagar, Ahmedabad City, Ahmedabad, Gujarat 380008",
+      "investment": {
+        "required": 22000,
+        "self": 12000,
+        "loan": 10000
+      },
+      "expect": {
+        "missing": [
+          "monthly_revenue"
+        ],
+        "flags": [
+          "missing"
+        ],
+        "similarTo": [
+          "pdf-en-1"
+        ]
+      }
+    },
+    {
+      "id": "form-en-3",
+      "path": "datasets/raw/form-fillups/english/Business_Idea_Example_3_English.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/English/Business_Idea_Example_3_English.pdf",
+      "bytes": 29614,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-en",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en"
+        ]
+      },
+      "scenario": "missing-questions",
+      "persona": "Rahul Verma (tea stall; not the pdf-en-1 Rahul Verma)",
+      "businessType": "Mobile tea and snacks stall",
+      "sector": "Food and Beverage / Retail",
+      "location": "Bairiya, Patna Sadar, Patna, Bihar 800007",
+      "investment": {
+        "required": 30000,
+        "self": 18000,
+        "loan": 12000
+      },
+      "duplicateGroup": "tea-stall-patna",
+      "expect": {
+        "notAsked": [
+          "offering",
+          "market_research"
+        ],
+        "flags": [
+          "missing",
+          "possible-duplicate"
+        ],
+        "note": "Questions are absent from the form, so these fields are \"not asked\", not \"unanswered\"."
+      }
+    },
+    {
+      "id": "form-en-4",
+      "path": "datasets/raw/form-fillups/english/Business_Idea_Example_4_English.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/English/Business_Idea_Example_4_English.pdf",
+      "bytes": 29680,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-en",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en"
+        ]
+      },
+      "scenario": "irrelevant-answers",
+      "persona": "Rahul Verma (tea stall)",
+      "businessType": "Mobile tea and snacks stall",
+      "sector": "Food and Beverage / Retail",
+      "location": "Bairiya, Patna Sadar, Patna, Bihar 800007",
+      "investment": {
+        "required": 30000,
+        "self": 18000,
+        "loan": 12000
+      },
+      "duplicateGroup": "tea-stall-patna",
+      "expect": {
+        "irrelevant": [
+          "market_research",
+          "suppliers",
+          "competition",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "irrelevant",
+          "possible-duplicate"
+        ],
+        "note": "Partly irrelevant: the rest is assessable."
+      }
+    },
+    {
+      "id": "form-en-5",
+      "path": "datasets/raw/form-fillups/english/Business_Idea_Example_5_English.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/English/Business_Idea_Example_5_English.pdf",
+      "bytes": 42442,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-en",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en",
+          "mr"
+        ]
+      },
+      "scenario": "language-mismatch",
+      "persona": "Rahul Verma (tea stall)",
+      "businessType": "Mobile tea and snacks stall",
+      "sector": "Food and Beverage / Retail",
+      "location": "Bairiya, Patna Sadar, Patna, Bihar 800007",
+      "investment": {
+        "required": 30000,
+        "self": 18000,
+        "loan": 12000
+      },
+      "duplicateGroup": "tea-stall-patna",
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "language-mismatch",
+          "possible-duplicate"
+        ],
+        "note": "Market-research answer is in Marathi on an English form; it must not be penalised."
+      }
+    },
+    {
+      "id": "form-en-6",
+      "path": "datasets/raw/form-fillups/english/Business_Idea_Example_6_English.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/English/Business_Idea_Example_6_English.pdf",
+      "bytes": 42583,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-en",
+      "languages": {
+        "questions": [
+          "en"
+        ],
+        "answers": [
+          "en",
+          "mr"
+        ]
+      },
+      "scenario": "changed-questions",
+      "persona": "Rahul Verma (tea stall)",
+      "businessType": "Mobile tea and snacks stall",
+      "sector": "Food and Beverage / Retail",
+      "location": "Bairiya, Patna Sadar, Patna, Bihar 800007",
+      "investment": {
+        "required": 30000,
+        "self": 18000,
+        "loan": 12000
+      },
+      "duplicateGroup": "tea-stall-patna",
+      "expect": {
+        "notAsked": [
+          "offering"
+        ],
+        "extraQuestions": [
+          "business hours",
+          "stall cleanliness"
+        ],
+        "flags": [
+          "language-mismatch",
+          "extra-questions",
+          "possible-duplicate"
+        ]
+      }
+    },
+    {
+      "id": "form-hi-1",
+      "path": "datasets/raw/form-fillups/hindi/Scenario 1 - Accurate Hindi Answers.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Hindi/Scenario 1 - Accurate Hindi Answers.pdf",
+      "bytes": 240222,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-hi",
+      "languages": {
+        "questions": [
+          "hi"
+        ],
+        "answers": [
+          "hi"
+        ]
+      },
+      "scenario": "accurate",
+      "persona": "Rakesh Kumar (Student_080)",
+      "businessType": "Vermicompost, seeds, bio-pesticides, free soil testing",
+      "sector": "Agriculture",
+      "location": "Kothapalle, Ponnur, Guntur, Andhra Pradesh",
+      "investment": {
+        "required": 95200,
+        "self": 32800,
+        "loan": 62400
+      },
+      "parityGroup": "vermicompost-guntur",
+      "contactGroup": "C0-placeholder",
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "placeholder-contact"
+        ]
+      }
+    },
+    {
+      "id": "form-hi-2",
+      "path": "datasets/raw/form-fillups/hindi/Scenario 2 - Leave Questions Empty.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Hindi/Scenario 2 - Leave Questions Empty.pdf",
+      "bytes": 233073,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-hi",
+      "languages": {
+        "questions": [
+          "hi"
+        ],
+        "answers": [
+          "hi"
+        ]
+      },
+      "scenario": "missing-answers",
+      "persona": "Anil Kumar (Student_080)",
+      "businessType": "Paddy and crop seed retail",
+      "sector": "Agriculture",
+      "location": "Wyra, Khammam, Telangana",
+      "investment": {
+        "required": 95200,
+        "self": 32800,
+        "loan": 62400
+      },
+      "parityGroup": "seed-retail-khammam",
+      "contactGroup": "C0-placeholder",
+      "expect": {
+        "missing": [
+          "market_research",
+          "suppliers",
+          "competition"
+        ],
+        "flags": [
+          "missing",
+          "placeholder-contact"
+        ],
+        "note": "Blank answers are marked \"[Left Blank]\"."
+      }
+    },
+    {
+      "id": "form-hi-3",
+      "path": "datasets/raw/form-fillups/hindi/Scenario 3 - Irrelevant Answers.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Hindi/Scenario 3 - Irrelevant Answers.pdf",
+      "bytes": 230776,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-hi",
+      "languages": {
+        "questions": [
+          "hi"
+        ],
+        "answers": [
+          "hi"
+        ]
+      },
+      "scenario": "irrelevant-answers",
+      "persona": "Suresh (Student_080)",
+      "businessType": "Retail (Agriculture domain)",
+      "sector": "Agriculture",
+      "location": "Hyderabad",
+      "investment": {
+        "required": 95200,
+        "self": 32800,
+        "loan": 62400
+      },
+      "parityGroup": "irrelevant-agri",
+      "contactGroup": "C0-placeholder",
+      "expect": {
+        "state": "unassessable",
+        "flags": [
+          "irrelevant",
+          "implausible",
+          "placeholder-contact"
+        ],
+        "note": "Revenue answer \"maybe about 1 crore rupees per day\" against a Rs 95,200 investment."
+      }
+    },
+    {
+      "id": "form-hi-4",
+      "path": "datasets/raw/form-fillups/hindi/Scenario 4 - First 5 Questions Only.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Hindi/Scenario 4 - First 5 Questions Only.pdf",
+      "bytes": 232152,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-hi",
+      "languages": {
+        "questions": [
+          "hi"
+        ],
+        "answers": [
+          "hi"
+        ]
+      },
+      "scenario": "partial-first-5",
+      "persona": "Priyanka (Student_080)",
+      "businessType": "Flower and decorative plant nursery with organic manure",
+      "sector": "Agriculture",
+      "location": "Kadiyam, East Godavari, Andhra Pradesh",
+      "investment": {
+        "required": 95200,
+        "self": 32800,
+        "loan": 62400
+      },
+      "parityGroup": "nursery-kadiyam",
+      "contactGroup": "C0-placeholder",
+      "expect": {
+        "missing": [
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "missing",
+          "placeholder-contact"
+        ]
+      }
+    },
+    {
+      "id": "form-hi-5",
+      "path": "datasets/raw/form-fillups/hindi/Scenario 5 - Hindi Qs Telugu As.pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Hindi/Scenario 5 - Hindi Qs Telugu As.pdf",
+      "bytes": 293887,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-hi-v2",
+      "languages": {
+        "questions": [
+          "hi"
+        ],
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "language-mismatch",
+      "persona": "Rajesh Sharma",
+      "businessType": "Organic agri-input store (fertiliser, bio-pesticides, farm tools)",
+      "sector": "Agriculture",
+      "location": "Bodhan, Nizamabad, Telangana",
+      "investment": {
+        "required": 95200,
+        "self": 32800,
+        "loan": 62400
+      },
+      "parityGroup": "agri-store-nizamabad",
+      "contactGroup": "C0-placeholder",
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "language-mismatch"
+        ],
+        "note": "Different layout variant; its \"Category\" field holds a business label, not a social category."
+      }
+    },
+    {
+      "id": "form-mr-1",
+      "path": "datasets/raw/form-fillups/marathi/Business Idea 1 - Scenario - 1(Complete Marathi).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Marathi/Business Idea 1 - Scenario - 1(Complete Marathi).pdf",
+      "bytes": 325612,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "edp-form-mr",
+      "languages": {
+        "questions": [
+          "mr"
+        ],
+        "answers": [
+          "mr"
+        ]
+      },
+      "scenario": "accurate",
+      "persona": "Amit Suresh Patil",
+      "businessType": "Organic fruit and vegetable processing (jam, sauce, dried vegetables, juice)",
+      "sector": "Food processing",
+      "location": "Baramati, Pune, Maharashtra",
+      "socialCategory": "OBC",
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [],
+        "note": "Cites the PMFME scheme for bank credit: a good scheme-matching demo."
+      }
+    },
+    {
+      "id": "form-mr-2",
+      "path": "datasets/raw/form-fillups/marathi/Business Idea 2 - Scenario - 2(Missing Questions).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Marathi/Business Idea 2 - Scenario - 2(Missing Questions).pdf",
+      "bytes": 370888,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "edp-form-mr",
+      "languages": {
+        "questions": [
+          "mr"
+        ],
+        "answers": [
+          "mr"
+        ]
+      },
+      "scenario": "missing-questions",
+      "persona": "Vikas Rahul Deshmukh",
+      "businessType": "Solar panel installation and servicing",
+      "sector": "Energy services",
+      "location": "Akole, Ahmednagar, Maharashtra 422601",
+      "socialCategory": "General",
+      "expect": {
+        "notAsked": [
+          "market_research",
+          "suppliers",
+          "unit_price"
+        ],
+        "flags": [
+          "missing"
+        ],
+        "note": "Rows 4, 6 and 9 have a number but no question or answer."
+      }
+    },
+    {
+      "id": "form-mr-3",
+      "path": "datasets/raw/form-fillups/marathi/Business Idea 3 - Scenario - 3 (Missing Answers).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Marathi/Business Idea 3 - Scenario - 3 (Missing Answers).pdf",
+      "bytes": 317273,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "edp-form-mr",
+      "languages": {
+        "questions": [
+          "mr"
+        ],
+        "answers": [
+          "mr",
+          "en"
+        ]
+      },
+      "scenario": "missing-answers",
+      "persona": "Snehal Amol Kadam",
+      "businessType": "Cloth, jute and paper bag manufacturing",
+      "sector": "Manufacturing",
+      "location": "Mangalwar Peth, Karveer, Kolhapur, Maharashtra 416002",
+      "socialCategory": "SC",
+      "contactGroup": "C2",
+      "expect": {
+        "missing": [
+          "market_research",
+          "funding",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "missing"
+        ],
+        "note": "Shares a phone number with the dairy personas (different person and idea): flag for review, never auto-merge."
+      }
+    },
+    {
+      "id": "form-mr-4",
+      "path": "datasets/raw/form-fillups/marathi/Business Idea 4 - Scenario - 4 (Random Answers).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Marathi/Business Idea 4 - Scenario - 4 (Random Answers).pdf",
+      "bytes": 324619,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "edp-form-mr",
+      "languages": {
+        "questions": [
+          "mr"
+        ],
+        "answers": [
+          "mr"
+        ]
+      },
+      "scenario": "random-answers",
+      "persona": "Rohan Prakash Shah",
+      "businessType": "Unclear (raw materials and price point to social media management services)",
+      "location": "Pune, Maharashtra 411038",
+      "socialCategory": "General",
+      "expect": {
+        "irrelevant": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "suppliers",
+          "funding",
+          "competition",
+          "monthly_revenue"
+        ],
+        "relevant": [
+          "raw_materials",
+          "unit_price"
+        ],
+        "flags": [
+          "irrelevant"
+        ],
+        "note": "Mostly random; two answers are on-topic, so the idea is only partly inferable."
+      }
+    },
+    {
+      "id": "form-mr-5",
+      "path": "datasets/raw/form-fillups/marathi/Business Idea 5 - Scenario - 5(Different Language).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Marathi/Business Idea 5 - Scenario - 5(Different Language).pdf",
+      "bytes": 400378,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "edp-form-mr",
+      "languages": {
+        "questions": [
+          "mr"
+        ],
+        "answers": [
+          "mr",
+          "te"
+        ]
+      },
+      "scenario": "language-mismatch",
+      "persona": "Pallavi Balaji Reddy",
+      "businessType": "Designer clothing, tailoring and readymade dresses",
+      "sector": "Apparel",
+      "location": "Latur, Maharashtra 413512",
+      "socialCategory": "General",
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "language-mismatch"
+        ],
+        "note": "Answers 1, 3, 5, 7 and 9 are in Telugu, the rest in Marathi."
+      }
+    },
+    {
+      "id": "form-mr-6",
+      "path": "datasets/raw/form-fillups/marathi/Business Idea 6 - Scenario - 6 (Changed Questions and Answers).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Marathi/Business Idea 6 - Scenario - 6 (Changed Questions and Answers).pdf",
+      "bytes": 299367,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "edp-form-mr-custom",
+      "languages": {
+        "questions": [
+          "mr"
+        ],
+        "answers": [
+          "mr",
+          "en"
+        ]
+      },
+      "scenario": "changed-questions",
+      "persona": "Mahesh Dattatray More",
+      "businessType": "Water purification plant and 20 L jar delivery",
+      "sector": "Manufacturing / FMCG",
+      "location": "MIDC, Nashik, Maharashtra 422010",
+      "socialCategory": "NT",
+      "contactGroup": "C3",
+      "expect": {
+        "mappable": {
+          "unit_price": "Rs 30 per 20 L jar incl. home delivery"
+        },
+        "notAsked": [
+          "customers",
+          "market_research",
+          "funding",
+          "competition",
+          "monthly_revenue"
+        ],
+        "extraQuestions": [
+          "daily capacity",
+          "purification technology",
+          "transport",
+          "quality testing",
+          "pack sizes",
+          "power backup",
+          "licences",
+          "staff",
+          "plant life and maintenance"
+        ],
+        "flags": [
+          "custom-template"
+        ],
+        "note": "Shares a phone number with the mobile-repair personas."
+      }
+    },
+    {
+      "id": "form-te-1",
+      "path": "datasets/raw/form-fillups/telugu/Business Idea - Scenario 1 (Accurate Telugu Answers).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Telugu/Business Idea - Scenario 1 (Accurate Telugu Answers).pdf",
+      "bytes": 341268,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-te",
+      "languages": {
+        "questions": [
+          "te"
+        ],
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "accurate",
+      "persona": "Rakesh Kumar (Student_080)",
+      "businessType": "Vermicompost, seeds, bio-pesticides, free advisory",
+      "sector": "Agriculture",
+      "location": "Kothapalli, Ponnur, Guntur, Andhra Pradesh",
+      "investment": {
+        "required": 95200,
+        "self": 32800,
+        "loan": 62400
+      },
+      "parityGroup": "vermicompost-guntur",
+      "contactGroup": "C0-placeholder",
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "placeholder-contact"
+        ],
+        "note": "Same submission as form-hi-1 in Telugu: a cross-language parity test."
+      }
+    },
+    {
+      "id": "form-te-2",
+      "path": "datasets/raw/form-fillups/telugu/Business Idea - Scenario 2 (Few Questions Empty).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Telugu/Business Idea - Scenario 2 (Few Questions Empty).pdf",
+      "bytes": 271940,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-te",
+      "languages": {
+        "questions": [
+          "te"
+        ],
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "missing-answers",
+      "persona": "Anil Kumar (Student_080)",
+      "businessType": "Paddy and crop seed retail",
+      "sector": "Agriculture",
+      "location": "Wyra, Khammam, Telangana",
+      "investment": {
+        "required": 95200,
+        "self": 32800,
+        "loan": 62400
+      },
+      "parityGroup": "seed-retail-khammam",
+      "contactGroup": "C0-placeholder",
+      "expect": {
+        "missing": [
+          "market_research",
+          "suppliers",
+          "competition"
+        ],
+        "flags": [
+          "missing",
+          "placeholder-contact"
+        ]
+      }
+    },
+    {
+      "id": "form-te-3",
+      "path": "datasets/raw/form-fillups/telugu/Business Idea - Scenario 3 (Irrelevant Answers).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Telugu/Business Idea - Scenario 3 (Irrelevant Answers).pdf",
+      "bytes": 293042,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-te",
+      "languages": {
+        "questions": [
+          "te"
+        ],
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "irrelevant-answers",
+      "persona": "Suresh (Student_080)",
+      "businessType": "Retail (Agriculture domain)",
+      "sector": "Agriculture",
+      "investment": {
+        "required": 95200,
+        "self": 32800,
+        "loan": 62400
+      },
+      "parityGroup": "irrelevant-agri",
+      "contactGroup": "C0-placeholder",
+      "expect": {
+        "state": "unassessable",
+        "flags": [
+          "irrelevant",
+          "implausible",
+          "placeholder-contact"
+        ],
+        "note": "\"I want to open a shop on the moon\"; revenue \"one crore rupees\"."
+      }
+    },
+    {
+      "id": "form-te-4",
+      "path": "datasets/raw/form-fillups/telugu/Business Idea - Scenario 4 (Only 5 Questions Answered).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Telugu/Business Idea - Scenario 4 (Only 5 Questions Answered).pdf",
+      "bytes": 265885,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-te",
+      "languages": {
+        "questions": [
+          "te"
+        ],
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "partial-first-5",
+      "persona": "Priyanka (Student_080)",
+      "businessType": "Flower and decorative plant nursery with organic manure",
+      "sector": "Agriculture",
+      "location": "Kadiyam, East Godavari, Andhra Pradesh",
+      "investment": {
+        "required": 95200,
+        "self": 32800,
+        "loan": 62400
+      },
+      "parityGroup": "nursery-kadiyam",
+      "contactGroup": "C0-placeholder",
+      "expect": {
+        "notAsked": [
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "missing",
+          "placeholder-contact"
+        ],
+        "note": "Questions 6-10 are absent from this form (the Hindi twin shows them as \"Not Answered\")."
+      }
+    },
+    {
+      "id": "form-te-5",
+      "path": "datasets/raw/form-fillups/telugu/Business Idea - Scenario 5 (Telugu Questions, Hindi Answers).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Telugu/Business Idea - Scenario 5 (Telugu Questions, Hindi Answers).pdf",
+      "bytes": 268538,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "platform-form-te",
+      "languages": {
+        "questions": [
+          "te"
+        ],
+        "answers": [
+          "hi"
+        ]
+      },
+      "scenario": "language-mismatch",
+      "persona": "Rajesh Sharma (Student_080)",
+      "businessType": "Organic agri-input store (fertiliser, pesticides, farm tools)",
+      "sector": "Agriculture",
+      "location": "Bodhan, Nizamabad, Telangana",
+      "investment": {
+        "required": 95200,
+        "self": 32800,
+        "loan": 62400
+      },
+      "parityGroup": "agri-store-nizamabad",
+      "contactGroup": "C0-placeholder",
+      "expect": {
+        "answered": [
+          "location",
+          "offering",
+          "customers",
+          "market_research",
+          "raw_materials",
+          "suppliers",
+          "funding",
+          "competition",
+          "unit_price",
+          "monthly_revenue"
+        ],
+        "flags": [
+          "language-mismatch",
+          "placeholder-contact"
+        ]
+      }
+    },
+    {
+      "id": "form-te-6",
+      "path": "datasets/raw/form-fillups/telugu/Business Idea QA - Scenario 6(Different Question and Answers).pdf",
+      "originalPath": "Form fill-ups-20261017T054335Z-1-001.zip::Form fill-ups/Telugu/Business Idea QA - Scenario 6(Different Question and Answers).pdf",
+      "bytes": 1059106,
+      "set": "form-fillups",
+      "format": "pdf-digital",
+      "template": "case-study-paper-te",
+      "languages": {
+        "questions": [
+          "te",
+          "en"
+        ],
+        "answers": [
+          "te",
+          "en"
+        ]
+      },
+      "scenario": "changed-questions",
+      "persona": "None (name field is a \"[your name]\" placeholder)",
+      "businessType": "Organic produce direct-delivery subscription platform",
+      "sector": "E-commerce & organic retail",
+      "expect": {
+        "mappable": [
+          "offering",
+          "customers",
+          "suppliers"
+        ],
+        "flags": [
+          "custom-template",
+          "no-applicant-profile"
+        ],
+        "note": "3-page case-study evaluation paper: section A (value proposition, target audience, supply chain), section B (challenges, finance, risk)."
+      }
+    },
+    {
+      "id": "aud-bn-1",
+      "path": "datasets/raw/audios/bengali/Sample 1.ogg",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Bengali /Sample 1.ogg",
+      "bytes": 338436,
+      "set": "audios",
+      "format": "audio",
+      "codec": "opus",
+      "durationSec": 159.5,
+      "languages": {
+        "answers": [
+          "bn"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": null,
+      "parityGroup": null,
+      "expect": {
+        "flags": [],
+        "note": "Content not yet transcribed. Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-bn-2",
+      "path": "datasets/raw/audios/bengali/Sample 2_.ogg",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Bengali /Sample 2_.ogg",
+      "bytes": 703555,
+      "set": "audios",
+      "format": "audio",
+      "codec": "opus",
+      "durationSec": 322.6,
+      "languages": {
+        "answers": [
+          "bn"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": null,
+      "parityGroup": null,
+      "expect": {
+        "flags": [],
+        "note": "Content not yet transcribed. Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-hi-1",
+      "path": "datasets/raw/audios/hindi/Sample 1.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Hindi /Sample 1.mp4",
+      "bytes": 2009598,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 124.1,
+      "languages": {
+        "answers": [
+          "hi"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": null,
+      "parityGroup": null,
+      "expect": {
+        "flags": [],
+        "note": "Content not yet transcribed. Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-hi-2",
+      "path": "datasets/raw/audios/hindi/Sample 2.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Hindi /Sample 2.mp4",
+      "bytes": 2360777,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 145.8,
+      "languages": {
+        "answers": [
+          "hi"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": null,
+      "parityGroup": null,
+      "expect": {
+        "flags": [],
+        "note": "Content not yet transcribed. Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-od-1",
+      "path": "datasets/raw/audios/odia/Sample 1.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Odia/Sample 1.mp4",
+      "bytes": 2763006,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 169.3,
+      "languages": {
+        "answers": [
+          "od"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": null,
+      "parityGroup": null,
+      "expect": {
+        "flags": [],
+        "note": "Content not yet transcribed. Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-od-2",
+      "path": "datasets/raw/audios/odia/Sample 2.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Odia/Sample 2.mp4",
+      "bytes": 2098612,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 128.6,
+      "languages": {
+        "answers": [
+          "od"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": null,
+      "parityGroup": null,
+      "expect": {
+        "flags": [],
+        "note": "Content not yet transcribed. Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-od-3",
+      "path": "datasets/raw/audios/odia/Sample 3.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Odia/Sample 3.mp4",
+      "bytes": 5721343,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 353.2,
+      "languages": {
+        "answers": [
+          "od"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": null,
+      "parityGroup": null,
+      "expect": {
+        "flags": [],
+        "note": "Content not yet transcribed. Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-od-4",
+      "path": "datasets/raw/audios/odia/Sample 4.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Odia/Sample 4.mp4",
+      "bytes": 2402702,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 147.2,
+      "languages": {
+        "answers": [
+          "od"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": null,
+      "parityGroup": null,
+      "expect": {
+        "flags": [],
+        "note": "Content not yet transcribed. Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-od-5",
+      "path": "datasets/raw/audios/odia/Sample 5.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Odia/Sample 5.mp4",
+      "bytes": 3739467,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 229.1,
+      "languages": {
+        "answers": [
+          "od"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": null,
+      "parityGroup": null,
+      "expect": {
+        "flags": [],
+        "note": "Content not yet transcribed. Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-te-anitha",
+      "path": "datasets/raw/audios/telugu/Anitha Kumari Response.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Telegu/Anitha Kumari Response.mp4",
+      "bytes": 1967543,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 121.3,
+      "languages": {
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": "Anitha Kumari",
+      "parityGroup": "beauty-parlour",
+      "expect": {
+        "flags": [],
+        "note": "Spoken Telugu version of the PDF persona with the same name; expected to mirror that PDF scenario (verify after transcription). Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-te-mohan",
+      "path": "datasets/raw/audios/telugu/MOhan Rao Response.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Telegu/MOhan Rao Response.mp4",
+      "bytes": 1792074,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 110.5,
+      "languages": {
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": "Mohan Rao",
+      "parityGroup": "mobile-repair",
+      "expect": {
+        "flags": [],
+        "note": "Spoken Telugu version of the PDF persona with the same name; expected to mirror that PDF scenario (verify after transcription). Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-te-ramesh",
+      "path": "datasets/raw/audios/telugu/Ramesh Goud Response.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Telegu/Ramesh Goud Response.mp4",
+      "bytes": 2275854,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 140.4,
+      "languages": {
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": "Ramesh Goud",
+      "parityGroup": "tailoring",
+      "expect": {
+        "flags": [],
+        "note": "Spoken Telugu version of the PDF persona with the same name; expected to mirror that PDF scenario (verify after transcription). Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    },
+    {
+      "id": "aud-te-sunitha",
+      "path": "datasets/raw/audios/telugu/Sunitha Reddy Response.mp4",
+      "originalPath": "Audios -20261017T054309Z-1-001.zip::Audios /Telegu/Sunitha Reddy Response.mp4",
+      "bytes": 1605653,
+      "set": "audios",
+      "format": "audio",
+      "codec": "aac",
+      "durationSec": 98.9,
+      "languages": {
+        "answers": [
+          "te"
+        ]
+      },
+      "scenario": "unverified",
+      "persona": "Sunitha Reddy",
+      "parityGroup": "dairy",
+      "expect": {
+        "flags": [],
+        "note": "Spoken Telugu version of the PDF persona with the same name; expected to mirror that PDF scenario (verify after transcription). Longer than Sarvam's 30 s sync STT limit: chunk at pauses."
+      }
+    }
+  ]
+}

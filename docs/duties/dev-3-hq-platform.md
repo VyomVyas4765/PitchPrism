@@ -58,9 +58,11 @@ A feature is done when UI, API, persistence, permissions, loading/error states, 
 
 ## In progress
 
-Persistent local MongoDB development mode and Redis removal; scripts/config/docs; preserve private Atlas settings.
+None claimed. Earlier claim "Persistent local MongoDB development mode and Redis removal" was delivered under D-26.
 
 ## Done
+
+- 2026-10-17 · Invitation-based staff sign-up replacing demo staff accounts (W-01 now `api_ui_partial`; done by Arnav at the team's request): HQ organisation creation with `parentOrgId`/region/languages/funding mode and deactivation; scoped invitations per PRD §4 with sha256-stored one-time tokens (72 h, single use, re-invite revokes the old link), link shown to the inviter; public preview/accept setting the invitee's own name and password; scoped staff list, role changes and disabling (sessions removed); new `manage_org_users` permission; dashboard **People and access** panel and `/accept-invite` page; seed reduced to one bootstrap HQ admin (`SEED_DEMO_STAFF=true` opt-in for local demos). 6 access tests (107 backend tests in total, org-scope mutation caught); verified in a browser against the production web build: HQ sign-in, invite, accept as a facilitator, reuse refused. Pending: password reset, audit log of access changes (W-08), email delivery, programme/rubric/routing parts of W-01's neighbours (W-02, W-04).
 
 - 2026-10-17 · D-25 documentation: moved seven answered/superseded questions out of the open list, retained 16 pending items, recorded the team roster and five-minute mentor review, and aligned PRD ownership with the four role briefs. Checked all 23 question IDs, matching decision register, links, and unchanged 88 requirement rows; no runtime changes.
 

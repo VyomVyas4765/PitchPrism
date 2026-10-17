@@ -11,7 +11,8 @@ export const SESSION_SECONDS = 8 * 60 * 60;
 export interface AuthContext { user: SessionUser; sessionId: string; fundingMode?: string }
 declare global { namespace Express { interface Request { auth?: AuthContext } } }
 
-const roleOrgs: Record<Role, readonly OrgType[]> = {
+// Which organisation types each role may belong to; sessions and invitations both enforce it.
+export const ROLE_ORG_TYPES: Record<Role, readonly OrgType[]> = {
   entrepreneur: [], facilitator: ['centre', 'implementation_partner'],
   centre_assessor: ['centre'], cohort_lead: ['centre'], hq_admin: ['hq'],
   implementation_partner: ['implementation_partner'], sector_partner: ['sector_partner'], funding_partner: ['funding_partner'],
@@ -21,7 +22,7 @@ export async function userContext(id: string): Promise<Omit<AuthContext, 'sessio
   if (!user || user.disabled) throw new HttpError(401, 'Please sign in again.');
   const role = user.role as Role;
   const org = user.orgId ? await Org.findById(user.orgId).lean() : null;
-  if (role === 'entrepreneur' ? !!user.orgId : !org || !org.active || !roleOrgs[role].includes(org.type as OrgType)) {
+  if (role === 'entrepreneur' ? !!user.orgId : !org || !org.active || !ROLE_ORG_TYPES[role].includes(org.type as OrgType)) {
     throw new HttpError(403, 'Your account organisation is unavailable or does not match your role.');
   }
   return {

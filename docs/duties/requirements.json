@@ -465,10 +465,14 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate org/user invitations and role setup with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "foundation_partial",
+    "status": "api_ui_partial",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/src/modules/hq/router.ts",
+      "backend/tests/access.test.ts",
+      "frontend/features/hq/AccessAdmin.tsx",
+      "frontend/app/accept-invite/page.tsx"
     ]
   },
   "W-02": {

@@ -8,12 +8,13 @@ export const ROLE_LABELS: Record<Role, string> = {
   centre_assessor: 'Centre assessor', cohort_lead: 'Cohort lead', hq_admin: 'HQ admin',
   implementation_partner: 'Implementation partner', sector_partner: 'Sector partner', funding_partner: 'Funding partner',
 };
-export type Permission = 'submit_own' | 'submit_assisted' | 'review_centre' | 'manage_cohorts' | 'manage_platform' | 'review_own_org' | 'view_consented' | 'view_funding';
+export type Permission = 'submit_own' | 'submit_assisted' | 'review_centre' | 'manage_cohorts' | 'manage_platform' | 'review_own_org' | 'view_consented' | 'view_funding' | 'manage_org_users';
+// manage_org_users follows PRD §4 "Onboard orgs and users": HQ for all orgs, others for their own org only.
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   entrepreneur: ['submit_own'], facilitator: ['submit_assisted'],
-  centre_assessor: ['review_centre', 'manage_cohorts'], cohort_lead: ['review_centre', 'manage_cohorts'],
-  hq_admin: ['manage_platform', 'review_centre', 'manage_cohorts'],
-  implementation_partner: ['review_own_org'], sector_partner: ['view_consented'], funding_partner: ['view_funding'],
+  centre_assessor: ['review_centre', 'manage_cohorts', 'manage_org_users'], cohort_lead: ['review_centre', 'manage_cohorts', 'manage_org_users'],
+  hq_admin: ['manage_platform', 'review_centre', 'manage_cohorts', 'manage_org_users'],
+  implementation_partner: ['review_own_org', 'manage_org_users'], sector_partner: ['view_consented', 'manage_org_users'], funding_partner: ['view_funding', 'manage_org_users'],
 };
 export interface AuthResponse { user: import('./generated.js').SessionUser; accessToken?: string }
 export interface Workspace { role: Role; permissions: readonly Permission[]; message: string }

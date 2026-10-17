@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { ROLE_LABELS, type AuthResponse, type SessionUser, type Workspace } from '@pitchprism/contracts';
 import { api, ApiError } from '../../../lib/api';
 import CentreWorkspace from '../../../features/centre/CentreWorkspace';
+import AccessAdmin from '../../../features/hq/AccessAdmin';
 
 export default function Dashboard({ params }: { params: Promise<{ role: string }> }) {
   const { role } = use(params);
@@ -47,5 +48,6 @@ export default function Dashboard({ params }: { params: Promise<{ role: string }
       {error && <p className="error" role="alert">{error}</p>}
     </section>
     {(user.role === 'centre_assessor' || user.role === 'cohort_lead') && <CentreWorkspace />}
+    {workspace.permissions.includes('manage_org_users') && <AccessAdmin isHq={user.role === 'hq_admin'} selfId={user.id} />}
   </main>;
 }

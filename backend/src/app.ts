@@ -15,6 +15,7 @@ import { centreRouter } from './modules/centre/router.js';
 import type { AssessmentResult } from './modules/centre/runner.js';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { entrepreneurRouter } from './modules/entrepreneur/index.js';
+import { accessRouter, inviteAcceptRouter } from './modules/hq/router.js';
 
 const loginInput = z.object({ email: z.email().max(254).transform(value => value.toLowerCase()), password: z.string().min(1).max(128), client: z.enum(['web', 'mobile']).default('web') }).strict();
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
@@ -60,6 +61,8 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
     if (actor.role !== 'entrepreneur') throw new HttpError(403, 'This phone identity is not an entrepreneur account.');
     res.json({ user: actor, accessToken: await sessions.create(actor.id) });
   });
+  // Invitation preview/acceptance are public (the one-time token is the credential) and rate limited.
+  app.use('/api/v1', inviteAcceptRouter(sessions, authLimiter));
   app.use('/api/v1', sessions.middleware);
   app.get('/api/v1/auth/me', (req, res) => { res.json({ user: req.auth!.user }); });
   app.post('/api/v1/auth/logout', async (req, res) => {
@@ -96,6 +99,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
       ...(!partner || contactAccepted ? { applicant: submission.applicant } : {}) });
   });
   app.use('/api/v1', entrepreneurRouter(config));
+  app.use('/api/v1', accessRouter(config));
   app.use((_req, res) => { res.status(404).json({ error: 'Endpoint not found.' }); });
   app.use(errorHandler);
   return app;

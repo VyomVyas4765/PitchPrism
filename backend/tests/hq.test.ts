@@ -184,7 +184,16 @@ describe('HQ configuration', () => {
     const uneven = await request(app).post('/api/v1/hq/rubrics').set('Authorization', auth).send(rubric([40, 40, 10])).expect(400);
     expect(uneven.body.error).toBe('Domain weights must add up to 100 (now 90).');
     await request(app).post('/api/v1/hq/rubrics').set('Authorization', await bearer(assessor)).send(rubric()).expect(403);
-    const first = await request(app).post('/api/v1/hq/rubrics').set('Authorization', auth).send(rubric()).expect(201);
+    const badWeights = await request(app).post('/api/v1/hq/rubrics').set('Authorization', auth)
+      .send({ ...rubric(), completenessWeights: { location: 50, offering: 40 } }).expect(400);
+    expect(badWeights.body.error).toBe('Completeness weights must add up to 100 (now 90).');
+    const badRule = await request(app).post('/api/v1/hq/rubrics').set('Authorization', auth)
+      .send({ ...rubric(), pathwayRules: { mentoringWeakDomains: ['teleport'] } }).expect(400);
+    expect(badRule.body.error).toContain('teleport');
+    await request(app).post('/api/v1/hq/rubrics').set('Authorization', auth).send({ ...rubric(), pathwayRules: { shortcut: 1 } }).expect(400);
+    const first = await request(app).post('/api/v1/hq/rubrics').set('Authorization', auth)
+      .send({ ...rubric(), completenessWeights: { location: 60, offering: 40 }, pathwayRules: { fundingMaxLoan: 150000, mentoringWeakDomains: ['domain_a'] } }).expect(201);
+    expect(first.body.rubric.pathwayRules).toEqual({ fundingMaxLoan: 150000, mentoringWeakDomains: ['domain_a'] });
     expect(first.body.rubric).toMatchObject({ version: 1, status: 'draft' });
     await request(app).post('/api/v1/hq/rubrics/synthetic/1/publish').set('Authorization', auth).expect(200);
     const second = await request(app).post('/api/v1/hq/rubrics').set('Authorization', auth).send(rubric([50, 25, 25])).expect(201);

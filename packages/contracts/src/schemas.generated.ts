@@ -6,6 +6,7 @@ export const COLLECTIONS = {
   "Decision": "decisions",
   "Document": "documents",
   "Entrepreneur": "entrepreneurs",
+  "EvalRun": "evalRuns",
   "Evaluation": "evaluations",
   "ImportBatch": "importBatches",
   "Invitation": "invitations",
@@ -311,7 +312,9 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         "existing_business",
         "customer_gender",
         "customer_age_range",
-        "customer_segment"
+        "customer_segment",
+        "skills",
+        "experience"
       ]
     },
     "AnswerState": {
@@ -861,6 +864,182 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         "homeOrgId": {
           "$ref": "#/definitions/ObjectId",
           "description": "Centre that owns the relationship, once assigned."
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "EvalRun": {
+      "title": "EvalRun",
+      "description": "W-33: one evaluation-harness run on the organiser dataset (ai/eval/harness.py), recorded once per report. Aggregate metrics and per-file outcomes keyed by manifest ID only: no source text, names or model output.",
+      "x-collection": "evalRuns",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reportSha256",
+        "runAt",
+        "total",
+        "assessed",
+        "complete"
+      ],
+      "properties": {
+        "reportSha256": {
+          "type": "string",
+          "pattern": "^[a-f\\d]{64}$"
+        },
+        "runAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "manifestVersion": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "rubricKey": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "rubricVersion": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "promptVersion": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assessed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingExtraction": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "fieldStateAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "canonicalValueAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "flagRecall": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "durationP50Ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "durationP95Ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "computeSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sum of per-file durations: local compute time, the real cost (hosted AI cost is zero by policy)."
+        },
+        "parity": {
+          "type": "array",
+          "items": {
+            "title": "ParityGroup",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "group",
+              "count",
+              "gap",
+              "pass"
+            ],
+            "properties": {
+              "group": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "gap": {
+                "type": "number",
+                "minimum": 0
+              },
+              "pass": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "perFile": {
+          "type": "array",
+          "items": {
+            "title": "EvalFileResult",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 80,
+                "description": "Manifest file ID, not a person or file name."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "assessed",
+                  "missing_extraction",
+                  "failed"
+                ]
+              },
+              "band": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "potential": {
+                "type": "number"
+              },
+              "durationMs": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "fieldChecks": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "fieldChecksCorrect": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
         },
         "createdAt": {
           "$ref": "#/definitions/DateTime"
@@ -1996,7 +2175,7 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         },
         "completenessWeights": {
           "type": "object",
-          "description": "Weight per canonical field for completeness.",
+          "description": "Weight per canonical field for completeness; the weights total 100.",
           "additionalProperties": {
             "type": "number",
             "minimum": 0
@@ -2030,8 +2209,55 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
           }
         },
         "pathwayRules": {
+          "title": "PathwayRules",
           "type": "object",
-          "description": "Thresholds for the pathway calculator (Dev 2). Free-form until Dev 2 freezes the calculator inputs."
+          "additionalProperties": false,
+          "description": "Thresholds read by the pathway calculator (ai/intel/scoring.py). Missing keys use the calculator defaults.",
+          "properties": {
+            "requestInfoBelowCompleteness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Below this completeness the pathway is request information (default 70)."
+            },
+            "highCompleteness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Completeness at or above this counts as complete for the quadrant (default 70)."
+            },
+            "fundingMinFeasibility": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "Strong ideas need at least this feasibility score for funding consideration (default 4)."
+            },
+            "fundingMaxLoan": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Largest requested loan in rupees for funding consideration (default 200000)."
+            },
+            "skillingMaxReadiness": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "Readiness at or below this suggests skilling (default 2)."
+            },
+            "mentoringWeakAtOrBelow": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "A promising idea with any listed domain at or below this suggests mentoring (default 2)."
+            },
+            "mentoringWeakDomains": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z_]{2,40}$"
+              },
+              "description": "Domains checked for the mentoring rule."
+            }
+          }
         },
         "status": {
           "type": "string",

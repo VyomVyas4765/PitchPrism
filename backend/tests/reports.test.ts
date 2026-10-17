@@ -9,7 +9,7 @@ import { createApp } from '../src/app.js';
 import { sessionService } from '../src/auth/session.js';
 import { configSchema } from '../src/config.js';
 import { connectDatabase } from '../src/database.js';
-import { ALL_MODELS, AuditLog, Decision, Evaluation, Job, Org, Outcome, PipelineRun, ReviewSample, StageEvent, Submission, User } from '../src/models.js';
+import { ALL_MODELS, AuditLog, Decision, EvalRun, Evaluation, Job, Org, Outcome, PipelineRun, ReviewSample, StageEvent, Submission, User } from '../src/models.js';
 import { CentreCase } from '../src/modules/centre/model.js';
 import { setTenancyMode } from '../src/platform/tenancy.js';
 import type { Band, SubmissionStatus } from '@pitchprism/contracts';
@@ -165,7 +165,19 @@ describe('HQ reports', () => {
     await writeFile(process.env.EVAL_REPORT_PATH, JSON.stringify({ runAt: '2026-10-17T10:00:00Z', total: 55, assessed: 50, missingExtraction: 5, failed: 0, complete: false,
       fieldStateAccuracy: 0.91, flagRecall: 0.8, parity: { tailoring: { count: 3, gap: 4, pass: true } }, files: [{ status: 'assessed', durationMs: 100 }, { status: 'assessed', durationMs: 300 }] }));
     const report = (await request(app).get('/api/v1/hq/reports/model-quality').set('Authorization', hqAuth).expect(200)).body;
-    expect(report).toMatchObject({ available: true, assessed: 50, fieldStateAccuracy: 0.91, parity: [{ group: 'tailoring', gap: 4, pass: true }], durationMs: { p50: 200 } });
+    expect(report).toMatchObject({ available: true, assessed: 50, fieldStateAccuracy: 0.91, parity: [{ group: 'tailoring', gap: 4, pass: true }], durationMs: { p50: 200 },
+      computeSeconds: 0.4, hostedCostInr: 0, files: { assessed: 2 } });
+    // Reading again does not record twice; a new report adds a run and the history keeps both, newest first.
+    await request(app).get('/api/v1/hq/reports/model-quality').set('Authorization', hqAuth).expect(200);
+    expect(await EvalRun.countDocuments()).toBe(1);
+    await writeFile(process.env.EVAL_REPORT_PATH, JSON.stringify({ runAt: '2026-10-18T10:00:00Z', total: 55, assessed: 55, missingExtraction: 0, failed: 0, complete: true,
+      fieldStateAccuracy: 0.95, flagRecall: 0.9, parity: {}, files: [] }));
+    const next = (await request(app).get('/api/v1/hq/reports/model-quality').set('Authorization', hqAuth).expect(200)).body;
+    expect(next.history.map((run: { assessed: number }) => run.assessed)).toEqual([55, 50]);
+    expect(next.complete).toBe(true);
+    // A malformed report is skipped and the stored history remains.
+    await writeFile(process.env.EVAL_REPORT_PATH, '{ not json');
+    expect((await request(app).get('/api/v1/hq/reports/model-quality').set('Authorization', hqAuth).expect(200)).body.history).toHaveLength(2);
     delete process.env.EVAL_REPORT_PATH;
     await rm(directory, { recursive: true, force: true });
   });

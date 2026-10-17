@@ -3,21 +3,16 @@ import { useState, type FormEvent } from 'react';
 import type { OrgType, SessionUser } from '@pitchprism/contracts';
 import styles from './hq.module.css';
 import { formData, label, list, mutate, useResource } from './use-resource';
+import RubricBuilder, { HUES, type RubricDraft } from './RubricBuilder';
 
 type Org = { id: string; name: string; type: OrgType; active: boolean; fundingMode?: string; state?: string; districts?: string[]; staff: number };
 type Programme = { id: string; orgId: string; name: string; rubricKey?: string; status: 'draft' | 'active' | 'closed'; districts?: string[] };
 type Cohort = { id: string; programmeId: string; orgId: string; name: string; status: 'planned' | 'open' | 'closed'; intakeStart?: string; intakeEnd?: string };
-type Domain = { key: string; label: string; weight: number; lowDescriptor: string; highDescriptor: string; evidenceFields?: string[] };
-type RubricVersion = { id: string; rubricKey: string; version: number; name: string; status: 'draft' | 'published' | 'archived'; domains: Domain[];
-  bands: { strong: number; promising: number; minCoverage: number }; completenessWeights?: Record<string, number>;
-  pathwayRules?: Record<string, unknown>; createdAt?: string };
-type RubricDraft = Pick<RubricVersion, 'rubricKey' | 'name' | 'domains' | 'bands' | 'completenessWeights' | 'pathwayRules'>;
+type RubricVersion = RubricDraft & { id: string; version: number; status: 'draft' | 'published' | 'archived'; createdAt?: string };
 type RubricFamily = { rubricKey: string; name: string; published: number | null; latest: number; versions: RubricVersion[] };
 type Trade = { id: string; key: string; label: string; sector: string; osmTags?: string[]; nicCodes?: string[]; active: boolean };
 type Rule = { id: string; name: string; partnerOrgId: string; partnerType: 'sector_partner' | 'funding_partner'; tradeKeys?: string[]; sectors?: string[]; districts?: string[]; active: boolean };
 
-// Domain hues from docs/design.md: the prism splits an idea into its rubric domains.
-const HUES = ['#6b4fa0', '#3e57a8', '#1f7fa8', '#1e8c72', '#6e9a2a', '#c49a12', '#d9762b', '#c2452d', '#9a9387'];
 const ORG_TYPES: OrgType[] = ['centre', 'implementation_partner', 'sector_partner', 'funding_partner'];
 const fmtDate = (value?: string) => value ? new Date(value).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : '—';
 
@@ -149,54 +144,21 @@ export function ProgrammesPanel({ user }: { user: SessionUser }) {
   </section>;
 }
 
-// ---------------------------------------------------------------- W-02 versioned rubric form
-const emptyDomain = (): Domain => ({ key: '', label: '', weight: 0, lowDescriptor: '', highDescriptor: '' });
+// ---------------------------------------------------------------- W-02 versioned rubrics (the builder is RubricBuilder.tsx)
 export function RubricsPanel({ canEdit }: { canEdit: boolean }) {
   const rubrics = useResource<{ rubrics: RubricFamily[] }>('/hq/rubrics');
   const action = useAction(rubrics.reload);
-  const [draft, setDraft] = useState<RubricDraft | null>(null);
-  const total = draft?.domains.reduce((sum, domain) => sum + (Number(domain.weight) || 0), 0) ?? 0;
-  // Fields this form does not edit (completeness weights, pathway rules) carry over to the new version unchanged.
-  const edit = (version: RubricVersion) => setDraft({ rubricKey: version.rubricKey, name: version.name, bands: { ...version.bands },
+  // null: no builder open; 'new': a new family; otherwise the version the next version starts from.
+  const [editing, setEditing] = useState<RubricVersion | 'new' | null>(null);
+  const base = (version: RubricVersion): RubricDraft => ({ rubricKey: version.rubricKey, name: version.name, bands: { ...version.bands },
     domains: version.domains.map(domain => ({ ...domain })), completenessWeights: version.completenessWeights, pathwayRules: version.pathwayRules });
-  const setDomain = (index: number, patch: Partial<Domain>) => setDraft(value => value && ({ ...value, domains: value.domains.map((domain, i) => i === index ? { ...domain, ...patch } : domain) }));
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (!draft) return;
-    const body = { ...draft, domains: draft.domains.map(domain => ({ ...domain, weight: Number(domain.weight),
-      ...(domain.evidenceFields?.length ? {} : { evidenceFields: undefined }) })) };
-    if (await action.run(() => mutate('/hq/rubrics', 'POST', body))) setDraft(null);
-  }
   return <section className={styles.section} aria-labelledby="rubrics-title">
     <h3 id="rubrics-title">Rubrics</h3>
     <p className={styles.lede}>Every save creates a new version; nothing is edited in place. Publishing a version archives the one before it, and each assessment records the exact version it was scored with, so rankings only compare like with like.</p>
     {action.error && <p className="error" role="alert">{action.error}</p>}
-    {canEdit && !draft && <p><button type="button" className="secondary" onClick={() => setDraft({ rubricKey: '', name: '', domains: [emptyDomain()],
-      bands: { strong: 75, promising: 55, minCoverage: 60 } })}>New rubric</button></p>}
-    {draft && <form className={styles.form} onSubmit={save} aria-label="Edit rubric">
-      <div><label htmlFor="rubric-key">Rubric key</label><input id="rubric-key" value={draft.rubricKey} required pattern="[a-z0-9_\-]{2,60}"
-        onChange={event => setDraft({ ...draft, rubricKey: event.target.value })} /></div>
-      <div className={styles.wide}><label htmlFor="rubric-name">Name</label><input id="rubric-name" value={draft.name} required maxLength={160}
-        onChange={event => setDraft({ ...draft, name: event.target.value })} /></div>
-      <div className={styles.wide}>
-        <div className={styles.weights} aria-hidden="true">{draft.domains.map((domain, index) =>
-          <span key={index} style={{ width: `${Math.max(0, Number(domain.weight) || 0)}%`, background: HUES[index % HUES.length] }} />)}</div>
-        <p className={total === 100 ? styles.muted : 'error'} role="status">Weights total {total} of 100{total === 100 ? '' : ' — adjust before saving'}.</p>
-        {draft.domains.map((domain, index) => <div className={styles.domainRow} key={index}>
-          <input aria-label="Key" placeholder="key" value={domain.key} onChange={event => setDomain(index, { key: event.target.value })} required pattern="[a-z_]{2,40}" />
-          <input aria-label="Label" placeholder="Label" value={domain.label} onChange={event => setDomain(index, { label: event.target.value })} required />
-          <input aria-label="Weight" type="number" min={0} max={100} step="any" value={domain.weight} onChange={event => setDomain(index, { weight: Number(event.target.value) })} required />
-          <input aria-label="What earns a 1" placeholder="What earns a 1" value={domain.lowDescriptor} onChange={event => setDomain(index, { lowDescriptor: event.target.value })} required />
-          <input aria-label="What earns a 5" placeholder="What earns a 5" value={domain.highDescriptor} onChange={event => setDomain(index, { highDescriptor: event.target.value })} required />
-          <button type="button" className={`secondary ${styles.small}`} onClick={() => setDraft({ ...draft, domains: draft.domains.filter((_, i) => i !== index) })}>Remove</button>
-        </div>)}
-        <button type="button" className={`secondary ${styles.small}`} onClick={() => setDraft({ ...draft, domains: [...draft.domains, emptyDomain()] })}>Add domain</button>
-      </div>
-      {(['strong', 'promising', 'minCoverage'] as const).map(key => <div key={key}><label htmlFor={`band-${key}`}>{key === 'minCoverage' ? 'Minimum coverage %' : `${label(key)} band from`}</label>
-        <input id={`band-${key}`} type="number" min={0} max={100} value={draft.bands[key]} onChange={event => setDraft({ ...draft, bands: { ...draft.bands, [key]: Number(event.target.value) } })} /></div>)}
-      <div className={`${styles.wide} ${styles.row}`}><button type="submit" disabled={action.busy || total !== 100}>Save as new version</button>
-        <button type="button" className="secondary" onClick={() => setDraft(null)}>Cancel</button></div>
-    </form>}
+    {canEdit && !editing && <p><button type="button" className="secondary" onClick={() => setEditing('new')}>New rubric</button></p>}
+    {editing && <RubricBuilder key={editing === 'new' ? 'new' : editing.id} base={editing === 'new' ? null : base(editing)}
+      onDone={saved => { setEditing(null); if (saved) rubrics.reload(); }} />}
     <Status error={rubrics.error} loading={rubrics.loading} empty={!rubrics.data?.rubrics.length && 'No rubrics yet. Load the fixtures or create one.'}>
       {rubrics.data?.rubrics.map(family => <div key={family.rubricKey} className={styles.section}>
         <h4>{family.name} <span className={styles.muted}>· {family.rubricKey} · published v{family.published ?? '—'} · latest v{family.latest}</span></h4>
@@ -210,7 +172,7 @@ export function RubricsPanel({ canEdit }: { canEdit: boolean }) {
             <td className={styles.muted}>strong ≥ {version.bands.strong} · promising ≥ {version.bands.promising} · coverage ≥ {version.bands.minCoverage}%</td>
             <td><span className={`${styles.pill} ${version.status === 'published' ? styles.ok : version.status === 'draft' ? styles.warn : styles.muted}`}>{version.status}</span></td>
             <td>{canEdit && <div className={styles.row}>
-              <button type="button" className={`secondary ${styles.small}`} onClick={() => edit(version)}>Edit as new version</button>
+              <button type="button" className={`secondary ${styles.small}`} onClick={() => setEditing(version)}>Open in builder</button>
               {version.status === 'draft' && <button type="button" className={styles.small} disabled={action.busy}
                 onClick={() => action.run(() => mutate(`/hq/rubrics/${version.rubricKey}/${version.version}/publish`, 'POST'))}>Publish</button>}</div>}</td>
           </tr>)}</tbody></table></div>

@@ -9,8 +9,12 @@ type Health = { queue: Record<string, number>; oldestQueuedSeconds: number | nul
   stages: Array<{ stage: string; runs: number; failed: number; skipped: number; failureRate: number | null; p50Ms: number | null; p95Ms: number | null }>;
   models: Array<{ model: string; calls: number; tokensIn: number; tokensOut: number }>;
   recentFailures: Array<{ jobId: string; centre: string | null; code: string; stage: string | null; message: string; attempts: number; at: string }> };
-type Quality = { available: false; message: string } | { available: true; runAt: string | null; complete: boolean; total: number; assessed: number; missingExtraction: number; failed: number;
-  fieldStateAccuracy: number | null; flagRecall: number | null; parity: Array<{ group: string; count: number; gap: number; pass: boolean }>; durationMs: { p50: number | null; p95: number | null } };
+type QualityRun = { id: string; runAt: string | null; complete: boolean; total: number; assessed: number; missingExtraction: number; failed: number;
+  rubricVersion: string | null; promptVersion: string | null; models: string[]; fieldStateAccuracy: number | null; flagRecall: number | null;
+  parity: Array<{ group: string; count: number; gap: number; pass: boolean }>; durationMs: { p50: number | null; p95: number | null }; computeSeconds: number | null; hostedCostInr: number };
+type Quality = { available: false; message: string } | (QualityRun & { available: true; history: QualityRun[];
+  files: { assessed: number; missingExtraction: number; failed: number; bands: Array<{ band: string; count: number }> } });
+const ratioText = (value: number | null) => value == null ? '—' : `${Math.round(value * 100)}%`;
 type PipelineItem = { id: string; title: string; status: string; centre: string | null; cohort: string | null; tradeKey: string | null; languages: string[]; channel: string | null;
   potential: number | null; completeness: number | null; band: string | null; pathway: string | null; needsAttention: boolean; updatedAt: string | null };
 type Fairness = { assessed: number; minGroup: number; note: string; dimensions: Array<{ key: string; gap: number | null; check: boolean;
@@ -89,13 +93,28 @@ export function OverviewPanel() {
       {quality.data?.available && <>
         <dl className={styles.stats}>
           <div><dt>Assessed</dt><dd>{quality.data.assessed}/{quality.data.total}</dd></div>
-          <div><dt>Field states right</dt><dd>{quality.data.fieldStateAccuracy == null ? '—' : `${Math.round(quality.data.fieldStateAccuracy * 100)}%`}</dd></div>
-          <div><dt>Flags found</dt><dd>{quality.data.flagRecall == null ? '—' : `${Math.round(quality.data.flagRecall * 100)}%`}</dd></div>
+          <div><dt>Field states right</dt><dd>{ratioText(quality.data.fieldStateAccuracy)}</dd></div>
+          <div><dt>Flags found</dt><dd>{ratioText(quality.data.flagRecall)}</dd></div>
           <div><dt>Per file p50</dt><dd>{seconds(quality.data.durationMs.p50)}</dd></div>
+          <div><dt>Cost</dt><dd>₹{quality.data.hostedCostInr}</dd><span className={styles.muted}>{quality.data.computeSeconds == null ? '' : `${quality.data.computeSeconds.toFixed(1)} s local compute`}</span></div>
         </dl>
-        <p className={styles.muted}>Run {when(quality.data.runAt)} · {quality.data.complete ? 'complete' : `${quality.data.missingExtraction} files not extracted yet, ${quality.data.failed} failed`}</p>
+        <p className={styles.muted}>Run {when(quality.data.runAt)} · {quality.data.complete ? 'complete' : `${quality.data.missingExtraction} files not extracted yet, ${quality.data.failed} failed`}
+          {quality.data.models.length ? ` · ${quality.data.models.join(', ')}` : ''}{quality.data.rubricVersion ? ` · rubric ${quality.data.rubricVersion}` : ''}
+          {quality.data.files.bands.length ? ` · bands: ${quality.data.files.bands.map(item => `${item.band} ${item.count}`).join(', ')}` : ''}</p>
         {!!quality.data.parity.length && <p>Language and format parity (same idea within 5 points): {quality.data.parity.map(group =>
           <span key={group.group} className={`${styles.pill} ${group.pass ? styles.ok : styles.bad}`} style={{ marginRight: 6 }}>{group.group} gap {group.gap}</span>)}</p>}
+        {quality.data.history.length > 1 && <>
+          <h4>History</h4>
+          <div className={styles.tableWrap}><table className={styles.table}>
+            <thead><tr><th>Run</th><th className={styles.num}>Assessed</th><th className={styles.num}>Field states</th><th className={styles.num}>Flags</th><th className={styles.num}>Parity</th><th className={styles.num}>p50</th><th>Versions</th></tr></thead>
+            <tbody>{quality.data.history.map(run => <tr key={run.id}>
+              <td className={styles.muted}>{when(run.runAt)}</td><td className={styles.num}>{run.assessed}/{run.total}</td>
+              <td className={styles.num}>{ratioText(run.fieldStateAccuracy)}</td><td className={styles.num}>{ratioText(run.flagRecall)}</td>
+              <td className={styles.num}>{run.parity.length ? `${run.parity.filter(group => group.pass).length}/${run.parity.length}` : '—'}</td>
+              <td className={styles.num}>{seconds(run.durationMs.p50)}</td>
+              <td className={styles.muted}>{[run.rubricVersion, run.promptVersion].filter(Boolean).join(' · ') || '—'}</td>
+            </tr>)}</tbody></table></div>
+        </>}
       </>}
     </section>
   </>;

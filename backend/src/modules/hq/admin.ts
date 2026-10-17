@@ -39,12 +39,22 @@ const rubricBody = z.object({
   name: shortText(), domains: z.array(rubricDomain).min(1).max(20),
   completenessWeights: z.partialRecord(z.enum(CANONICAL_FIELDS), z.number().min(0).max(100)).optional(),
   bands: z.object({ strong: z.number().min(0).max(100), promising: z.number().min(0).max(100), minCoverage: z.number().min(0).max(100) }).strict(),
-  pathwayRules: z.record(z.string(), z.unknown()).optional(),
+  pathwayRules: z.object({
+    requestInfoBelowCompleteness: z.number().min(0).max(100), highCompleteness: z.number().min(0).max(100),
+    fundingMinFeasibility: z.number().int().min(1).max(5), fundingMaxLoan: z.number().min(0).max(1e9),
+    skillingMaxReadiness: z.number().int().min(1).max(5), mentoringWeakAtOrBelow: z.number().int().min(1).max(5),
+    mentoringWeakDomains: z.array(z.string().regex(/^[a-z_]{2,40}$/)).max(20),
+  }).partial().strict().optional(),
 }).strict().superRefine((rubric, ctx) => {
   const total = rubric.domains.reduce((sum, domain) => sum + domain.weight, 0);
   if (Math.abs(total - 100) > 0.001) ctx.addIssue({ code: 'custom', path: ['domains'], message: `Domain weights must add up to 100 (now ${total}).` });
   if (new Set(rubric.domains.map(domain => domain.key)).size !== rubric.domains.length) ctx.addIssue({ code: 'custom', path: ['domains'], message: 'Each domain key must be unique.' });
   if (rubric.bands.promising > rubric.bands.strong) ctx.addIssue({ code: 'custom', path: ['bands'], message: 'The promising threshold cannot be above strong.' });
+  const completeness = Object.values(rubric.completenessWeights ?? {}).reduce((sum, weight) => sum + (weight ?? 0), 0);
+  if (rubric.completenessWeights && Math.abs(completeness - 100) > 0.001) ctx.addIssue({ code: 'custom', path: ['completenessWeights'], message: `Completeness weights must add up to 100 (now ${completeness}).` });
+  const keys = new Set(rubric.domains.map(domain => domain.key));
+  const unknown = rubric.pathwayRules?.mentoringWeakDomains?.find(key => !keys.has(key));
+  if (unknown) ctx.addIssue({ code: 'custom', path: ['pathwayRules'], message: `The mentoring rule names a domain that is not in this rubric: ${unknown}.` });
 });
 const rubricKey = z.string().regex(/^[a-z0-9_-]{2,60}$/, 'Use lower-case letters, digits, - or _.');
 

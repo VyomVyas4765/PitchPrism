@@ -5,7 +5,7 @@ import { Types, type PipelineStage } from 'mongoose';
 import { z } from 'zod';
 import { requirePermission } from '../../auth/authorization.js';
 import { HttpError } from '../../errors.js';
-import { AuditLog, Cohort, Decision, Job, Org, Outcome, PipelineRun, ReviewSample, Submission, User } from '../../models.js';
+import { AuditLog, Cohort, Decision, EvalRun, Job, Org, Outcome, PipelineRun, ReviewSample, Submission, User } from '../../models.js';
 import { recordAudit } from '../../platform/audit.js';
 import { objectId } from '../../platform/validation.js';
 
@@ -45,6 +45,46 @@ const latestAssessment: PipelineStage[] = [
   { $addFields: { assessment: { $ifNull: [{ $first: '$evaluation' }, { $first: '$centreCase' }] } } },
   { $project: { evaluation: 0, centreCase: 0 } },
 ];
+
+const reportPath = () => process.env.EVAL_REPORT_PATH ?? new URL('../../../../datasets/reports/centre-evaluation.json', import.meta.url);
+const ratio = (value: unknown) => typeof value === 'number' && value >= 0 && value <= 1 ? value : undefined;
+const text = (value: unknown, max: number) => typeof value === 'string' ? value.slice(0, max) : value == null ? undefined : String(value).slice(0, max);
+
+/** Record the harness report as an EvalRun if it is new. Unreadable or malformed reports are skipped, never stored in part. */
+export async function recordEvalReport() {
+  let raw: string;
+  try { raw = await readFile(reportPath(), 'utf8'); } catch { return null; }
+  const reportSha256 = createHash('sha256').update(raw).digest('hex');
+  if (await EvalRun.exists({ reportSha256 })) return null;
+  let report: Record<string, any>;
+  try { report = JSON.parse(raw); } catch { return null; }
+  if (!report || typeof report !== 'object') return null;
+  const files: Array<Record<string, any>> = Array.isArray(report.files) ? report.files : [];
+  const durations = files.map(file => file.durationMs).filter((value): value is number => Number.isInteger(value) && value >= 0).sort((a, b) => a - b);
+  const runAt = new Date(report.runAt);
+  const run = {
+    reportSha256, runAt: Number.isNaN(runAt.getTime()) ? new Date() : runAt, manifestVersion: text(report.manifestVersion, 40),
+    rubricVersion: text(report.rubricVersion, 40), promptVersion: text(report.promptVersion, 40),
+    models: Array.isArray(report.models) ? report.models.filter((model: unknown) => typeof model === 'string').map((model: string) => model.slice(0, 120)) : [],
+    total: Number(report.total) || files.length, assessed: Number(report.assessed) || 0, missingExtraction: Number(report.missingExtraction) || 0,
+    failed: Number(report.failed) || 0, complete: !!report.complete,
+    fieldStateAccuracy: ratio(report.fieldStateAccuracy), canonicalValueAccuracy: ratio(report.canonicalValueAccuracy), flagRecall: ratio(report.flagRecall),
+    ...(durations.length ? { durationP50Ms: quantile(durations, 0.5)!, durationP95Ms: quantile(durations, 0.95)!, computeSeconds: durations.reduce((sum, value) => sum + value, 0) / 1000 } : {}),
+    parity: Object.entries(report.parity ?? {}).map(([group, value]) => ({ group: group.slice(0, 80), count: Number((value as any)?.count) || 0,
+      gap: Math.abs(Number((value as any)?.gap) || 0), pass: !!(value as any)?.pass })),
+    perFile: files.slice(0, 500).map(file => ({ id: String(file.id).slice(0, 80), status: ['assessed', 'missing_extraction', 'failed'].includes(file.status) ? file.status : 'failed',
+      ...(typeof file.band === 'string' ? { band: file.band.slice(0, 40) } : {}), ...(typeof file.potential === 'number' ? { potential: file.potential } : {}),
+      ...(Number.isInteger(file.durationMs) && file.durationMs >= 0 ? { durationMs: file.durationMs } : {}),
+      ...(Array.isArray(file.fieldChecks) ? { fieldChecks: file.fieldChecks.length, fieldChecksCorrect: file.fieldChecks.filter((check: { correct?: boolean }) => check?.correct).length } : {}) })),
+  };
+  try {
+    return await EvalRun.create(Object.fromEntries(Object.entries(run).filter(([, value]) => value !== undefined)));
+  } catch (error) {
+    if ((error as { code?: number }).code === 11000) return null; // recorded by a concurrent request
+    console.warn('model-quality: report not recorded', error instanceof Error ? error.name : 'UnknownError');
+    return null;
+  }
+}
 
 export function hqReportsRouter() {
   const router = Router();
@@ -252,19 +292,23 @@ export function hqReportsRouter() {
         targetOrg: row.targetOrgId ? orgs[String(row.targetOrgId)] ?? null : null, meta: row.meta ?? {} })) });
   });
 
-  // ---- W-33 model quality: the latest evaluation-harness report (ai/eval/harness.py), aggregate numbers only
+  // ---- W-33 model quality: evaluation-harness runs (ai/eval/harness.py). A new report file is recorded once as an
+  // EvalRun (keyed by its SHA-256), so the page shows the latest run and its history even after the file changes.
   router.get('/model-quality', analytics, async (_req, res) => {
-    const path = process.env.EVAL_REPORT_PATH ?? new URL('../../../../datasets/reports/centre-evaluation.json', import.meta.url);
-    let report: Record<string, any>;
-    try { report = JSON.parse(await readFile(path, 'utf8')); }
-    catch { res.json({ available: false, message: 'The evaluation harness has not been run on this machine yet (ai/eval/harness.py).' }); return; }
-    const files: Array<{ status: string; durationMs?: number }> = Array.isArray(report.files) ? report.files : [];
-    const durations = files.map(file => file.durationMs).filter((value): value is number => typeof value === 'number').sort((a, b) => a - b);
-    res.json({ available: true, runAt: report.runAt ?? null, manifestVersion: report.manifestVersion ?? null, complete: !!report.complete,
-      total: report.total ?? 0, assessed: report.assessed ?? 0, missingExtraction: report.missingExtraction ?? 0, failed: report.failed ?? 0,
-      fieldStateAccuracy: report.fieldStateAccuracy ?? null, canonicalValueAccuracy: report.canonicalValueAccuracy ?? null, flagRecall: report.flagRecall ?? null,
-      parity: Object.entries(report.parity ?? {}).map(([group, value]) => ({ group, ...(value as object) })),
-      durationMs: { p50: quantile(durations, 0.5), p95: quantile(durations, 0.95) } });
+    await recordEvalReport();
+    const runs = await EvalRun.find().sort({ runAt: -1 }).limit(20).select('-perFile').lean();
+    if (!runs.length) { res.json({ available: false, message: 'The evaluation harness has not been run on this machine yet (ai/eval/harness.py).' }); return; }
+    const latest = await EvalRun.findById(runs[0]!._id).lean();
+    const view = (run: typeof runs[number]) => ({ id: String(run._id), runAt: run.runAt, manifestVersion: run.manifestVersion ?? null, rubricVersion: run.rubricVersion ?? null,
+      promptVersion: run.promptVersion ?? null, models: run.models ?? [], complete: run.complete, total: run.total, assessed: run.assessed,
+      missingExtraction: run.missingExtraction ?? 0, failed: run.failed ?? 0, fieldStateAccuracy: run.fieldStateAccuracy ?? null,
+      canonicalValueAccuracy: run.canonicalValueAccuracy ?? null, flagRecall: run.flagRecall ?? null, parity: run.parity ?? [],
+      durationMs: { p50: run.durationP50Ms ?? null, p95: run.durationP95Ms ?? null }, computeSeconds: run.computeSeconds ?? null, hostedCostInr: 0 });
+    const files = latest!.perFile ?? [];
+    const bands = files.reduce<Record<string, number>>((counts, file) => { if (file.band) counts[file.band] = (counts[file.band] ?? 0) + 1; return counts; }, {});
+    res.json({ available: true, ...view(runs[0]!), history: runs.map(view),
+      files: { assessed: files.filter(file => file.status === 'assessed').length, missingExtraction: files.filter(file => file.status === 'missing_extraction').length,
+        failed: files.filter(file => file.status === 'failed').length, bands: Object.entries(bands).map(([band, count]) => ({ band, count })) } });
   });
   return router;
 }

@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EvalRun",
+  "description": "W-33: one evaluation-harness run on the organiser dataset (ai/eval/harness.py), recorded once per report. Aggregate metrics and per-file outcomes keyed by manifest ID only: no source text, names or model output.",
+  "x-collection": "evalRuns",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reportSha256", "runAt", "total", "assessed", "complete"],
+  "properties": {
+    "reportSha256": { "type": "string", "pattern": "^[a-f\\d]{64}$" },
+    "runAt": { "$ref": "common.json#/definitions/DateTime" },
+    "manifestVersion": { "type": "string", "maxLength": 40 },
+    "rubricKey": { "type": "string", "maxLength": 60 },
+    "rubricVersion": { "type": "string", "maxLength": 40 },
+    "promptVersion": { "type": "string", "maxLength": 40 },
+    "models": { "type": "array", "items": { "type": "string", "maxLength": 120 } },
+    "total": { "type": "integer", "minimum": 0 },
+    "assessed": { "type": "integer", "minimum": 0 },
+    "missingExtraction": { "type": "integer", "minimum": 0 },
+    "failed": { "type": "integer", "minimum": 0 },
+    "complete": { "type": "boolean" },
+    "fieldStateAccuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+    "canonicalValueAccuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+    "flagRecall": { "type": "number", "minimum": 0, "maximum": 1 },
+    "durationP50Ms": { "type": "integer", "minimum": 0 },
+    "durationP95Ms": { "type": "integer", "minimum": 0 },
+    "computeSeconds": { "type": "number", "minimum": 0, "description": "Sum of per-file durations: local compute time, the real cost (hosted AI cost is zero by policy)." },
+    "parity": {
+      "type": "array",
+      "items": {
+        "title": "ParityGroup",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["group", "count", "gap", "pass"],
+        "properties": {
+          "group": { "type": "string", "maxLength": 80 },
+          "count": { "type": "integer", "minimum": 0 },
+          "gap": { "type": "number", "minimum": 0 },
+          "pass": { "type": "boolean" }
+        }
+      }
+    },
+    "perFile": {
+      "type": "array",
+      "items": {
+        "title": "EvalFileResult",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string", "maxLength": 80, "description": "Manifest file ID, not a person or file name." },
+          "status": { "type": "string", "enum": ["assessed", "missing_extraction", "failed"] },
+          "band": { "type": "string", "maxLength": 40 },
+          "potential": { "type": "number" },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "fieldChecks": { "type": "integer", "minimum": 0 },
+          "fieldChecksCorrect": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

@@ -125,7 +125,9 @@ export type CanonicalField =
   | "existing_business"
   | "customer_gender"
   | "customer_age_range"
-  | "customer_segment";
+  | "customer_segment"
+  | "skills"
+  | "experience";
 /**
  * How a submission arrived (PRD section 6).
  *
@@ -165,6 +167,7 @@ export interface PitchPrismDomain {
   Decision?: Decision;
   Document?: Document;
   Entrepreneur?: Entrepreneur;
+  EvalRun?: EvalRun;
   Evaluation?: Evaluation;
   ImportBatch?: ImportBatch;
   Invitation?: Invitation;
@@ -347,6 +350,57 @@ export interface Sealed {
   iv: string;
   tag: string;
   ct: string;
+}
+/**
+ * W-33: one evaluation-harness run on the organiser dataset (ai/eval/harness.py), recorded once per report. Aggregate metrics and per-file outcomes keyed by manifest ID only: no source text, names or model output.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "EvalRun".
+ */
+export interface EvalRun {
+  reportSha256: string;
+  runAt: DateTime;
+  manifestVersion?: string;
+  rubricKey?: string;
+  rubricVersion?: string;
+  promptVersion?: string;
+  models?: string[];
+  total: number;
+  assessed: number;
+  missingExtraction?: number;
+  failed?: number;
+  complete: boolean;
+  fieldStateAccuracy?: number;
+  canonicalValueAccuracy?: number;
+  flagRecall?: number;
+  durationP50Ms?: number;
+  durationP95Ms?: number;
+  /**
+   * Sum of per-file durations: local compute time, the real cost (hosted AI cost is zero by policy).
+   */
+  computeSeconds?: number;
+  parity?: ParityGroup[];
+  perFile?: EvalFileResult[];
+  createdAt?: DateTime;
+  updatedAt?: DateTime;
+}
+export interface ParityGroup {
+  group: string;
+  count: number;
+  gap: number;
+  pass: boolean;
+}
+export interface EvalFileResult {
+  /**
+   * Manifest file ID, not a person or file name.
+   */
+  id: string;
+  status: "assessed" | "missing_extraction" | "failed";
+  band?: string;
+  potential?: number;
+  durationMs?: number;
+  fieldChecks?: number;
+  fieldChecksCorrect?: number;
 }
 /**
  * One scoring of one submission (PRD sections 13-14). Dev 2 owns the content; potential, completeness, band, quadrant and pathway are computed in code (D-12). A null domain score means Not assessed (D-11). Old evaluations are kept.
@@ -625,16 +679,13 @@ export interface Rubric {
    */
   domains: [RubricDomain, ...RubricDomain[]];
   /**
-   * Weight per canonical field for completeness.
+   * Weight per canonical field for completeness; the weights total 100.
    */
   completenessWeights?: {
     [k: string]: number;
   };
   bands: RubricBands;
-  /**
-   * Thresholds for the pathway calculator (Dev 2). Free-form until Dev 2 freezes the calculator inputs.
-   */
-  pathwayRules?: {};
+  pathwayRules?: PathwayRules;
   status: "draft" | "published" | "archived";
   createdByUserId?: ObjectId;
   createdAt?: DateTime;
@@ -661,6 +712,39 @@ export interface RubricBands {
   strong: number;
   promising: number;
   minCoverage: number;
+}
+/**
+ * Thresholds read by the pathway calculator (ai/intel/scoring.py). Missing keys use the calculator defaults.
+ */
+export interface PathwayRules {
+  /**
+   * Below this completeness the pathway is request information (default 70).
+   */
+  requestInfoBelowCompleteness?: number;
+  /**
+   * Completeness at or above this counts as complete for the quadrant (default 70).
+   */
+  highCompleteness?: number;
+  /**
+   * Strong ideas need at least this feasibility score for funding consideration (default 4).
+   */
+  fundingMinFeasibility?: number;
+  /**
+   * Largest requested loan in rupees for funding consideration (default 200000).
+   */
+  fundingMaxLoan?: number;
+  /**
+   * Readiness at or below this suggests skilling (default 2).
+   */
+  skillingMaxReadiness?: number;
+  /**
+   * A promising idea with any listed domain at or below this suggests mentoring (default 2).
+   */
+  mentoringWeakAtOrBelow?: number;
+  /**
+   * Domains checked for the mentoring rule.
+   */
+  mentoringWeakDomains?: string[];
 }
 /**
  * One consent-gated route of an idea to a partner (PRD section 5). The source of truth for partner access; the platform share-sync service mirrors it into Submission.partnerAccess.

@@ -4,8 +4,9 @@ Entrepreneur onboarding, consent and Idea Passport APIs (M-01 server side, M-03,
 
 | Method/path | Behavior |
 | --- | --- |
-| `GET /me` | Language, profile, `profileComplete`, active consents and the current `noticeVersion` |
+| `GET /me` | Language, coarse profile, `profileComplete`, `onboardingComplete`, active consents and the current `noticeVersion`; sealed contact and answer data are never returned |
 | `PUT /me` | Partial update: `language`, `name`, `district`, `pincode` (6 digits), `trade`, `gender` (`female`/`male`/`other`/`prefer_not_to_say`, `null` clears). Language can be saved before consent; any profile field needs active processing consent (403) |
+| `POST /me/onboarding` | One-time owner-only form after processing consent: applicant name/mobile, background, credit score (optional), village/block/district/state/PIN, interested business and all ten EDP idea-brief answers. Stores contact and answers encrypted; a second submission returns 409 |
 | `POST /consents` | `{purpose:"processing"}` or `{purpose:"partner_sharing", scope:"sector_partner"|"funding_partner"}`, plus `noticeVersion`, `language`, `method` (`app_tap`/`app_voice`). Sharing needs processing first (409). Repeating an active grant returns it (200) |
 | `POST /consents/:id/revoke` | Revokes and returns state; safe to retry. Revoking processing withdraws all sharing. Matching partner shares are deactivated before the response, so partners lose access on their next request |
 | `GET /me/passport` | Per idea: who can see it (`owning_centre`, `collected_by`, `consented_share` with `shareId`, `partnerType`, `contactAccepted`) |
@@ -39,7 +40,7 @@ After submit, `processing.ts` runs the local Python pipeline (`ai.ingest.run`) i
 
 Facilitators from an implementation partner cannot submit yet: their linked centre needs `Org.parentOrgId` (shared model, Dev 3).
 
-**Records.** `entrepreneurs._id` equals the entrepreneur's user ID for phone sign-in, matching the shared submission scope. Assisted applicants (M-17) will get their own ID. Name and gender are sealed with AES-256-GCM using `PII_ENCRYPTION_KEY`, bound to the record ID, never selected by default, and never logged. Without the key, profile writes fail with 503 and nothing is stored. District, pincode and trade are coarse fields for the pipeline. `consents` are append-only: revoking stamps `revokedAt`/`revokedByUserId`; granting again adds a record. Each record stores the notice version and language shown.
+**Records.** `entrepreneurs._id` equals the entrepreneur's user ID, matching the shared submission scope. Assisted applicants (M-17) have their own ID. Name, gender, mobile, credit score, background and one-time answers are sealed with AES-256-GCM using `PII_ENCRYPTION_KEY`, bound to the record ID, never selected by default, and never logged. Without the key, profile writes fail with 503 and nothing is stored. District, pincode and trade remain coarse fields for the pipeline. Onboarding answers are separate from an idea submission and are not sent to scoring or partners; Dev 2 and Dev 3 must agree a shared contract before consuming them. `consents` are append-only: revoking stamps `revokedAt`/`revokedByUserId`; granting again adds a record. Each record stores the notice version and language shown.
 
 **For other roles.** Import `sharingAllowed(entrepreneurId, partnerType)` from `modules/entrepreneur/index.js` before suggesting, creating or sending a partner share (W-13, W-17, A-27). It requires active processing and sharing consent for that partner type.
 

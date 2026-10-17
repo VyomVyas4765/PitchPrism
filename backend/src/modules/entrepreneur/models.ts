@@ -23,6 +23,9 @@ const entrepreneurSchema = new Schema({
   language: { type: String, enum: LANGUAGES },
   // Sealed {name, gender}; never selected by default and never sent to models or partners.
   personal: { type: sealedSchema, select: false },
+  // One-time onboarding answers, including contact and business details, remain encrypted and owner-only.
+  onboarding: { type: sealedSchema, select: false },
+  onboardingCompletedAt: Date,
   district: { type: String, trim: true },
   pincode: { type: String, trim: true },
   state: { type: String, trim: true },

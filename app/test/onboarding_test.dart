@@ -10,6 +10,7 @@ import 'package:pitchprism_app/entrepreneur/consent_screen.dart';
 import 'package:pitchprism_app/entrepreneur/entrepreneur_shell.dart';
 import 'package:pitchprism_app/entrepreneur/passport_screen.dart';
 import 'package:pitchprism_app/entrepreneur/profile_screen.dart';
+import 'package:pitchprism_app/entrepreneur/onboarding_copy.dart';
 import 'package:pitchprism_app/intake/services.dart';
 import 'package:pitchprism_app/l10n/strings.dart';
 import 'package:pitchprism_app/main.dart';
@@ -50,6 +51,7 @@ class FakeSpeech implements Speech {
 
 Map<String, dynamic> me({bool consent = false, bool complete = false, String? language = 'mr'}) => {
   'id': 'synthetic', 'language': language, 'noticeVersion': 'consent-notice-2026-10-17', 'profileComplete': complete,
+  'onboardingComplete': complete,
   'profile': {'name': complete ? 'Synthetic Applicant' : null, 'district': null, 'pincode': null, 'trade': null, 'gender': null},
   'consents': {
     'processing': consent ? {'id': 'c1'} : null,
@@ -78,6 +80,10 @@ void main() {
       expect(allStrings[language]!.values.every((text) => text.trim().isNotEmpty), isTrue, reason: language);
     }
     expect(stringsReview.keys.toSet(), launchLanguages.toSet());
+    final onboardingKeys = onboardingCopy['en']!.keys.toSet();
+    for (final language in launchLanguages) {
+      expect(onboardingCopy[language]!.keys.toSet(), onboardingKeys, reason: language);
+    }
   });
 
   testWidgets('first launch asks for a language, flags missing voices, and remembers the choice', (tester) async {
@@ -119,28 +125,36 @@ void main() {
     ]);
   });
 
-  testWidgets('profile validates like the server and saves only what was given', (tester) async {
+  testWidgets('one-time application validates and sends all scenario prompts', (tester) async {
     tallScreen(tester);
     final api = FakeApi((call) => me(consent: true, complete: true));
     var done = false;
-    await tester.pumpWidget(host(ProfileScreen(ctx: ctxWith(api, language: 'en'), profile: const {}, onDone: () => done = true)));
-    await tester.enterText(find.byKey(const Key('profile-name')), 'Synthetic Applicant');
-    await tester.enterText(find.byKey(const Key('profile-trade')), 'Tailoring');
+    await tester.pumpWidget(host(ProfileScreen(ctx: ctxWith(api, language: 'en'),
+      profile: const {'state': 'Andhra Pradesh'}, onDone: () => done = true)));
+    await tester.ensureVisible(find.byKey(const Key('profile-save')));
     await tester.tap(find.byKey(const Key('profile-save')));
     await tester.pump();
-    expect(find.text(tr('en', 'districtOrPincode')), findsOneWidget);
-    await tester.enterText(find.byKey(const Key('profile-pincode')), '022001');
-    await tester.tap(find.byKey(const Key('profile-save')));
-    await tester.pump();
-    expect(find.text(tr('en', 'pincodeInvalid')), findsOneWidget);
     expect(api.calls, isEmpty);
-    await tester.enterText(find.byKey(const Key('profile-pincode')), '422001');
+    const values = {
+      'name': 'Synthetic Applicant', 'mobile': '+91 9123456789', 'education': 'Trade training',
+      'workBackground': 'Two years stitching', 'village': 'Sample village', 'block': 'Sample block',
+      'district': 'Nashik', 'pincode': '422001', 'trade': 'Tailoring', 'setupLocation': 'Rented room',
+      'productsServices': 'Garments', 'targetCustomers': 'Local families', 'marketResearch': 'Visited shops',
+      'rawMaterials': 'Fabric', 'suppliers': 'Wholesalers', 'fundingSources': 'Savings',
+      'competition': 'Two tailors', 'prices': '400 rupees', 'expectedMonthlyRevenue': '40000 rupees',
+    };
+    for (final entry in values.entries) {
+      final field = find.byKey(Key('profile-${entry.key}'));
+      await tester.ensureVisible(field);
+      await tester.enterText(field, entry.value);
+    }
+    await tester.ensureVisible(find.byKey(const Key('profile-save')));
     await tester.tap(find.byKey(const Key('profile-save')));
     await tester.pumpAndSettle();
     expect(done, isTrue);
     final call = api.calls.single;
-    expect('${call.method} ${call.path}', 'PUT /me');
-    expect(call.body, {'name': 'Synthetic Applicant', 'pincode': '422001', 'trade': 'Tailoring', 'gender': null});
+    expect('${call.method} ${call.path}', 'POST /me/onboarding');
+    expect(call.body, {...values, 'state': 'Andhra Pradesh', 'gender': null, 'creditScore': null});
   });
 
   testWidgets('the server state decides consent, then profile, then home; the device language is synced', (tester) async {

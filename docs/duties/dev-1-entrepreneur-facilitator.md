@@ -80,6 +80,7 @@ A feature is done when UI, API, persistence, permissions, loading/error states, 
 
 ## In progress
 
+
 2026-10-17 · Branch `arnav` · Team direction (Arnav): email-only sign-in for every role (phone OTP/Firebase removed; entrepreneurs self-register with email and password, staff by invitation) and an iOS-only build target for now (Android ignored, not deleted); iOS text-to-speech; IndicTrans2 install after the account owner signs in; first organiser-data run. Touches shared auth (`backend/src/app.ts`, `config.ts`, `models.ts`, `auth/firebase.ts` removed, `backend/package.json`), `app/`, docs and a new decision entry.
 
 2026-10-17 · Branch `arnav` · Everything below needs an input this branch cannot supply (team chose "Dev 1 only" for cross-owner pieces):
@@ -97,6 +98,8 @@ A feature is done when UI, API, persistence, permissions, loading/error states, 
 **Shared edits on `arnav` awaiting owner review:** Dev 3: `ai/requirements.txt` pins (new `ai/requirements-models.txt` for model runtimes); router mount in `backend/src/app.ts`; `PII_ENCRYPTION_KEY` in `backend/src/config.ts`, `.env.example`, `scripts/setup-env.mjs` (existing `.env` files need the key added by hand); status legend in `scripts/generate-matrix.mjs`; additive `audio` source (`chunkId`/`start`/`end`) in `packages/contracts/schemas/centre-extracted-input.json` with regenerated types. Dev 2: prompt PII guard in `ai/llm/adapter.py`; scorer now uses the shared `ai/ingest/pii.find_pii`; CLI writes UTF-8 (Windows fix); runner finds the Windows venv; centre validator accepts audio segments. Rayyan: restored his Release `Info.plist`/`Release.xcconfig` lost in the merge.
 
 ## Done
+
+- 2026-10-18 · One-time entrepreneur onboarding tap form after language, email sign-in and processing consent. Captures applicant contact, optional gender/credit score, education/work background, location, interested business and all ten scenario questions; six draft locale sets and section audio prompts. Owner-scoped `POST /me/onboarding` seals contact/background/answers and rejects repeats; existing pitch submission and shared contracts untouched. Backend typecheck and 109 tests pass; matrix and duties checks pass. Flutter tooling is unavailable on this Windows host, so widget/iPhone verification and qualified translation review remain pending. `db:check` stopped at missing `JWT_SECRET`, before DNS/port diagnosis. M-04 remains `client_partial` because voice entry and device acceptance are pending. Dev 2 must agree any later scoring use and Dev 3 any shared contract.
 
 - 2026-10-17 · First milestone foundation: Mobile session restoration, secure token storage, facilitator password login and Firebase phone exchange are implemented. Real phone sign-in still needs Firebase configuration and device verification.
 

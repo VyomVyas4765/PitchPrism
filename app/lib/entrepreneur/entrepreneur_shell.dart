@@ -74,7 +74,7 @@ class _EntrepreneurShellState extends State<EntrepreneurShell> {
           if (consents['processing'] == null) {
             return ConsentScreen(ctx: ctx, noticeVersion: notice, onDone: _refresh);
           }
-          if (me['profileComplete'] != true) {
+          if (me['onboardingComplete'] != true) {
             return ProfileScreen(ctx: ctx, profile: me['profile'] as Map<String, dynamic>, onDone: _refresh);
           }
           final account = me['id'] as String;

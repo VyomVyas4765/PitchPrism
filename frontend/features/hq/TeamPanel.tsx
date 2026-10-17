@@ -23,7 +23,8 @@ export default function TeamPanel({ user }: { user: SessionUser }) {
   const query = orgId ? `?orgId=${orgId}` : '';
   const staff = useResource<{ users: Staff[] }>(`/team/staff${query}`);
   const invitations = useResource<{ invitations: Invitation[] }>(`/team/invitations${query}`);
-  const [link, setLink] = useState('');
+  // The one-time link just created (an invitation or a password reset); shown once.
+  const [link, setLink] = useState<{ url: string; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -43,11 +44,17 @@ export default function TeamPanel({ user }: { user: SessionUser }) {
     const input = formData(form);
     await run(async () => {
       const result = await mutate('/team/invitations', 'POST', { ...input, orgId }) as { link: string };
-      setLink(result.link); setCopied(false); form.reset();
+      setLink({ url: result.link, text: 'Invite link ready.' }); setCopied(false); form.reset();
+    });
+  }
+  async function resetLink(member: Staff) {
+    await run(async () => {
+      const result = await mutate(`/team/staff/${member.id}/reset-link`, 'POST') as { link: string };
+      setLink({ url: result.link, text: `Password reset link for ${member.displayName} ready (valid 24 hours).` }); setCopied(false);
     });
   }
   async function copy() {
-    try { await navigator.clipboard.writeText(link); setCopied(true); } catch { setCopied(false); }
+    try { await navigator.clipboard.writeText(link!.url); setCopied(true); } catch { setCopied(false); }
   }
 
   return <section className={styles.section} aria-labelledby="team-title">
@@ -68,10 +75,10 @@ export default function TeamPanel({ user }: { user: SessionUser }) {
       <div><button type="submit" disabled={busy || !orgId || !roles.length}>{busy ? 'Creating…' : 'Create invite link'}</button></div>
     </form>
     {link && <div className={styles.link} role="status">
-      <strong>Invite link ready.</strong> Copy it now; it will not be shown again.
-      <code>{link}</code>
+      <strong>{link.text}</strong> Copy it now; it will not be shown again.
+      <code>{link.url}</code>
       <div className={styles.row}><button type="button" className={styles.small} onClick={copy}>{copied ? 'Copied' : 'Copy link'}</button>
-        <button type="button" className={`secondary ${styles.small}`} onClick={() => setLink('')}>Done</button></div>
+        <button type="button" className={`secondary ${styles.small}`} onClick={() => setLink(null)}>Done</button></div>
     </div>}
     {error && <p className="error" role="alert">{error}</p>}
 
@@ -91,8 +98,9 @@ export default function TeamPanel({ user }: { user: SessionUser }) {
               {options.map(role => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}</select>}</td>
             {hq && <td>{orgName(member.orgId)}</td>}
             <td><span className={`${styles.pill} ${member.disabled ? styles.bad : styles.ok}`}>{member.disabled ? 'Disabled' : 'Active'}</span></td>
-            <td>{!locked && <button type="button" className={`secondary ${styles.small}`} disabled={busy}
-              onClick={() => run(() => mutate(`/team/staff/${member.id}`, 'PATCH', { disabled: !member.disabled }))}>{member.disabled ? 'Restore access' : 'Disable'}</button>}</td>
+            <td>{!locked && <div className={styles.row}><button type="button" className={`secondary ${styles.small}`} disabled={busy}
+              onClick={() => run(() => mutate(`/team/staff/${member.id}`, 'PATCH', { disabled: !member.disabled }))}>{member.disabled ? 'Restore access' : 'Disable'}</button>
+              {!member.disabled && <button type="button" className={`secondary ${styles.small}`} disabled={busy} onClick={() => resetLink(member)}>Reset password</button>}</div>}</td>
           </tr>;
         })}</tbody></table></div>}
 

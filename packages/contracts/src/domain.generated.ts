@@ -172,6 +172,7 @@ export interface PitchPrismDomain {
   Job?: Job;
   Org?: Org;
   Outcome?: Outcome;
+  PasswordReset?: PasswordReset;
   PipelineRun?: PipelineRun;
   Programme?: Programme;
   ReviewSample?: ReviewSample;
@@ -579,6 +580,23 @@ export interface Outcome {
   amount?: Rupees;
   date: DateTime;
   recordedByUserId: ObjectId;
+  createdAt?: DateTime;
+  updatedAt?: DateTime;
+}
+/**
+ * One-time staff password-reset link issued by an administrator in scope (no email provider, like invitations, D-27). Only a SHA-256 hash of the token is stored. Valid 24 hours, single use; issuing a new link withdraws earlier unused ones.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PasswordReset".
+ */
+export interface PasswordReset {
+  tokenHash: string;
+  userId: ObjectId;
+  orgId: ObjectId;
+  issuedByUserId: ObjectId;
+  expiresAt: DateTime;
+  usedAt?: DateTime;
+  revokedAt?: DateTime;
   createdAt?: DateTime;
   updatedAt?: DateTime;
 }

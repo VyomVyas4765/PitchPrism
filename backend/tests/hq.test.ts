@@ -153,6 +153,45 @@ describe('staff administration', () => {
   });
 });
 
+describe('password reset and change', () => {
+  it('issues one-time reset links in scope, ends every session and lets the new password sign in', async () => {
+    const colleague = await User.create({ displayName: 'Synthetic colleague', email: 'colleague@pitchprism.test', passwordHash: hash, role: 'facilitator', orgId: centre._id });
+    const oldSession = await bearer(colleague);
+    const auth = await bearer(assessor);
+    await request(app).post(`/api/v1/team/staff/${assessor._id}/reset-link`).set('Authorization', auth).expect(400);
+    await request(app).post(`/api/v1/team/staff/${admin._id}/reset-link`).set('Authorization', auth).expect(403);
+    const foreign = await staff('facilitator', sibling._id, 'foreign-reset');
+    await request(app).post(`/api/v1/team/staff/${foreign._id}/reset-link`).set('Authorization', auth).expect(403);
+    const first = await request(app).post(`/api/v1/team/staff/${colleague._id}/reset-link`).set('Authorization', auth).expect(201);
+    const issued = await request(app).post(`/api/v1/team/staff/${colleague._id}/reset-link`).set('Authorization', auth).expect(201);
+    expect(issued.body.link).toMatch(/^http:\/\/localhost:3000\/reset-password#[A-Za-z0-9_-]{43}$/);
+    const token = tokenOf(issued.body.link);
+    // A newer link withdraws the earlier one.
+    await request(app).post('/api/v1/password-reset/preview').send({ token: tokenOf(first.body.link) }).expect(410);
+    const shown = await request(app).post('/api/v1/password-reset/preview').send({ token }).expect(200);
+    expect(shown.body).toEqual({ displayName: 'Synthetic colleague', email: 'colleague@pitchprism.test' });
+    await request(app).post('/api/v1/password-reset').send({ token, password: 'short' }).expect(400);
+    await request(app).post('/api/v1/password-reset').send({ token, password: 'A-new-synthetic-password-9' }).expect(204);
+    await request(app).post('/api/v1/password-reset').send({ token, password: 'Another-synthetic-password-9' }).expect(410);
+    await request(app).get('/api/v1/auth/me').set('Authorization', oldSession).expect(401);
+    await request(app).post('/api/v1/auth/login').send({ email: 'colleague@pitchprism.test', password }).expect(401);
+    await request(app).post('/api/v1/auth/login').send({ email: 'colleague@pitchprism.test', password: 'A-new-synthetic-password-9' }).expect(200);
+    expect(await AuditLog.countDocuments({ action: { $in: ['user.reset_link', 'user.password_reset'] } })).toBe(3);
+  });
+
+  it('changes your own password with the current one and ends your other sessions', async () => {
+    const other = await bearer(assessor);
+    const current = await bearer(assessor);
+    await request(app).post('/api/v1/account/password').set('Authorization', current).send({ current: 'wrong-password-123', next: 'A-new-synthetic-password-9' }).expect(400);
+    await request(app).post('/api/v1/account/password').set('Authorization', current).send({ current: password, next: 'short' }).expect(400);
+    await request(app).post('/api/v1/account/password').set('Authorization', current).send({ current: password, next: 'A-new-synthetic-password-9' }).expect(204);
+    await request(app).get('/api/v1/auth/me').set('Authorization', current).expect(200);
+    await request(app).get('/api/v1/auth/me').set('Authorization', other).expect(401);
+    await request(app).post('/api/v1/auth/login').send({ email: assessor.email, password: 'A-new-synthetic-password-9' }).expect(200);
+    expect(await AuditLog.countDocuments({ action: 'user.password_change', outcome: 'denied' })).toBe(1);
+  });
+});
+
 describe('HQ configuration', () => {
   it('creates and edits organisations for HQ only, with funding-mode rules', async () => {
     const auth = await bearer(admin);

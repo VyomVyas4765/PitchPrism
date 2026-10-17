@@ -75,6 +75,9 @@ export const ReviewSample = define<S.ReviewSample>('ReviewSample', { tenant: tru
 });
 // W-33: one row per evaluation-harness report; reportSha256 makes recording idempotent.
 export const EvalRun = define<S.EvalRun>('EvalRun', { overrides: { reportSha256: { unique: true } }, indexes: [[{ runAt: -1 }]] });
+export const PasswordReset = define<S.PasswordReset>('PasswordReset', {
+  overrides: { tokenHash: { unique: true } }, indexes: [[{ userId: 1, createdAt: -1 }]],
+});
 export const AuditLog = define<S.AuditLog>('AuditLog', {
   indexes: [[{ at: -1 }], [{ targetOrgId: 1, at: -1 }], [{ actorUserId: 1, at: -1 }]],
 });
@@ -88,5 +91,5 @@ const sessionSchema = new Schema({
 export const Session = mongoose.model('Session', sessionSchema);
 
 export const ALL_MODELS = [Org, User, Invitation, Entrepreneur, Consent, Programme, Cohort, Trade, Rubric, RoutingRule,
-  Submission, Document, Transcript, Evaluation, Decision, Share, Outcome, Job, StageEvent, PipelineRun, ReviewSample, EvalRun, AuditLog, ImportBatch, Session];
+  Submission, Document, Transcript, Evaluation, Decision, Share, Outcome, Job, StageEvent, PipelineRun, ReviewSample, EvalRun, PasswordReset, AuditLog, ImportBatch, Session];
 export type * as Stored from './stored.generated.js';

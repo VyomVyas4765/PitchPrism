@@ -360,6 +360,18 @@ Outcome = TypedDict("Outcome", {
     "updatedAt": DateTime,
 }, total=False)
 
+PasswordReset = TypedDict("PasswordReset", {
+    "tokenHash": Required[str],
+    "userId": Required[ObjectId],
+    "orgId": Required[ObjectId],
+    "issuedByUserId": Required[ObjectId],
+    "expiresAt": Required[DateTime],
+    "usedAt": DateTime,
+    "revokedAt": DateTime,
+    "createdAt": DateTime,
+    "updatedAt": DateTime,
+}, total=False)
+
 PipelineRun = TypedDict("PipelineRun", {
     "jobId": Required[ObjectId],
     "submissionId": Required[ObjectId],
@@ -640,6 +652,7 @@ COLLECTIONS: dict[str, str] = {
     "Job": "jobs",
     "Org": "orgs",
     "Outcome": "outcomes",
+    "PasswordReset": "passwordResets",
     "PipelineRun": "pipelineRuns",
     "Programme": "programmes",
     "ReviewSample": "reviewSamples",

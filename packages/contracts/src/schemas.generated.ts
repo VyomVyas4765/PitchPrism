@@ -13,6 +13,7 @@ export const COLLECTIONS = {
   "Job": "jobs",
   "Org": "orgs",
   "Outcome": "outcomes",
+  "PasswordReset": "passwordResets",
   "PipelineRun": "pipelineRuns",
   "Programme": "programmes",
   "ReviewSample": "reviewSamples",
@@ -1762,6 +1763,50 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         },
         "recordedByUserId": {
           "$ref": "#/definitions/ObjectId"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "PasswordReset": {
+      "title": "PasswordReset",
+      "description": "One-time staff password-reset link issued by an administrator in scope (no email provider, like invitations, D-27). Only a SHA-256 hash of the token is stored. Valid 24 hours, single use; issuing a new link withdraws earlier unused ones.",
+      "x-collection": "passwordResets",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tokenHash",
+        "userId",
+        "orgId",
+        "issuedByUserId",
+        "expiresAt"
+      ],
+      "properties": {
+        "tokenHash": {
+          "type": "string",
+          "pattern": "^[a-f\\d]{64}$"
+        },
+        "userId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "orgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "issuedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "expiresAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "usedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "revokedAt": {
+          "$ref": "#/definitions/DateTime"
         },
         "createdAt": {
           "$ref": "#/definitions/DateTime"

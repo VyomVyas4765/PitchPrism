@@ -3,12 +3,12 @@ import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { ROLES, type Role } from '@pitchprism/contracts';
 import { requirePermission } from '../../auth/authorization.js';
-import { hashPassword } from '../../auth/password.js';
+import { hashPassword, verifyPassword } from '../../auth/password.js';
 import type { AuthContext, sessionService } from '../../auth/session.js';
 import { userContext } from '../../auth/session.js';
 import type { Config } from '../../config.js';
 import { HttpError } from '../../errors.js';
-import { Invitation, Org, Session, User } from '../../models.js';
+import { Invitation, Org, PasswordReset, Session, User } from '../../models.js';
 import { recordAudit } from '../../platform/audit.js';
 import { canGrant, objectId } from '../../platform/validation.js';
 
@@ -17,6 +17,8 @@ import { canGrant, objectId } from '../../platform/validation.js';
 // a link fragment (#token), which browsers never send to servers or proxies, so it stays out of request logs.
 // Fragment links, re-invite revocation and ending sessions on disable come from Arnav's first W-01 build.
 const INVITE_HOURS = 72;
+const RESET_HOURS = 24;
+const password = z.string().min(12, 'Use at least 12 characters.').max(128);
 const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
 const userView = (user: { _id: unknown; displayName: string; email?: string | null; role: string; orgId?: unknown; disabled?: boolean; createdAt?: Date }) => ({
   id: String(user._id), displayName: user.displayName, email: user.email ?? null, role: user.role,
@@ -100,6 +102,73 @@ export function staffRouter(config: Config) {
     if (!invitation.acceptedAt && !invitation.revokedAt) { invitation.revokedAt = new Date(); await invitation.save(); }
     await recordAudit(req.auth, 'user.invite_revoke', { type: 'invitation', id, orgId: String(invitation.orgId) });
     res.json({ invitation: invitationView(invitation.toObject()) });
+  });
+
+  // One-time password-reset link for a colleague in scope. The caller passes it on, as with invitations.
+  router.post('/staff/:id/reset-link', async (req, res) => {
+    const id = objectId.parse(req.params.id);
+    if (id === req.auth!.user.id) throw new HttpError(400, 'Change your own password from your account page.');
+    const target = await User.findById(id).lean();
+    if (!target || target.role === 'entrepreneur' || !target.orgId) throw new HttpError(404, 'Staff member not found.');
+    manageableOrg(req.auth!, String(target.orgId));
+    if (target.role === 'hq_admin' && req.auth!.user.role !== 'hq_admin') throw new HttpError(403, 'Only HQ can reset HQ accounts.');
+    if (target.disabled) throw new HttpError(409, 'Restore this account before resetting its password.');
+    await PasswordReset.updateMany({ userId: id, usedAt: { $exists: false }, revokedAt: { $exists: false } }, { $set: { revokedAt: new Date() } });
+    const token = randomBytes(32).toString('base64url');
+    const reset = await PasswordReset.create({ tokenHash: tokenHash(token), userId: id, orgId: target.orgId, issuedByUserId: req.auth!.user.id,
+      expiresAt: new Date(Date.now() + RESET_HOURS * 3600 * 1000) });
+    await recordAudit(req.auth, 'user.reset_link', { type: 'user', id, orgId: String(target.orgId) });
+    res.status(201).json({ expiresAt: reset.expiresAt, link: `${config.WEB_ORIGIN}/reset-password#${token}` });
+  });
+  return router;
+}
+
+/** Public: use a password-reset link. Every session of that user ends, so a stolen session cannot survive the reset. */
+export function passwordResetRouter(limiter: RequestHandler) {
+  const router = Router();
+  const token = z.string().regex(/^[A-Za-z0-9_-]{43}$/, 'This reset link is not valid.');
+  async function open(raw: unknown) {
+    const reset = await PasswordReset.findOne({ tokenHash: tokenHash(token.parse(raw)) });
+    if (!reset || reset.usedAt || reset.revokedAt || reset.expiresAt.getTime() < Date.now()) throw new HttpError(410, 'This reset link has expired or been used. Ask your administrator for a new one.');
+    const user = await User.findById(reset.userId).lean();
+    if (!user || user.disabled) throw new HttpError(410, 'This reset link is no longer valid.');
+    return { reset, user };
+  }
+  router.post('/preview', limiter, async (req, res) => {
+    const { user } = await open(z.object({ token: z.string() }).strict().parse(req.body).token);
+    res.json({ displayName: user.displayName, email: user.email ?? null });
+  });
+  router.post('/', limiter, async (req, res) => {
+    const input = z.object({ token: z.string(), password }).strict().parse(req.body);
+    const { reset, user } = await open(input.token);
+    const claimed = await PasswordReset.findOneAndUpdate({ _id: reset._id, usedAt: { $exists: false }, revokedAt: { $exists: false } }, { $set: { usedAt: new Date() } });
+    if (!claimed) throw new HttpError(410, 'This reset link has already been used.');
+    await User.updateOne({ _id: user._id }, { $set: { passwordHash: await hashPassword(input.password) } });
+    await Session.deleteMany({ userId: user._id });
+    await recordAudit(undefined, 'user.password_reset', { type: 'user', id: String(user._id), orgId: user.orgId ? String(user.orgId) : null });
+    res.status(204).end();
+  });
+  return router;
+}
+
+/** Signed-in staff change their own password; their other sessions end. */
+export function accountRouter() {
+  const router = Router();
+  router.post('/password', async (req, res) => {
+    const auth = req.auth!;
+    if (auth.user.role === 'entrepreneur') throw new HttpError(403, 'Entrepreneurs sign in with their phone.');
+    const input = z.object({ current: z.string().min(1).max(128), next: password }).strict().parse(req.body);
+    if (input.current === input.next) throw new HttpError(400, 'Choose a password you have not used here before.');
+    const user = await User.findById(auth.user.id).select('+passwordHash');
+    if (!user?.passwordHash || !await verifyPassword(input.current, user.passwordHash)) {
+      await recordAudit(auth, 'user.password_change', { type: 'user', id: auth.user.id, orgId: auth.user.orgId }, {}, 'denied');
+      throw new HttpError(400, 'Your current password is not right.');
+    }
+    user.passwordHash = await hashPassword(input.next);
+    await user.save();
+    await Session.deleteMany({ userId: user._id, _id: { $ne: auth.sessionId } });
+    await recordAudit(auth, 'user.password_change', { type: 'user', id: auth.user.id, orgId: auth.user.orgId });
+    res.status(204).end();
   });
   return router;
 }

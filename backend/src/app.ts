@@ -21,7 +21,7 @@ import { setTenancyMode, tenancyContext } from './platform/tenancy.js';
 import { hqRouter } from './modules/hq/admin.js';
 import { hqReportsRouter } from './modules/hq/reports.js';
 import { pipelineRouter } from './platform/pipeline.js';
-import { invitationAcceptRouter, staffRouter } from './modules/hq/staff.js';
+import { accountRouter, invitationAcceptRouter, passwordResetRouter, staffRouter } from './modules/hq/staff.js';
 
 const loginInput = z.object({ email: z.email().max(254).transform(value => value.toLowerCase()), password: z.string().min(1).max(128), client: z.enum(['web', 'mobile']).default('web') }).strict();
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
@@ -73,6 +73,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
   });
   // Public: an invitation link is the only way to create a staff account (D-27).
   app.use('/api/v1/invitations/accept', invitationAcceptRouter(sessions, authLimiter));
+  app.use('/api/v1/password-reset', passwordResetRouter(authLimiter));
   app.use('/api/v1', sessions.middleware);
   app.get('/api/v1/auth/me', (req, res) => { res.json({ user: req.auth!.user }); });
   app.post('/api/v1/auth/logout', async (req, res) => {
@@ -90,6 +91,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
   app.use('/api/v1/hq', hqRouter());
   app.use('/api/v1/hq/reports', hqReportsRouter());
   app.use('/api/v1/team', staffRouter(config));
+  app.use('/api/v1/account', accountRouter());
   app.get('/api/v1/admin/overview', requirePermission('manage_platform'), async (_req, res) => {
     res.json({ organisations: await Org.countDocuments(), users: await User.countDocuments() });
   });

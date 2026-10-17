@@ -44,7 +44,7 @@ export default function Dashboard({ params }: { params: Promise<{ role: string }
   }
   if (!user || !workspace) return <main className="workspace"><h1>PitchPrism</h1><p role={error ? 'alert' : 'status'}>{error || 'Opening your workspace…'}</p>{error && <a href="/">Return to sign in</a>}</main>;
   return <main className="workspace">
-    <header className="workspace-header"><div><span className="eyebrow">Tata STRIVE</span><h1>PitchPrism</h1></div><button className="secondary" onClick={logout} disabled={busy}>{busy ? 'Signing out…' : 'Sign out'}</button></header>
+    <header className="workspace-header"><div><span className="eyebrow">Tata STRIVE</span><h1>PitchPrism</h1></div><div className="header-actions">{user.role !== 'entrepreneur' && <a href="/account">Account</a>}<button className="secondary" onClick={logout} disabled={busy}>{busy ? 'Signing out…' : 'Sign out'}</button></div></header>
     <div className="spectrum" aria-hidden="true" />
     <section className="workspace-body"><span className="eyebrow">{ROLE_LABELS[user.role]}</span><h2>Welcome, {user.displayName}.</h2><p>Your sign-in is complete. This workspace is ready for your role’s features.</p>
       <dl><dt>Organisation</dt><dd>{user.orgType ? user.orgType.replaceAll('_', ' ') : 'Personal account'}</dd><dt>Access</dt><dd>{workspace.permissions.map(permission => permission.replaceAll('_', ' ')).join(' · ')}</dd></dl>

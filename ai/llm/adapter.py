@@ -24,6 +24,8 @@ class NoRedirects(HTTPRedirectHandler):
 
 
 class LocalJsonAdapter:
+    provider = "ollama"
+
     def __init__(self, settings: Settings):
         self.settings = settings
         # Never forward prompts via HTTP(S)_PROXY or follow local-to-cloud redirects.

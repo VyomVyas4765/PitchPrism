@@ -25,7 +25,7 @@ import socket
 
 from gridfs import GridFSBucket
 
-from ai.config import PolicyViolation, Settings
+from ai.config import PolicyViolation
 from ai.contracts import bundle
 from ai.ingest.pii import find_pii
 from ai.intel.finance import check_finances
@@ -33,7 +33,8 @@ from ai.intel.narrative import feedback_draft, followups, summary_plan
 from ai.intel.routing import suggest_partners
 from ai.intel.scoring import FIELDS, InvalidEvidence, evaluate, prepare_input, quality
 from ai.jobqueue import Consumer, InvalidInput, connect, now
-from ai.llm.adapter import LocalJsonAdapter, ModelOutputError
+from ai.llm.adapter import ModelOutputError
+from ai.llm.factory import make_adapter
 from ai.providers import CapabilityUnavailable
 from ai.review import ReviewEngine, extracted_input, pending_questions, summary as review_summary
 from ai.review.segment import PitchTooLong, segment
@@ -158,7 +159,7 @@ def review_pitch(db, job, run, make_adapter):
                     raise
                 raise InvalidInput("answers did not match the pending questions") from error
             calls = [call for call in session["calls"] if call["round"] == session["round"]]
-            current.model_use(provider="ollama", model=session.get("model"), llm_calls=len(calls))
+            current.model_use(provider=getattr(adapter, "provider", "ollama"), model=session.get("model"), llm_calls=len(calls))
             current.summary(answers=len(answers), round=session["round"])
     else:
         with run.stage("ingest") as current:
@@ -188,7 +189,7 @@ def review_pitch(db, job, run, make_adapter):
         with run.stage("extract") as current:
             adapter = make_adapter()
             session = ReviewEngine(adapter.complete_json, model=getattr(adapter.settings, "model", None)).start_segments(segments, redacted)
-            current.model_use(provider="ollama", model=session.get("model"), llm_calls=len(session["calls"]))
+            current.model_use(provider=getattr(adapter, "provider", "ollama"), model=session.get("model"), llm_calls=len(session["calls"]))
             current.summary(round=1)
     with run.stage("quality") as current:
         current.summary(**{key: value for key, value in review_summary(session).items() if key != "questions"})
@@ -207,7 +208,7 @@ def review_pitch(db, job, run, make_adapter):
 
 def handler_for(db, adapter_factory=None):
     def make_adapter():
-        return (adapter_factory or (lambda: LocalJsonAdapter(Settings.from_env())))()
+        return (adapter_factory or make_adapter)()
 
     def handle(job, run):
         case = db["centrecases"].find_one({"submissionId": job["submissionId"]})
@@ -257,7 +258,7 @@ def handler_for(db, adapter_factory=None):
             try:
                 adapter = make_adapter()
                 result = evaluate(idea, adapter)
-                current.model_use(provider="ollama", model=getattr(getattr(adapter, "settings", None), "model", None), llm_calls=2)
+                current.model_use(provider=getattr(adapter, "provider", "ollama"), model=getattr(getattr(adapter, "settings", None), "model", None), llm_calls=2)
                 current.summary(potential=result["potential"], band=result["band"], coverage=result["coverage"], rubric=result["rubricVersion"])
             except (CapabilityUnavailable, ModelOutputError, PolicyViolation) as error:
                 # Keep the useful deterministic results, as the centre route does, then fail the stage visibly.

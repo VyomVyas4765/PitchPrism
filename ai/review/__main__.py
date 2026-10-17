@@ -1,4 +1,4 @@
-"""Try the pitch review in a terminal with the local model: python -m ai.review pitch.txt [--evaluate] [--save session.json]
+"""Try the pitch review in a terminal with the configured model (Groq or local): python -m ai.review pitch.txt [--evaluate] [--save session.json]
 
 Type an answer to each question; press Enter on an empty line to say you have not decided yet.
 """
@@ -7,8 +7,10 @@ import json
 from pathlib import Path
 import sys
 
-from ai.config import PolicyViolation, Settings
-from ai.llm.adapter import LocalJsonAdapter, ModelOutputError
+from ai.config import PolicyViolation
+from ai.llm.adapter import ModelOutputError
+from ai.llm.factory import make_adapter
+from ai.llm.groq import RateLimited
 from ai.providers import CapabilityUnavailable
 from ai.review import ReviewEngine, extracted_input, pending_questions
 
@@ -21,7 +23,7 @@ def main():
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     try:
-        adapter = LocalJsonAdapter(Settings.from_env())
+        adapter = make_adapter()
         engine = ReviewEngine(adapter.complete_json, model=adapter.settings.model)
         session = engine.start(args.pitch.read_text(encoding="utf-8"), document_id=args.pitch.name)
         while session["status"] == "needs_input":
@@ -43,8 +45,8 @@ def main():
         if args.save:
             args.save.write_text(json.dumps(session, indent=2, ensure_ascii=False), encoding="utf-8")
         return 0
-    except (CapabilityUnavailable, PolicyViolation, ModelOutputError) as error:
-        print(f"Local model problem: {error}. Start Ollama (ollama serve) and set LOCAL_LLM_MODEL to an installed model.", file=sys.stderr)
+    except (CapabilityUnavailable, PolicyViolation, ModelOutputError, RateLimited) as error:
+        print(f"Model problem: {error}. Check AI_RUNTIME and GROQ_API_KEY (or the local Ollama model) in .env.", file=sys.stderr)
         return 2
 
 

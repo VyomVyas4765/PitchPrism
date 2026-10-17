@@ -95,9 +95,8 @@ def main() -> int:
         from ai.tests.review_fakes import FakeLLM
         llm, model = FakeLLM(), "fake"
     else:
-        from ai.config import Settings
-        from ai.llm.adapter import LocalJsonAdapter
-        adapter = LocalJsonAdapter(Settings.from_env())
+        from ai.llm.factory import make_adapter
+        adapter = make_adapter()
         llm, model = adapter.complete_json, adapter.settings.model
     results = []
     for case in cases:

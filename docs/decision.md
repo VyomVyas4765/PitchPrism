@@ -43,6 +43,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-31 | Second-review samples, rerun semantics and the tenancy rollout | ✅ | Dev 3 |
 | D-32 | The worker runs real stages; rubrics drive scoring; decided ideas keep their status | ✅ | Dev 3, Dev 2 |
 | D-33 | AI pitch review: text pitch, gaps, follow-up questions until complete, then evaluation | ✅ | All (AI focus) |
+| D-34 | Groq's hosted API for text reasoning, replacing local Ollama by default (amends D-24) | ✅ | All (AI focus) |
 
 ---
 
@@ -336,4 +337,20 @@ Current register after D-25. The complete answered/partial/open classification i
 - **English only for now**; other languages and voice follow.
 
 **Consequences.** `ai/eval/review_harness.py` measures gap recall and precision, wasted and rule-breaking questions, rounds and completeness on 15 synthetic text pitches with a simulated entrepreneur. Targets with the chosen local model: gap recall ≥ 0.85, no personal-data questions, median rounds ≤ 3. Organiser files are PDFs and audio, so they reach this loop once intake can turn them into text.
+
+### D-34 · Groq's hosted API for text reasoning (amends D-24) ✅
+
+**Context.** D-24 kept all AI local. On the team's CPU-only laptops the local models are either too slow or too weak: a live run with `qwen3:0.6b` drove the review loop correctly but questioned a complete pitch eight times. The team chose Groq's hosted API instead (18 October).
+
+**Decision.**
+- `AI_RUNTIME=groq` (with `AI_HOSTED_APIS_ENABLED=true`) uses `ai/llm/groq.py`. The default model is `openai/gpt-oss-120b`, called with a JSON schema and low reasoning effort. It is a drop-in for the local adapter (`complete_json(prompt, schema)`), so the pitch review and scoring did not change. `ai/llm/factory.make_adapter()` picks the adapter; `AI_RUNTIME=local` keeps Ollama available.
+- **Privacy stays as D-13:** every prompt is checked for phone numbers, emails and ID numbers before it leaves the machine, and pitch text is redacted first. Only redacted text reaches Groq. The key lives only in the ignored `.env` (`GROQ_API_KEY`) and never appears in logs or errors.
+- **Reliability:** a rate limit or brief outage is retried (honouring `Retry-After`) and, if it persists, the job is requeued with backoff instead of failing. A rejected key fails visibly. Output that breaks the schema is retried once, then fails visibly.
+- Audio (Whisper on Groq) and other providers are not part of this decision.
+
+**Consequences.**
+- Answers take seconds, not minutes.
+- Pitch text (redacted) is processed by a third party under Groq's terms; tell partners this.
+- `pipelineRuns.hostedCostInr` stays 0 on Groq's free tier. A paid tier needs cost tracking from the token counts already recorded.
+- On the 15 synthetic pitches, see `ai/eval/review_harness.py` and the Dev log for the measured gap recall and rounds.
 

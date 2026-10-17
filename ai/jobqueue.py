@@ -234,8 +234,8 @@ def _safe_message(error):
     """Staff-safe text: fixed descriptions only, never exception text (it may hold prompts or personal data)."""
     if isinstance(error, CapabilityUnavailable):
         return "A required local capability is not installed."
-    if isinstance(error, (TimeoutError, RetryableError)):
-        return "The local service did not respond in time."
+    if isinstance(error, (TimeoutError, RetryableError)) or getattr(error, "retryable", False):
+        return "The model service was busy or did not respond in time."
     if isinstance(error, InvalidInput):
         return "The evidence for this idea cannot be processed as it is; check the extraction and redaction."
     return "The stage stopped with an unexpected error."
@@ -273,7 +273,7 @@ class Consumer:
             code, retryable = "capability_unavailable", False
         elif isinstance(error, InvalidInput):
             code, retryable = "invalid_input", False
-        elif isinstance(error, (TimeoutError, RetryableError)):
+        elif isinstance(error, (TimeoutError, RetryableError)) or getattr(error, "retryable", False):
             code, retryable = "timeout", True
         else:
             code, retryable = "stage_error", True

@@ -27,9 +27,9 @@ Settings load from the ignored root `.env` or explicit process environment. `mak
 
 `ai/review` turns a plain-text pitch into a complete, cited idea before scoring. It reads the pitch (redacted, numbered lines), extracts the ten EDP topics with the local model, judges each against the question bank's `review.checks`, and asks at most three follow-up questions a round until every topic is answered or the entrepreneur says they have not decided. The worker runs it for text pitches and ends with `NEEDS_INPUT` while questions are open; answers come back through the API and a `followup` job reviews again.
 
+The model is Groq's hosted API by default (D-34): set `AI_RUNTIME=groq`, `AI_HOSTED_APIS_ENABLED=true` and `GROQ_API_KEY` in `.env`. Only redacted text is sent. `AI_RUNTIME=local` uses an installed Ollama model instead.
+
 ```bash
-ollama pull qwen2.5:3b-instruct            # once, by you: nothing downloads automatically
-# .env: LOCAL_LLM_MODEL=qwen2.5:3b-instruct, LOCAL_LLM_NUM_CTX=4096, LOCAL_LLM_NUM_PREDICT=768
 python -m ai.review my-pitch.txt --evaluate   # answer the questions in the terminal, then score
 python -m ai.eval.review_harness              # 15 synthetic pitches with a simulated entrepreneur
 python -m ai.eval.review_harness --fake       # the same without a model (plumbing only)

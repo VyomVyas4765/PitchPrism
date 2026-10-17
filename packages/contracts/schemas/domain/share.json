@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Share",
+  "description": "One consent-gated route of an idea to a partner (PRD section 5). The source of truth for partner access; the platform share-sync service mirrors it into Submission.partnerAccess.",
+  "x-collection": "shares",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["submissionId", "fromOrgId", "toOrgId", "partnerType", "status"],
+  "properties": {
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "fromOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "toOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "partnerType": { "$ref": "common.json#/definitions/PartnerType" },
+    "reason": { "type": "string", "maxLength": 600 },
+    "routingRuleId": { "$ref": "common.json#/definitions/ObjectId" },
+    "consentId": { "$ref": "common.json#/definitions/ObjectId" },
+    "status": { "type": "string", "enum": ["SUGGESTED", "SENT", "VIEWED", "INTERESTED", "CONTACT_REQUESTED", "CONTACT_ACCEPTED", "DECLINED"] },
+    "history": {
+      "type": "array",
+      "items": {
+        "title": "ShareEvent",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "at"],
+        "properties": {
+          "status": { "type": "string", "enum": ["SUGGESTED", "SENT", "VIEWED", "INTERESTED", "CONTACT_REQUESTED", "CONTACT_ACCEPTED", "DECLINED"] },
+          "at": { "$ref": "common.json#/definitions/DateTime" },
+          "byUserId": { "$ref": "common.json#/definitions/ObjectId" }
+        }
+      }
+    },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

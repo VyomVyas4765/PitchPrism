@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "User",
+  "description": "A sign-in account. Staff sign in by email and password; entrepreneurs by verified Firebase phone token. Password hashes are never selected by default or returned.",
+  "x-collection": "users",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["displayName", "role"],
+  "properties": {
+    "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "email": { "type": "string", "maxLength": 254 },
+    "passwordHash": { "type": "string" },
+    "firebaseUid": { "type": "string" },
+    "role": { "$ref": "../session-user.json#/definitions/Role" },
+    "orgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "disabled": { "type": "boolean", "default": false },
+    "invitedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

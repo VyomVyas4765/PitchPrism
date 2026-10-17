@@ -4,7 +4,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 
 **Status key:** ✅ Decided · 🟡 Default (holds until someone objects with a reason) · ❓ Open
 
-**Current implementation:** D-26 now removes Redis and includes iOS development builds; earlier queue/platform entries are historical.  D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD.
+**Current implementation:** D-26 now removes Redis and includes iOS development builds; earlier queue/platform entries are historical.  D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD. D-27 sets staff invitations; D-28 and D-30 define the shared domain contracts and how they absorbed the first role modules; D-29 details the MongoDB job and stage-event design; D-31 refines its rerun rule and records the tenancy rollout.
 
 ## Index
 
@@ -173,7 +173,7 @@ Current register after D-25. The complete answered/partial/open classification i
 
 | ID | Remaining question | Needed by | Owner / current status |
 | --- | --- | --- | --- |
-| Q-01 | Assign Vyom, Rayyan, Arnav and Komal to the four existing role briefs | Before parallel role work | Team; roster/split known, named assignments missing |
+| Q-01 | Assign Vyom, Rayyan, Arnav and Komal to the four existing role briefs | Before parallel role work | Team; Vyom took Dev 3 on 2026-10-17; Devs 1, 2 and 4 still to be mapped |
 | Q-02 | Confirm final demo duration and screening round | Before final rehearsal | Organisers; mentor review is 5 min, final script assumes 8 min |
 | Q-03 | Obtain actual EDP rubric and application volumes | Before rubric/scale claims | Organisers / Tata STRIVE; templates and 55 files already supplied |
 | Q-04 | Approve local LLM/vision models from licence/RAM/language/format evaluation | Benchmark early; original H14 eval gate | Dev 2 with Dev 1; runtime/budget settled, no model approved |

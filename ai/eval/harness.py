@@ -9,10 +9,8 @@ from pathlib import Path
 import time
 from typing import Any, Callable
 
-from ai.config import Settings
 from ai.intel.scoring import evaluate
-from ai.llm.adapter import LocalJsonAdapter
-
+from ai.llm.factory import make_adapter
 
 def run_manifest(manifest: dict[str, Any], extracted_dir: Path,
                  assessor: Callable[[dict[str, Any]], dict[str, Any]]) -> dict[str, Any]:
@@ -68,7 +66,6 @@ def run_manifest(manifest: dict[str, Any], extracted_dir: Path,
             "parity": parity, "files": results,
             "complete": totals["missing_extraction"] == 0 and totals["failed"] == 0 and totals["assessed"] == len(manifest["files"])}
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Evaluate private organiser extractions with local scoring")
     parser.add_argument("--manifest", type=Path, default=Path("datasets/manifest.json"))
@@ -81,14 +78,13 @@ def main() -> int:
     def assessor(idea):
         nonlocal adapter
         if adapter is None:
-            adapter = LocalJsonAdapter(Settings.from_env())
+            adapter = make_adapter()
         return evaluate(idea, adapter)
     report = run_manifest(manifest, args.extracted, assessor)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, ensure_ascii=False))
     print(json.dumps({key: report[key] for key in ("total", "assessed", "missingExtraction", "failed", "complete")}, indent=2))
     return 0 if report["complete"] else 2
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

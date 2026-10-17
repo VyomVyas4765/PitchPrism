@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Segment",
+  "description": "The smallest piece of source text with an ID: every claim points to one (glossary, D-09). Text is redacted (A-10) before any model sees it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["segId", "source", "text", "lang"],
+  "properties": {
+    "segId": { "type": "string", "pattern": "^s_\\d{4,}$" },
+    "source": { "$ref": "common.json#/definitions/Anchor" },
+    "text": { "type": "string", "maxLength": 8000 },
+    "lang": { "$ref": "common.json#/definitions/Language" },
+    "textEn": { "type": "string", "maxLength": 8000 },
+    "translit": { "type": "string", "maxLength": 8000 },
+    "struck": { "type": "boolean", "default": false },
+    "supersededBy": { "type": "string", "pattern": "^s_\\d{4,}$" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}

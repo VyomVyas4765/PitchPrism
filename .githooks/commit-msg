@@ -1,0 +1,5 @@
+#!/bin/sh
+# Strip AI attribution trailers from every commit message (see CLAUDE.md).
+f="$1"
+grep -v -i -E '^(Co-Authored-By:.*(claude|anthropic)|Claude-Session:|.*Generated with \[?Claude)' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+exit 0

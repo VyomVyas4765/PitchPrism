@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QA",
+  "description": "One question-answer pair after structuring (A-09).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["qId", "state"],
+  "properties": {
+    "qId": { "type": "string", "pattern": "^q\\d{1,3}$" },
+    "question": { "type": "string", "maxLength": 1000 },
+    "questionLang": { "$ref": "common.json#/definitions/Language" },
+    "answerSegIds": { "type": "array", "items": { "type": "string", "pattern": "^s_\\d{4,}$" } },
+    "answerLangs": { "type": "array", "items": { "$ref": "common.json#/definitions/Language" } },
+    "canonicalField": { "anyOf": [{ "$ref": "common.json#/definitions/CanonicalField" }, { "type": "string", "enum": ["additional"] }] },
+    "state": { "$ref": "common.json#/definitions/AnswerState" },
+    "relevant": { "type": "boolean" },
+    "overwrites": {
+      "type": "array",
+      "items": {
+        "title": "Overwrite",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to"],
+        "properties": {
+          "from": { "type": "string", "maxLength": 1000 },
+          "to": { "type": "string", "maxLength": 1000 },
+          "segId": { "type": "string", "pattern": "^s_\\d{4,}$" }
+        }
+      }
+    }
+  }
+}

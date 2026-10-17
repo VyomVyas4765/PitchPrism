@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Invitation",
+  "description": "One-time staff invitation (D-27). Only a SHA-256 hash of the token is stored. The server checks that the inviter may grant this role in this organisation.",
+  "x-collection": "invitations",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tokenHash", "role", "orgId", "invitedByUserId", "expiresAt"],
+  "properties": {
+    "tokenHash": { "type": "string", "pattern": "^[a-f\\d]{64}$" },
+    "email": { "type": "string", "maxLength": 254 },
+    "displayName": { "type": "string", "maxLength": 120 },
+    "role": { "$ref": "../session-user.json#/definitions/Role" },
+    "orgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "invitedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "expiresAt": { "$ref": "common.json#/definitions/DateTime" },
+    "acceptedAt": { "$ref": "common.json#/definitions/DateTime" },
+    "acceptedUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "revokedAt": { "$ref": "common.json#/definitions/DateTime" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

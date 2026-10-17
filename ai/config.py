@@ -24,6 +24,9 @@ class Settings:
     model: str = ""
     max_model_bytes: int = 3 * 1024**3
     timeout_seconds: int = 60
+    # Context window and output budget per call; the pitch review needs more than one short answer.
+    num_ctx: int = 2048
+    num_predict: int = 512
 
     def __post_init__(self):
         parsed = urlsplit(self.base_url)
@@ -35,7 +38,7 @@ class Settings:
         if (not local or parsed.scheme != "http" or parsed.username or parsed.password
                 or parsed.path not in ("", "/") or parsed.query or parsed.fragment):
             raise PolicyViolation("AI endpoint must be an HTTP loopback IP with no credentials/path/query.")
-        if not 1 <= self.timeout_seconds <= 300 or self.max_model_bytes <= 0:
+        if not 1 <= self.timeout_seconds <= 300 or self.max_model_bytes <= 0 or not 512 <= self.num_ctx <= 32768 or not 64 <= self.num_predict <= 8192:
             raise PolicyViolation("Invalid local AI resource limits.")
         if any(marker in self.model.lower() for marker in (":cloud", "-cloud", "/", "https:", "http:")):
             raise PolicyViolation("Cloud/remote model selectors are disabled.")
@@ -52,4 +55,6 @@ class Settings:
             model=os.getenv("LOCAL_LLM_MODEL", ""),
             max_model_bytes=int(os.getenv("AI_MAX_MODEL_BYTES", str(3 * 1024**3))),
             timeout_seconds=int(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "60")),
+            num_ctx=int(os.getenv("LOCAL_LLM_NUM_CTX", "2048")),
+            num_predict=int(os.getenv("LOCAL_LLM_NUM_PREDICT", "512")),
         )

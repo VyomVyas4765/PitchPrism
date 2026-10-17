@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AuditLog",
+  "description": "Append-only record of who viewed, changed, scored, routed or exported what (W-08; kept at least 12 months). Never stores request bodies or personal data.",
+  "x-collection": "auditLogs",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "targetType", "at"],
+  "properties": {
+    "actorUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "actorRole": { "$ref": "../session-user.json#/definitions/Role" },
+    "orgId": { "$ref": "common.json#/definitions/ObjectId", "description": "Actor organisation." },
+    "targetOrgId": { "$ref": "common.json#/definitions/ObjectId", "description": "Organisation that owns the target, for scoped audit views." },
+    "action": { "type": "string", "pattern": "^[a-z_]+\\.[a-z_]+$", "description": "resource.verb, for example submission.view or user.invite." },
+    "targetType": { "type": "string", "maxLength": 40 },
+    "targetId": { "type": "string", "maxLength": 64 },
+    "outcome": { "type": "string", "enum": ["allowed", "denied"], "default": "allowed" },
+    "at": { "$ref": "common.json#/definitions/DateTime" },
+    "meta": { "type": "object", "description": "Small non-personal details, such as changed field names." }
+  }
+}

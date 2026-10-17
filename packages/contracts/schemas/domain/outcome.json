@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Outcome",
+  "description": "One outcome stage after selection (W-15). HQ and funders see totals only.",
+  "x-collection": "outcomes",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["submissionId", "ownerOrgId", "stage", "date", "recordedByUserId"],
+  "properties": {
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "stage": { "type": "string", "enum": ["ENROLLED", "TRAINED", "LOAN_APPLIED", "LOAN_RECEIVED", "BUSINESS_STARTED", "STATUS_3M", "STATUS_6M"] },
+    "value": { "type": "string", "maxLength": 400 },
+    "amount": { "$ref": "common.json#/definitions/Rupees" },
+    "date": { "$ref": "common.json#/definitions/DateTime" },
+    "recordedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

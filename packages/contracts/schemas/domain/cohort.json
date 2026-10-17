@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cohort",
+  "description": "One intake batch within a programme. Cohort-wise ratings compare within a cohort.",
+  "x-collection": "cohorts",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["programmeId", "orgId", "name", "status"],
+  "properties": {
+    "programmeId": { "$ref": "common.json#/definitions/ObjectId" },
+    "orgId": { "$ref": "common.json#/definitions/ObjectId", "description": "Owning centre; copied from the programme for scoping." },
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "intakeStart": { "$ref": "common.json#/definitions/DateTime" },
+    "intakeEnd": { "$ref": "common.json#/definitions/DateTime" },
+    "districts": { "type": "array", "items": { "type": "string", "maxLength": 80 } },
+    "status": { "type": "string", "enum": ["planned", "open", "closed"] },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

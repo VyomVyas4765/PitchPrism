@@ -201,8 +201,12 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Missing-field answers re-enter ingestion without losing history",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": [
+      "app/lib/entrepreneur/followup_screen.dart",
+      "app/test/followup_test.dart"
+    ],
+    "notes": "Typed English answers in the app (with \"not decided yet\"); voice questions and answers pending. The widget test needs Flutter 3.47 to run."
   },
   "M-10": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -490,15 +494,17 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate org/user invitations and role setup with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "api_ui_partial",
+    "status": "implemented",
     "evidence": [
-      "backend/tests/auth.test.ts",
-      "docs/auth.md",
-      "backend/src/modules/hq/router.ts",
-      "backend/tests/access.test.ts",
-      "frontend/features/hq/AccessAdmin.tsx",
-      "frontend/app/accept-invite/page.tsx"
-    ]
+      "backend/tests/hq.test.ts",
+      "backend/src/modules/hq/staff.ts",
+      "backend/src/modules/hq/admin.ts",
+      "frontend/features/hq/TeamPanel.tsx",
+      "frontend/app/accept-invite/page.tsx",
+      "frontend/app/reset-password/page.tsx",
+      "frontend/app/account/page.tsx"
+    ],
+    "notes": "Includes Arnav's first build's ideas, password reset links and self-service password change. Links are passed on by the inviter; no email provider by design."
   },
   "W-02": {
     "owner": "dev-3-hq-platform",
@@ -513,8 +519,13 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate programme/rubric version administration with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/hq.test.ts",
+      "ai/tests/test_rubric_scoring.py",
+      "frontend/features/hq/RubricBuilder.tsx"
+    ],
+    "notes": "Form and visual builder (prism weights, band scale, pathway rules, completeness, live score preview, diff). Published versions drive scoring in the worker."
   },
   "W-03": {
     "owner": "dev-3-hq-platform",
@@ -529,8 +540,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate cross-org pipeline filtering with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts",
+      "backend/src/modules/hq/reports.ts",
+      "frontend/features/hq/ReportPanels.tsx"
+    ]
   },
   "W-04": {
     "owner": "dev-3-hq-platform",
@@ -545,8 +560,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate partner routing-rule administration with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/hq.test.ts",
+      "backend/src/modules/hq/admin.ts"
+    ],
+    "notes": "Rules suggest partners only; applying them to shares waits for Dev 2 routing (A-27) and consent checks."
   },
   "W-05": {
     "owner": "dev-3-hq-platform",
@@ -561,8 +580,10 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate hq funnel analytics with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts"
+    ]
   },
   "W-06": {
     "owner": "dev-3-hq-platform",
@@ -577,8 +598,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate human second-review samples with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts",
+      "packages/contracts/schemas/domain/review-sample.json"
+    ]
   },
   "W-07": {
     "owner": "dev-3-hq-platform",
@@ -593,8 +617,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate fairness monitoring with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts"
+    ],
+    "notes": "Fills in as evaluations are written; groups under the minimum size are shown but not compared."
   },
   "W-08": {
     "owner": "dev-3-hq-platform",
@@ -609,8 +636,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate append-only audit viewer with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts",
+      "backend/src/platform/audit.ts"
+    ]
   },
   "W-09": {
     "owner": "dev-2-centre-cohort",
@@ -947,8 +977,13 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate idea-cluster map with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/idea-map.test.ts",
+      "backend/tests/reports.test.ts",
+      "frontend/features/hq/IdeaMapPanel.tsx"
+    ],
+    "notes": "Lexical similarity (TF-IDF, PCA, k-means) until A-19 semantic embeddings exist; then only the vectors change."
   },
   "W-28": {
     "owner": "dev-2-centre-cohort",
@@ -1027,8 +1062,10 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate cohort/trade admin with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/hq.test.ts"
+    ]
   },
   "W-33": {
     "owner": "dev-3-hq-platform",
@@ -1043,8 +1080,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate model quality/eval reporting with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/reports.test.ts",
+      "packages/contracts/schemas/domain/eval-run.json"
+    ],
+    "notes": "Each harness report is recorded once as an evalRun; latest run, history, parity, latency and cost. Numbers appear once Dev 2 runs the harness on the organiser data."
   },
   "W-34": {
     "owner": "dev-2-centre-cohort",
@@ -1371,8 +1412,13 @@
     "acceptance_test": "3–5 useful questions, original language, answers rerun correct stages",
     "status": "partial",
     "evidence": [
-      "ai/intel/narrative.py"
-    ]
+      "ai/review/session.py",
+      "ai/worker.py",
+      "backend/src/modules/entrepreneur/followup-router.ts",
+      "ai/tests/test_worker_review.py",
+      "backend/tests/followups.test.ts"
+    ],
+    "notes": "Text pitches (D-33): up to 3 questions a round until every topic is answered or declined; answers re-run extraction. English only; translation and voice pending; imported-file requests for information pending."
   },
   "A-17": {
     "owner": "dev-2-centre-cohort",
@@ -1559,14 +1605,21 @@
     "requirement": "Publish each stage's result as it finishes, so the dashboard card fills in progressively over server-sent events",
     "implementation": "Live incremental card and stage events",
     "execution": "worker + API + web",
-    "local_strategy": "Planned MongoDB job leases and durable stage events + scoped SSE; no Redis or hosted AI",
+    "local_strategy": "MongoDB job leases and durable capped stage events followed by a tailable cursor, scoped SSE; no Redis or hosted AI",
     "dependencies": [
       "StageEvent contract; tenancy; persisted results"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Events scoped to viewer; reconnect does not lose or invent completed stages",
-    "status": "planned",
-    "evidence": []
+    "status": "implemented",
+    "evidence": [
+      "backend/tests/pipeline.test.ts",
+      "ai/tests/test_jobqueue.py",
+      "ai/tests/test_worker.py",
+      "ai/worker.py",
+      "frontend/features/pipeline/LiveStages.tsx"
+    ],
+    "notes": "Each stage is published as it finishes and the centre card fills in over SSE (scoped, resumable). Intake stages run when Dev 1 adds them to the worker; until then they are skipped for already-extracted evidence and fail visibly otherwise."
   },
   "A-29": {
     "owner": "dev-3-hq-platform",
@@ -1580,11 +1633,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Log model/latency/tokens/API cost without prompts/PII; attempt blocks visible",
-    "status": "adapter_partial",
+    "status": "implemented",
     "evidence": [
-      "ai/llm/adapter.py",
-      "ai/tests/test_local_runtime.py"
-    ]
+      "backend/tests/pipeline.test.ts",
+      "backend/tests/reports.test.ts"
+    ],
+    "notes": "Timings and model use are recorded per stage; numbers fill in when the worker runs real stages."
   },
   "A-30": {
     "owner": "dev-2-centre-cohort",

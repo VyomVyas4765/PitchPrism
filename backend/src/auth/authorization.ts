@@ -10,7 +10,15 @@ export function requirePermission(permission: Permission): RequestHandler {
     next();
   };
 }
+/**
+ * Combine a scope with a route's own filter. Always use this instead of spreading ({ ...scope, _id }):
+ * a spread lets a route key silently overwrite a scope key with the same name and widen access.
+ */
+export function scoped(scope: Record<string, unknown>, filter: Record<string, unknown>) {
+  return { $and: [scope, filter] };
+}
 // Every resource query must include this scope; client-supplied org IDs never select access.
+// Partner access reads active entries in Submission.shares; an entrepreneur's Entrepreneur _id equals its user ID.
 export function submissionScope({ user, fundingMode }: AuthContext): Record<string, unknown> {
   switch (user.role) {
     case 'hq_admin': return {};
@@ -21,6 +29,6 @@ export function submissionScope({ user, fundingMode }: AuthContext): Record<stri
     case 'sector_partner': return { shares: { $elemMatch: { orgId: user.orgId, partnerType: 'sector_partner', active: true } } };
     case 'funding_partner':
       if (fundingMode !== 'lender') throw new HttpError(403, 'This account has access to aggregate impact reports only.');
-      return { status: 'SHORTLISTED', fundingReady: true, shares: { $elemMatch: { orgId: user.orgId, partnerType: 'funding_partner', active: true } } };
+      return { status: { $in: ['SHORTLISTED', 'SHARED'] }, fundingReady: true, shares: { $elemMatch: { orgId: user.orgId, partnerType: 'funding_partner', active: true } } };
   }
 }

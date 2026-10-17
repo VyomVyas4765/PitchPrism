@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Rubric",
+  "description": "One immutable rubric version (PRD section 13, W-02). Saving a change creates a new version; evaluations record the version they used.",
+  "x-collection": "rubrics",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rubricKey", "version", "name", "domains", "bands", "status"],
+  "properties": {
+    "rubricKey": { "type": "string", "pattern": "^[a-z0-9_-]{2,60}$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "domains": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "title": "RubricDomain",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "label", "weight", "lowDescriptor", "highDescriptor"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[a-z_]{2,40}$" },
+          "label": { "type": "string", "maxLength": 80 },
+          "weight": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent; potential domains sum to 100." },
+          "lowDescriptor": { "type": "string", "maxLength": 400, "description": "What earns a 1." },
+          "highDescriptor": { "type": "string", "maxLength": 400, "description": "What earns a 5." },
+          "evidenceFields": { "type": "array", "items": { "$ref": "common.json#/definitions/CanonicalField" } }
+        }
+      }
+    },
+    "completenessWeights": { "type": "object", "description": "Weight per canonical field for completeness; the weights total 100.", "additionalProperties": { "type": "number", "minimum": 0 } },
+    "bands": {
+      "title": "RubricBands",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strong", "promising", "minCoverage"],
+      "properties": {
+        "strong": { "type": "number", "minimum": 0, "maximum": 100 },
+        "promising": { "type": "number", "minimum": 0, "maximum": 100 },
+        "minCoverage": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "pathwayRules": {
+      "title": "PathwayRules",
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Thresholds read by the pathway calculator (ai/intel/scoring.py). Missing keys use the calculator defaults.",
+      "properties": {
+        "requestInfoBelowCompleteness": { "type": "number", "minimum": 0, "maximum": 100, "description": "Below this completeness the pathway is request information (default 70)." },
+        "highCompleteness": { "type": "number", "minimum": 0, "maximum": 100, "description": "Completeness at or above this counts as complete for the quadrant (default 70)." },
+        "fundingMinFeasibility": { "type": "integer", "minimum": 1, "maximum": 5, "description": "Strong ideas need at least this feasibility score for funding consideration (default 4)." },
+        "fundingMaxLoan": { "type": "number", "minimum": 0, "description": "Largest requested loan in rupees for funding consideration (default 200000)." },
+        "skillingMaxReadiness": { "type": "integer", "minimum": 1, "maximum": 5, "description": "Readiness at or below this suggests skilling (default 2)." },
+        "mentoringWeakAtOrBelow": { "type": "integer", "minimum": 1, "maximum": 5, "description": "A promising idea with any listed domain at or below this suggests mentoring (default 2)." },
+        "mentoringWeakDomains": { "type": "array", "items": { "type": "string", "pattern": "^[a-z_]{2,40}$" }, "description": "Domains checked for the mentoring rule." }
+      }
+    },
+    "status": { "type": "string", "enum": ["draft", "published", "archived"] },
+    "createdByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

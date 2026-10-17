@@ -8,10 +8,13 @@ import { hashPassword, verifyPassword } from '../src/auth/password.js';
 import { sessionService } from '../src/auth/session.js';
 import { configSchema } from '../src/config.js';
 import { connectDatabase } from '../src/database.js';
-import { Org, Session, Submission, User } from '../src/models.js';
+import { Entrepreneur, Org, Session, Submission, User } from '../src/models.js';
+import { piiVault } from '../src/modules/entrepreneur/pii-vault.js';
 import { ROLES, type Role, type OrgType } from '@pitchprism/contracts';
 
-const config = configSchema.parse({ NODE_ENV: 'test', JWT_SECRET: 'test-only-secret-with-more-than-thirty-two-characters' });
+const config = configSchema.parse({ NODE_ENV: 'test', JWT_SECRET: 'test-only-secret-with-more-than-thirty-two-characters',
+  PII_ENCRYPTION_KEY: 'ab'.repeat(32) });
+const vault = piiVault(config.PII_ENCRYPTION_KEY)!;
 const password = 'SyntheticTestPassword!42';
 let mongo: MongoMemoryServer;
 let hash: string;
@@ -20,6 +23,7 @@ let sibling: InstanceType<typeof Org>;
 let sector: InstanceType<typeof Org>;
 let funding: InstanceType<typeof Org>;
 let applicant: InstanceType<typeof User>;
+let applicantProfile: InstanceType<typeof Entrepreneur>;
 let assessor: InstanceType<typeof User>;
 let submission: InstanceType<typeof Submission>;
 let app: ReturnType<typeof createApp>;
@@ -31,21 +35,22 @@ async function staff(role: Role, orgId: mongoose.Types.ObjectId = centre._id) {
 beforeAll(async () => {
   mongo = await MongoMemoryServer.create();
   await connectDatabase({ ...config, MONGODB_URI: mongo.getUri() });
-  await Promise.all([User.init(), Org.init(), Session.init(), Submission.init()]);
+  await Promise.all([User.init(), Org.init(), Session.init(), Submission.init(), Entrepreneur.init()]);
   hash = await hashPassword(password);
 }, 120000);
 afterAll(async () => { await mongoose.disconnect(); await mongo?.stop(); });
 beforeEach(async () => {
-  await Promise.all([User.deleteMany({}), Org.deleteMany({}), Session.deleteMany({}), Submission.deleteMany({})]);
+  await Promise.all([User.deleteMany({}), Org.deleteMany({}), Session.deleteMany({}), Submission.deleteMany({}), Entrepreneur.deleteMany({})]);
   [centre, sibling, sector, funding] = await Org.create([
     { name: 'Synthetic centre', type: 'centre' }, { name: 'Synthetic sibling', type: 'centre' },
     { name: 'Synthetic sector', type: 'sector_partner' }, { name: 'Synthetic lender', type: 'funding_partner', fundingMode: 'lender' },
   ]) as [typeof centre, typeof sibling, typeof sector, typeof funding];
   applicant = await User.create({ displayName: 'Synthetic applicant', role: 'entrepreneur', email: 'synthetic-uid@pitchprism.test' });
   assessor = await staff('centre_assessor');
-  submission = await Submission.create({ title: 'Synthetic tailoring plan', ownerOrgId: centre._id, entrepreneurId: applicant._id,
-    createdByUserId: applicant._id, status: 'SHORTLISTED', fundingReady: true,
-    applicant: { name: 'Synthetic applicant', phone: '+910000000000' },
+  applicantProfile = await Entrepreneur.create({ _id: applicant._id, userId: applicant._id, homeOrgId: centre._id, createdVia: 'self',
+    personal: vault.seal({ name: 'Synthetic applicant', phone: '+910000000000' }, String(applicant._id)) });
+  submission = await Submission.create({ title: 'Synthetic tailoring plan', ownerOrgId: centre._id, entrepreneurId: applicantProfile._id,
+    createdByUserId: applicant._id, channel: 'app', status: 'SHORTLISTED', fundingReady: true,
     shares: [{ orgId: sector._id, partnerType: 'sector_partner', active: true, contactAccepted: false },
       { orgId: funding._id, partnerType: 'funding_partner', active: true, contactAccepted: false }],
   });
@@ -128,18 +133,23 @@ describe('authentication', () => {
     for (let attempt = 0; attempt < 10; attempt++) await request(app).post('/api/v1/auth/login').send({ email: assessor.email, password: 'wrong' }).expect(401);
     await request(app).post('/api/v1/auth/login').send({ email: assessor.email, password: 'wrong' }).expect(429);
   });
-  it('lets entrepreneurs register by email only as entrepreneurs, then sign in', async () => {
-    const created = await request(app).post('/api/v1/auth/register').send({ email: 'New.Entrepreneur@PitchPrism.test', password }).expect(201);
-    expect(created.body.user).toMatchObject({ role: 'entrepreneur', orgId: null, email: 'new.entrepreneur@pitchprism.test' });
-    await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${created.body.accessToken}`).expect(200);
-    await request(app).post('/api/v1/auth/register').send({ email: 'new.entrepreneur@pitchprism.test', password }).expect(409);
-    await request(app).post('/api/v1/auth/register').send({ email: 'short@pitchprism.test', password: 'short' }).expect(400);
-    await request(app).post('/api/v1/auth/register').send({ email: 'role@pitchprism.test', password, role: 'hq_admin' }).expect(400);
-    await request(app).post('/api/v1/auth/register').send({ email: 'org@pitchprism.test', password, orgId: String(centre._id) }).expect(400);
-    const login = await request(app).post('/api/v1/auth/login').send({ email: 'new.entrepreneur@pitchprism.test', password, client: 'mobile' }).expect(200);
-    expect(login.body.user.role).toBe('entrepreneur');
-    // The phone-OTP exchange is gone: the old path is no longer public.
-    await request(app).post('/api/v1/auth/otp/verify').send({ idToken: 'anything' }).expect(401);
+  it('does not count successful sign-ins toward the limit', async () => {
+    for (let attempt = 0; attempt < 12; attempt++) await request(app).post('/api/v1/auth/login').send({ email: assessor.email, password }).expect(200);
+    for (let attempt = 0; attempt < 10; attempt++) await request(app).post('/api/v1/auth/login').send({ email: assessor.email, password: 'wrong' }).expect(401);
+    await request(app).post('/api/v1/auth/login').send({ email: assessor.email, password }).expect(429);
+  });
+  it('fails closed when Firebase is unconfigured', async () => {
+    await request(app).post('/api/v1/auth/otp/verify').send({ idToken: 'unverified' }).expect(503);
+    expect(await User.countDocuments({ firebaseUid: 'unverified' })).toBe(0);
+  });
+  it('creates only entrepreneur accounts from a verified phone identity and reuses them', async () => {
+    const verifiedApp = createApp(config, { verifyPhoneToken: async () => ({ uid: 'verified-synthetic', phone: '+910000000001' }) });
+    const first = await request(verifiedApp).post('/api/v1/auth/otp/verify').send({ idToken: 'verified-by-injected-test-adapter' }).expect(200);
+    const second = await request(verifiedApp).post('/api/v1/auth/otp/verify').send({ idToken: 'verified-by-injected-test-adapter' }).expect(200);
+    expect(first.body.user.role).toBe('entrepreneur'); expect(first.body.user.orgId).toBeNull();
+    expect(first.body.user.id).toBe(second.body.user.id);
+    await request(verifiedApp).get('/api/v1/auth/me').set('Authorization', `Bearer ${first.body.accessToken}`).expect(200);
+    await request(verifiedApp).post('/api/v1/auth/otp/verify').send({ idToken: 'test', role: 'hq_admin' }).expect(400);
   });
 });
 
@@ -191,7 +201,7 @@ describe('authorization', () => {
     expect(response.body).toEqual({ id: String(submission._id), title: submission.title, status: 'SHORTLISTED' });
     await Submission.updateOne({ _id: submission._id, 'shares.orgId': sector._id }, { $set: { 'shares.$.contactAccepted': true } });
     const accepted = await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(200);
-    expect(accepted.body.applicant.name).toBe('Synthetic applicant');
+    expect(accepted.body.applicant).toEqual({ name: 'Synthetic applicant', phone: '+910000000000' });
     await Submission.updateOne({ _id: submission._id, 'shares.orgId': sector._id }, { $set: { 'shares.$.active': false } });
     await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(404);
   });
@@ -203,7 +213,8 @@ describe('authorization', () => {
     await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(404);
     await Submission.updateOne({ _id: submission._id }, { status: 'SHORTLISTED', fundingReady: false });
     await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(404);
-    await Submission.updateOne({ _id: submission._id }, { fundingReady: true });
+    await Submission.updateOne({ _id: submission._id }, { status: 'SHARED', fundingReady: true });
+    await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(200);
     await Submission.updateOne({ _id: submission._id, 'shares.orgId': funding._id }, { $set: { 'shares.$.active': false } });
     await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(404);
     await Org.updateOne({ _id: funding._id }, { fundingMode: 'csr' });

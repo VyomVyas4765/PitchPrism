@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PipelineRun",
+  "description": "Timing and compute record per stage (A-29). Hosted AI cost is zero by policy (D-24), so compute time, tokens and model are what matter.",
+  "x-collection": "pipelineRuns",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jobId", "submissionId", "ownerOrgId", "stage", "status", "startedAt"],
+  "properties": {
+    "jobId": { "$ref": "common.json#/definitions/ObjectId" },
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "stage": { "$ref": "common.json#/definitions/Stage" },
+    "status": { "$ref": "common.json#/definitions/StageStatus" },
+    "startedAt": { "$ref": "common.json#/definitions/DateTime" },
+    "endedAt": { "$ref": "common.json#/definitions/DateTime" },
+    "ms": { "type": "integer", "minimum": 0 },
+    "provider": { "type": "string", "maxLength": 60 },
+    "model": { "type": "string", "maxLength": 120 },
+    "tokensIn": { "type": "integer", "minimum": 0 },
+    "tokensOut": { "type": "integer", "minimum": 0 },
+    "llmCalls": { "type": "integer", "minimum": 0 },
+    "computeSeconds": { "type": "number", "minimum": 0 },
+    "hostedCostInr": { "type": "number", "enum": [0], "default": 0 },
+    "error": { "type": "string", "maxLength": 600 },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

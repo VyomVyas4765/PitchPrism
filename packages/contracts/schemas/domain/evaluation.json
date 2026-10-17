@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Evaluation",
+  "description": "One scoring of one submission (PRD sections 13-14). Dev 2 owns the content; potential, completeness, band, quadrant and pathway are computed in code (D-12). A null domain score means Not assessed (D-11). Old evaluations are kept.",
+  "x-collection": "evaluations",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["submissionId", "ownerOrgId", "rubricKey", "rubricVersion", "domains"],
+  "properties": {
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "rubricKey": { "type": "string", "maxLength": 60 },
+    "rubricVersion": { "type": "integer", "minimum": 1 },
+    "promptVersion": { "type": "string", "maxLength": 60 },
+    "models": { "type": "object", "description": "Model names per task, for audit (local only, D-24).", "additionalProperties": { "type": "string", "maxLength": 120 } },
+    "domains": {
+      "type": "array",
+      "items": {
+        "title": "DomainScore",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "score", "evidence"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[a-z_]{2,40}$" },
+          "score": { "anyOf": [{ "type": "integer", "minimum": 1, "maximum": 5 }, { "type": "null" }] },
+          "reason": { "type": "string", "maxLength": 1000 },
+          "evidence": { "type": "array", "maxItems": 3, "items": { "type": "string", "pattern": "^(s_\\d{4,}|check:[a-z0-9_]+)$" } },
+          "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+          "runs": { "type": "array", "items": { "anyOf": [{ "type": "integer", "minimum": 1, "maximum": 5 }, { "type": "null" }] } }
+        }
+      }
+    },
+    "potential": { "type": "number", "minimum": 0, "maximum": 100 },
+    "completeness": { "type": "number", "minimum": 0, "maximum": 100 },
+    "coverage": { "type": "number", "minimum": 0, "maximum": 100 },
+    "band": { "$ref": "common.json#/definitions/Band" },
+    "quadrant": { "$ref": "common.json#/definitions/Quadrant" },
+    "pathway": { "$ref": "common.json#/definitions/Pathway" },
+    "strengths": { "type": "array", "items": { "$ref": "evaluation.json#/definitions/CitedText" } },
+    "gaps": { "type": "array", "items": { "$ref": "evaluation.json#/definitions/CitedText" } },
+    "risks": { "type": "array", "items": { "$ref": "evaluation.json#/definitions/CitedText" } },
+    "toValidate": { "type": "array", "items": { "$ref": "evaluation.json#/definitions/CitedText" } },
+    "interviewQuestions": { "type": "array", "items": { "$ref": "evaluation.json#/definitions/CitedText" } },
+    "financialChecks": {
+      "type": "array",
+      "items": {
+        "title": "FinancialCheck",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["checkId", "label", "ok"],
+        "properties": {
+          "checkId": { "type": "string", "pattern": "^check:[a-z0-9_]+$" },
+          "label": { "type": "string", "maxLength": 200 },
+          "written": { "type": "number" },
+          "expected": { "type": "number" },
+          "ok": { "type": "boolean" },
+          "segIds": { "type": "array", "items": { "type": "string", "pattern": "^s_\\d{4,}$" } }
+        }
+      }
+    },
+    "needsAttention": { "type": "boolean", "default": false },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  },
+  "definitions": {
+    "CitedText": {
+      "title": "CitedText",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "evidence"],
+      "properties": {
+        "text": { "type": "string", "maxLength": 1000 },
+        "evidence": { "type": "array", "items": { "type": "string", "pattern": "^(s_\\d{4,}|check:[a-z0-9_]+)$" } }
+      }
+    }
+  }
+}

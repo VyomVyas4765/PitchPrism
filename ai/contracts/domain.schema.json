@@ -1,0 +1,3091 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pitchprism.local/schemas/domain.json",
+  "title": "PitchPrismDomain",
+  "definitions": {
+    "Role": {
+      "type": "string",
+      "enum": [
+        "entrepreneur",
+        "facilitator",
+        "centre_assessor",
+        "cohort_lead",
+        "hq_admin",
+        "implementation_partner",
+        "sector_partner",
+        "funding_partner"
+      ]
+    },
+    "OrgType": {
+      "type": "string",
+      "enum": [
+        "hq",
+        "centre",
+        "implementation_partner",
+        "sector_partner",
+        "funding_partner"
+      ]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Append-only record of who viewed, changed, scored, routed or exported what (W-08; kept at least 12 months). Never stores request bodies or personal data.",
+      "x-collection": "auditLogs",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "targetType",
+        "at"
+      ],
+      "properties": {
+        "actorUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "actorRole": {
+          "$ref": "#/definitions/Role"
+        },
+        "orgId": {
+          "$ref": "#/definitions/ObjectId",
+          "description": "Actor organisation."
+        },
+        "targetOrgId": {
+          "$ref": "#/definitions/ObjectId",
+          "description": "Organisation that owns the target, for scoped audit views."
+        },
+        "action": {
+          "type": "string",
+          "pattern": "^[a-z_]+\\.[a-z_]+$",
+          "description": "resource.verb, for example submission.view or user.invite."
+        },
+        "targetType": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "targetId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "allowed",
+            "denied"
+          ],
+          "default": "allowed"
+        },
+        "at": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "meta": {
+          "type": "object",
+          "description": "Small non-personal details, such as changed field names."
+        }
+      }
+    },
+    "Cohort": {
+      "title": "Cohort",
+      "description": "One intake batch within a programme. Cohort-wise ratings compare within a cohort.",
+      "x-collection": "cohorts",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "programmeId",
+        "orgId",
+        "name",
+        "status"
+      ],
+      "properties": {
+        "programmeId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "orgId": {
+          "$ref": "#/definitions/ObjectId",
+          "description": "Owning centre; copied from the programme for scoping."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "intakeStart": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "intakeEnd": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "districts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "open",
+            "closed"
+          ]
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "ObjectId": {
+      "title": "ObjectId",
+      "type": "string",
+      "format": "objectid",
+      "pattern": "^[a-f\\d]{24}$"
+    },
+    "DateTime": {
+      "title": "DateTime",
+      "type": "string",
+      "format": "date-time"
+    },
+    "Rupees": {
+      "title": "Rupees",
+      "description": "Whole rupees.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Language": {
+      "title": "Language",
+      "description": "ISO 639-1 codes for the six launch languages, plus und when undetermined.",
+      "type": "string",
+      "enum": [
+        "hi",
+        "mr",
+        "te",
+        "or",
+        "bn",
+        "en",
+        "und"
+      ]
+    },
+    "FundingMode": {
+      "title": "FundingMode",
+      "type": "string",
+      "enum": [
+        "lender",
+        "csr"
+      ]
+    },
+    "PartnerType": {
+      "title": "PartnerType",
+      "type": "string",
+      "enum": [
+        "sector_partner",
+        "funding_partner"
+      ]
+    },
+    "Channel": {
+      "title": "Channel",
+      "description": "How a submission arrived (PRD section 6).",
+      "type": "string",
+      "enum": [
+        "app",
+        "assisted",
+        "import",
+        "pwa",
+        "whatsapp",
+        "platform"
+      ]
+    },
+    "SubmissionStatus": {
+      "title": "SubmissionStatus",
+      "description": "Lifecycle in docs/flow.md section 1.2. MORE_INFO is the assessor's More info decision (Dev 2); NEEDS_INPUT is the pipeline waiting on follow-up answers.",
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "QUEUED",
+        "PROCESSING",
+        "NEEDS_INPUT",
+        "UNASSESSABLE",
+        "READY",
+        "FAILED",
+        "IN_REVIEW",
+        "SHORTLISTED",
+        "NOT_YET",
+        "MORE_INFO",
+        "SHARED"
+      ]
+    },
+    "Stage": {
+      "title": "Stage",
+      "description": "Pipeline stages in docs/flow.md section 1.3. Dev 1 owns ingest..extract, Dev 2 owns quality..route.",
+      "type": "string",
+      "enum": [
+        "ingest",
+        "classify",
+        "read",
+        "structure",
+        "redact",
+        "translate",
+        "extract",
+        "quality",
+        "followup",
+        "normalise",
+        "similar",
+        "local",
+        "score",
+        "narrative",
+        "rank",
+        "feedback",
+        "route"
+      ]
+    },
+    "StageStatus": {
+      "title": "StageStatus",
+      "type": "string",
+      "enum": [
+        "started",
+        "done",
+        "skipped",
+        "failed"
+      ]
+    },
+    "CanonicalField": {
+      "title": "CanonicalField",
+      "description": "PRD Appendix B.1: the ten EDP fields, then extended fields. Dev 1 owns the question bank that maps wordings to these keys.",
+      "type": "string",
+      "enum": [
+        "location",
+        "offering",
+        "customers",
+        "market_research",
+        "raw_materials",
+        "suppliers",
+        "funding",
+        "competition",
+        "unit_price",
+        "monthly_revenue",
+        "business_name",
+        "problem_addressed",
+        "differentiation",
+        "pricing_strategy",
+        "support_network",
+        "infrastructure",
+        "transport",
+        "staffing",
+        "fixed_overheads",
+        "location_rationale",
+        "customer_acquisition",
+        "promotion_plan",
+        "goals",
+        "investment_required",
+        "self_investment",
+        "expected_loan",
+        "market_type",
+        "existing_business",
+        "customer_gender",
+        "customer_age_range",
+        "customer_segment",
+        "skills",
+        "experience"
+      ]
+    },
+    "AnswerState": {
+      "title": "AnswerState",
+      "type": "string",
+      "enum": [
+        "answered",
+        "missing",
+        "not_asked",
+        "irrelevant"
+      ]
+    },
+    "Band": {
+      "title": "Band",
+      "type": "string",
+      "enum": [
+        "strong",
+        "promising",
+        "not_yet",
+        "insufficient"
+      ]
+    },
+    "Pathway": {
+      "title": "Pathway",
+      "type": "string",
+      "enum": [
+        "deeper_evaluation",
+        "funding_consideration",
+        "mentoring",
+        "skilling",
+        "request_information",
+        "resubmit_with_help"
+      ]
+    },
+    "Quadrant": {
+      "title": "Quadrant",
+      "type": "string",
+      "enum": [
+        "high_potential_complete",
+        "high_potential_incomplete",
+        "low_potential_complete",
+        "low_potential_incomplete"
+      ]
+    },
+    "Anchor": {
+      "title": "Anchor",
+      "description": "Where a segment lives in its original document.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "documentId"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "audio",
+            "pdf",
+            "image",
+            "text"
+          ]
+        },
+        "documentId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bbox": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "start": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Seconds from the start of audio."
+        },
+        "end": {
+          "type": "number",
+          "minimum": 0
+        },
+        "charStart": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "charEnd": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "GeoPoint": {
+      "title": "GeoPoint",
+      "description": "GeoJSON point: [longitude, latitude].",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "coordinates"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "Point"
+          ]
+        },
+        "coordinates": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "Location": {
+      "title": "Location",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "raw": {
+          "type": "string",
+          "description": "As written or spoken; may contain the applicant's address, so it is never sent to models or map services."
+        },
+        "village": {
+          "type": "string"
+        },
+        "block": {
+          "type": "string",
+          "description": "Block, mandal or taluka."
+        },
+        "district": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "pincode": {
+          "type": "string",
+          "pattern": "^\\d{6}$"
+        },
+        "lgdCodes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "type": "string"
+            },
+            "district": {
+              "type": "string"
+            },
+            "subDistrict": {
+              "type": "string"
+            },
+            "village": {
+              "type": "string"
+            }
+          }
+        },
+        "geo": {
+          "$ref": "#/definitions/GeoPoint"
+        },
+        "precision": {
+          "type": "string",
+          "enum": [
+            "pin",
+            "village",
+            "block",
+            "district",
+            "none"
+          ]
+        }
+      }
+    },
+    "Sealed": {
+      "title": "Sealed",
+      "description": "AES-256-GCM sealed JSON written by the entrepreneur PII vault (backend/src/modules/entrepreneur/pii-vault.ts), bound to its record ID so a copied ciphertext cannot be opened on another record. Base64 parts. Never store plaintext personal data outside a Sealed value.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v",
+        "iv",
+        "tag",
+        "ct"
+      ],
+      "properties": {
+        "v": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        },
+        "iv": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "ct": {
+          "type": "string"
+        }
+      }
+    },
+    "Consent": {
+      "title": "Consent",
+      "description": "A consent the entrepreneur gave (PRD sections 5 and 21), append-only per purpose: revoking stamps the record and granting again adds a new one. Processing consent is required; partner sharing is separate and optional, scoped by partner type. Revocation takes effect on the next request. Service logic: backend/src/modules/entrepreneur/consent.ts (Dev 1).",
+      "x-collection": "consents",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entrepreneurId",
+        "purpose",
+        "scope",
+        "status",
+        "method",
+        "language",
+        "noticeVersion",
+        "grantedAt",
+        "grantedByUserId"
+      ],
+      "properties": {
+        "entrepreneurId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "processing",
+            "partner_sharing"
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "all",
+            "sector_partner",
+            "funding_partner"
+          ],
+          "description": "all for processing; the partner type for partner_sharing."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "revoked"
+          ],
+          "default": "active"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "app_tap",
+            "app_voice",
+            "assisted_recorded"
+          ]
+        },
+        "language": {
+          "$ref": "#/definitions/Language",
+          "description": "Language the notice was shown in."
+        },
+        "noticeVersion": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "grantedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "grantedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "revokedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "revokedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "evidenceDocumentId": {
+          "$ref": "#/definitions/ObjectId",
+          "description": "Assisted mode: the recording of the applicant's spoken consent (M-17)."
+        }
+      }
+    },
+    "Decision": {
+      "title": "Decision",
+      "description": "A human decision (W-11). The AI never decides. Overriding the AI band or pathway requires a reason.",
+      "x-collection": "decisions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "ownerOrgId",
+        "userId",
+        "decision"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "userId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "evaluationId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "shortlist",
+            "not_yet",
+            "more_info"
+          ]
+        },
+        "pathway": {
+          "$ref": "#/definitions/Pathway"
+        },
+        "overrideReason": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "feedbackEn": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "feedbackLocal": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "feedbackLang": {
+          "$ref": "#/definitions/Language"
+        },
+        "audioDocumentId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Document": {
+      "title": "Document",
+      "description": "An original file. Originals are immutable (A-01); derived page images and crops are separate keys.",
+      "x-collection": "documents",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "ownerOrgId",
+        "kind",
+        "mime",
+        "storageKey",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "audio",
+            "pdf",
+            "image",
+            "text"
+          ]
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "pitch",
+            "followup_answer",
+            "consent_evidence",
+            "feedback_audio",
+            "question_audio"
+          ],
+          "default": "pitch"
+        },
+        "mime": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "storageKey": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f\\d]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "title": "DocumentPage",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "n"
+            ],
+            "properties": {
+              "n": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "imageKey": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "textLayerQuality": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "readBy": {
+                "type": "string",
+                "enum": [
+                  "text_layer",
+                  "ocr",
+                  "vision",
+                  "unread"
+                ]
+              },
+              "blurScore": {
+                "type": "number",
+                "minimum": 0
+              },
+              "blurBoxes": {
+                "type": "array",
+                "description": "Regions holding personal data, blurred for roles that may not see them (A-10).",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                }
+              }
+            }
+          }
+        },
+        "durationSec": {
+          "type": "number",
+          "minimum": 0
+        },
+        "codec": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "uploadedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Entrepreneur": {
+      "title": "Entrepreneur",
+      "description": "The applicant as a person (PRD section 19). For phone sign-in the _id equals the entrepreneur's User _id, so submission scope can use the signed-in user ID; assisted and imported applicants get their own _id. Personal details are sealed in `personal` (never selected by default) and contactHashes allow duplicate matching without decrypting. Nothing here is sent to models or map services (D-13).",
+      "x-collection": "entrepreneurs",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "createdVia"
+      ],
+      "properties": {
+        "userId": {
+          "$ref": "#/definitions/ObjectId",
+          "description": "Linked entrepreneur sign-in account."
+        },
+        "personal": {
+          "$ref": "#/definitions/Sealed",
+          "description": "Sealed JSON: name, and when collected phone, email, gender and social category (Q-23)."
+        },
+        "contactHashes": {
+          "type": "array",
+          "description": "Keyed HMAC-SHA256 of each normalised phone/email (backend/src/crypto.ts), hex.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{64}$"
+          }
+        },
+        "placeholderContact": {
+          "type": "boolean",
+          "description": "True when the contact is a known dummy (for example 9000000080 or @demo.com), so it is excluded from duplicate matching."
+        },
+        "language": {
+          "$ref": "#/definitions/Language"
+        },
+        "district": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "pincode": {
+          "type": "string",
+          "maxLength": 12
+        },
+        "trade": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Trade or skill as given; the normalised trade key lives on the submission."
+        },
+        "education": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "createdVia": {
+          "type": "string",
+          "enum": [
+            "self",
+            "assisted",
+            "import"
+          ]
+        },
+        "facilitatorId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "clientApplicantId": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Assisted mode: the facilitator device's ID for this applicant, so an offline retry does not register them twice (Dev 1)."
+        },
+        "homeOrgId": {
+          "$ref": "#/definitions/ObjectId",
+          "description": "Centre that owns the relationship, once assigned."
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "EvalRun": {
+      "title": "EvalRun",
+      "description": "W-33: one evaluation-harness run on the organiser dataset (ai/eval/harness.py), recorded once per report. Aggregate metrics and per-file outcomes keyed by manifest ID only: no source text, names or model output.",
+      "x-collection": "evalRuns",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reportSha256",
+        "runAt",
+        "total",
+        "assessed",
+        "complete"
+      ],
+      "properties": {
+        "reportSha256": {
+          "type": "string",
+          "pattern": "^[a-f\\d]{64}$"
+        },
+        "runAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "manifestVersion": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "rubricKey": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "rubricVersion": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "promptVersion": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assessed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingExtraction": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "fieldStateAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "canonicalValueAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "flagRecall": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "durationP50Ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "durationP95Ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "computeSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sum of per-file durations: local compute time, the real cost (hosted AI cost is zero by policy)."
+        },
+        "parity": {
+          "type": "array",
+          "items": {
+            "title": "ParityGroup",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "group",
+              "count",
+              "gap",
+              "pass"
+            ],
+            "properties": {
+              "group": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "gap": {
+                "type": "number",
+                "minimum": 0
+              },
+              "pass": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "perFile": {
+          "type": "array",
+          "items": {
+            "title": "EvalFileResult",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 80,
+                "description": "Manifest file ID, not a person or file name."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "assessed",
+                  "missing_extraction",
+                  "failed"
+                ]
+              },
+              "band": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "potential": {
+                "type": "number"
+              },
+              "durationMs": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "fieldChecks": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "fieldChecksCorrect": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "CitedText": {
+      "title": "CitedText",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "evidence"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(s_\\d{4,}|check:[a-z0-9_]+)$"
+          }
+        }
+      }
+    },
+    "Evaluation": {
+      "title": "Evaluation",
+      "description": "One scoring of one submission (PRD sections 13-14). Dev 2 owns the content; potential, completeness, band, quadrant and pathway are computed in code (D-12). A null domain score means Not assessed (D-11). Old evaluations are kept.",
+      "x-collection": "evaluations",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "ownerOrgId",
+        "rubricKey",
+        "rubricVersion",
+        "domains"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "rubricKey": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "rubricVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "promptVersion": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "models": {
+          "type": "object",
+          "description": "Model names per task, for audit (local only, D-24).",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "title": "DomainScore",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "score",
+              "evidence"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z_]{2,40}$"
+              },
+              "score": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "evidence": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(s_\\d{4,}|check:[a-z0-9_]+)$"
+                }
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "runs": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 5
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "potential": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "completeness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "band": {
+          "$ref": "#/definitions/Band"
+        },
+        "quadrant": {
+          "$ref": "#/definitions/Quadrant"
+        },
+        "pathway": {
+          "$ref": "#/definitions/Pathway"
+        },
+        "strengths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CitedText"
+          }
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CitedText"
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CitedText"
+          }
+        },
+        "toValidate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CitedText"
+          }
+        },
+        "interviewQuestions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CitedText"
+          }
+        },
+        "financialChecks": {
+          "type": "array",
+          "items": {
+            "title": "FinancialCheck",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "checkId",
+              "label",
+              "ok"
+            ],
+            "properties": {
+              "checkId": {
+                "type": "string",
+                "pattern": "^check:[a-z0-9_]+$"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "written": {
+                "type": "number"
+              },
+              "expected": {
+                "type": "number"
+              },
+              "ok": {
+                "type": "boolean"
+              },
+              "segIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^s_\\d{4,}$"
+                }
+              }
+            }
+          }
+        },
+        "needsAttention": {
+          "type": "boolean",
+          "default": false
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "FieldValue": {
+      "title": "FieldValue",
+      "description": "One canonical idea field after extraction. Every value cites segments or it is dropped (D-09).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "segIds"
+      ],
+      "properties": {
+        "state": {
+          "$ref": "#/definitions/AnswerState"
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "In the original language."
+        },
+        "valueEn": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "number": {
+          "type": "number",
+          "description": "Parsed numeric value where the field is a quantity (prices, revenue, investment)."
+        },
+        "segIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^s_\\d{4,}$"
+          }
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "extract",
+            "profile",
+            "manual"
+          ]
+        }
+      }
+    },
+    "Flag": {
+      "title": "Flag",
+      "description": "One data-quality finding (PRD section 12), linked to its evidence.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "severity",
+        "message",
+        "evidence"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "enum": [
+            "missing",
+            "not_asked",
+            "irrelevant",
+            "unassessable",
+            "overwritten",
+            "implausible",
+            "inconsistent",
+            "financial_inconsistency",
+            "language_mismatch",
+            "low_read_confidence",
+            "blurred_page",
+            "placeholder_contact",
+            "possible_duplicate",
+            "shared_contact",
+            "custom_template"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "warn",
+            "block"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "evidence": {
+          "type": "array",
+          "description": "Segment IDs (s_0001) or computed check IDs (check:<name>).",
+          "items": {
+            "type": "string",
+            "pattern": "^(s_\\d{4,}|check:[a-z0-9_]+)$"
+          }
+        },
+        "field": {
+          "$ref": "#/definitions/CanonicalField"
+        }
+      }
+    },
+    "ImportBatch": {
+      "title": "ImportBatch",
+      "description": "Bulk import progress (W-19, owned by Dev 2). File names can contain applicant names, so items keep only an index and type.",
+      "x-collection": "importBatches",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orgId",
+        "cohortId",
+        "uploadedByUserId",
+        "fileCount",
+        "status"
+      ],
+      "properties": {
+        "orgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "cohortId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "uploadedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "fileCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "uploading",
+            "processing",
+            "done",
+            "failed"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "title": "ImportItem",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "index",
+              "status"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "audio",
+                  "pdf",
+                  "image",
+                  "text"
+                ]
+              },
+              "documentId": {
+                "$ref": "#/definitions/ObjectId"
+              },
+              "submissionId": {
+                "$ref": "#/definitions/ObjectId"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "queued",
+                  "done",
+                  "failed",
+                  "skipped"
+                ]
+              },
+              "error": {
+                "type": "string",
+                "maxLength": 300
+              }
+            }
+          }
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Invitation": {
+      "title": "Invitation",
+      "description": "One-time staff invitation (D-27). Only a SHA-256 hash of the token is stored. The server checks that the inviter may grant this role in this organisation.",
+      "x-collection": "invitations",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tokenHash",
+        "role",
+        "orgId",
+        "invitedByUserId",
+        "expiresAt"
+      ],
+      "properties": {
+        "tokenHash": {
+          "type": "string",
+          "pattern": "^[a-f\\d]{64}$"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "role": {
+          "$ref": "#/definitions/Role"
+        },
+        "orgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "invitedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "expiresAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "acceptedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "acceptedUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "revokedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Job": {
+      "title": "Job",
+      "description": "A pipeline job in the MongoDB queue (D-26). The API enqueues; the worker claims with an atomic lease, extends it while working, then marks done or failed. idempotencyKey stops double enqueues.",
+      "x-collection": "jobs",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "ownerOrgId",
+        "fromStage",
+        "reason",
+        "idempotencyKey",
+        "status",
+        "attempts",
+        "maxAttempts",
+        "availableAt"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "fromStage": {
+          "$ref": "#/definitions/Stage"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "new",
+            "followup",
+            "transcript_edit",
+            "rescore",
+            "retry"
+          ]
+        },
+        "rubricKey": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "rubricVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "inputVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "requestedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "leased",
+            "done",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "availableAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "leaseUntil": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "workerId": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "currentStage": {
+          "$ref": "#/definitions/Stage"
+        },
+        "error": {
+          "title": "JobError",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "message"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "maxLength": 60,
+              "description": "For example capability_unavailable (D-24), invalid_input, timeout."
+            },
+            "message": {
+              "type": "string",
+              "maxLength": 600,
+              "description": "Safe to show staff: no prompts, personal data or raw stack traces."
+            },
+            "stage": {
+              "$ref": "#/definitions/Stage"
+            }
+          }
+        },
+        "finishedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Org": {
+      "title": "Org",
+      "description": "An organisation in the hub-and-spoke network (PRD section 5). HQ has no parent; centres report to HQ; implementation partners report to a centre.",
+      "x-collection": "orgs",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "type": {
+          "$ref": "#/definitions/OrgType"
+        },
+        "parentOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "active": {
+          "type": "boolean",
+          "default": true
+        },
+        "fundingMode": {
+          "$ref": "#/definitions/FundingMode"
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "districts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Language"
+          }
+        },
+        "sectors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "tradeKeys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          }
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Outcome": {
+      "title": "Outcome",
+      "description": "One outcome stage after selection (W-15). HQ and funders see totals only.",
+      "x-collection": "outcomes",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "ownerOrgId",
+        "stage",
+        "date",
+        "recordedByUserId"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "ENROLLED",
+            "TRAINED",
+            "LOAN_APPLIED",
+            "LOAN_RECEIVED",
+            "BUSINESS_STARTED",
+            "STATUS_3M",
+            "STATUS_6M"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "amount": {
+          "$ref": "#/definitions/Rupees"
+        },
+        "date": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "recordedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "PasswordReset": {
+      "title": "PasswordReset",
+      "description": "One-time staff password-reset link issued by an administrator in scope (no email provider, like invitations, D-27). Only a SHA-256 hash of the token is stored. Valid 24 hours, single use; issuing a new link withdraws earlier unused ones.",
+      "x-collection": "passwordResets",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tokenHash",
+        "userId",
+        "orgId",
+        "issuedByUserId",
+        "expiresAt"
+      ],
+      "properties": {
+        "tokenHash": {
+          "type": "string",
+          "pattern": "^[a-f\\d]{64}$"
+        },
+        "userId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "orgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "issuedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "expiresAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "usedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "revokedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "PipelineRun": {
+      "title": "PipelineRun",
+      "description": "Timing and compute record per stage (A-29). Hosted AI cost is zero by policy (D-24), so compute time, tokens and model are what matter.",
+      "x-collection": "pipelineRuns",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jobId",
+        "submissionId",
+        "ownerOrgId",
+        "stage",
+        "status",
+        "startedAt"
+      ],
+      "properties": {
+        "jobId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "stage": {
+          "$ref": "#/definitions/Stage"
+        },
+        "status": {
+          "$ref": "#/definitions/StageStatus"
+        },
+        "startedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "endedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "provider": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "tokensIn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tokensOut": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "llmCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "computeSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hostedCostInr": {
+          "type": "number",
+          "enum": [
+            0
+          ],
+          "default": 0
+        },
+        "error": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Programme": {
+      "title": "Programme",
+      "description": "A Tata STRIVE offering run by a centre, such as EDP Varanasi (glossary).",
+      "x-collection": "programmes",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orgId",
+        "name",
+        "status"
+      ],
+      "properties": {
+        "orgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "rubricKey": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Rubric family; new submissions use its latest published version."
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Language"
+          }
+        },
+        "districts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "closed"
+          ]
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "QA": {
+      "title": "QA",
+      "description": "One question-answer pair after structuring (A-09).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qId",
+        "state"
+      ],
+      "properties": {
+        "qId": {
+          "type": "string",
+          "pattern": "^q\\d{1,3}$"
+        },
+        "question": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "questionLang": {
+          "$ref": "#/definitions/Language"
+        },
+        "answerSegIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^s_\\d{4,}$"
+          }
+        },
+        "answerLangs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Language"
+          }
+        },
+        "canonicalField": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/CanonicalField"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "additional"
+              ]
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/definitions/AnswerState"
+        },
+        "relevant": {
+          "type": "boolean"
+        },
+        "overwrites": {
+          "type": "array",
+          "items": {
+            "title": "Overwrite",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "to": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "segId": {
+                "type": "string",
+                "pattern": "^s_\\d{4,}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ReviewSample": {
+      "title": "ReviewSample",
+      "description": "W-06 second-review sampling: HQ re-reads a sample of centre decisions and records whether it agrees. One verdict per decision; feeds the agreement rate per centre. Notes must not repeat applicant personal data.",
+      "x-collection": "reviewSamples",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decisionId",
+        "submissionId",
+        "ownerOrgId",
+        "reviewerUserId",
+        "agrees"
+      ],
+      "properties": {
+        "decisionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "reviewerUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "agrees": {
+          "type": "boolean"
+        },
+        "suggestedDecision": {
+          "type": "string",
+          "enum": [
+            "shortlist",
+            "not_yet",
+            "more_info"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "ReviewSession": {
+      "title": "ReviewSession",
+      "description": "D-33 pitch review: one per submission. The worker (ai/review) writes the reading of the pitch, verdict per topic and the follow-up questions; the API appends answers to the inbox. Segment and answer text is redacted; the raw answers are private originals referenced by storageId.",
+      "x-collection": "reviewSessions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "ownerOrgId",
+        "status",
+        "round"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "reviewing",
+            "needs_input",
+            "complete"
+          ]
+        },
+        "round": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Redacted pitch and answer lines (centre-extracted-input segment shape)."
+          }
+        },
+        "redactedSpans": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fields": {
+          "type": "object",
+          "description": "Per topic: state, evidence (segment ids) and a one-line value."
+        },
+        "numbers": {
+          "type": "object",
+          "description": "Cited amounts: investment, self, loan, unit_price, monthly_volume, monthly_revenue."
+        },
+        "location": {
+          "type": "object",
+          "description": "Cited place: village, district, state and segId."
+        },
+        "businessType": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "verdicts": {
+          "type": "object",
+          "description": "Per core topic: verdict (sufficient, vague, missing, contradictory, declined) and reason."
+        },
+        "attempts": {
+          "type": "object",
+          "description": "How many times each topic has been asked."
+        },
+        "declined": {
+          "type": "object",
+          "description": "Topics the entrepreneur has not decided, with the reason shown to assessors."
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "title": "ReviewQuestion",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "qId",
+              "field",
+              "round",
+              "questionEn",
+              "status"
+            ],
+            "properties": {
+              "qId": {
+                "type": "string",
+                "pattern": "^f\\d{1,3}$"
+              },
+              "field": {
+                "$ref": "#/definitions/CanonicalField"
+              },
+              "round": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "questionEn": {
+                "type": "string",
+                "maxLength": 600
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "answered",
+                  "skipped"
+                ]
+              },
+              "answerSegIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 80
+                }
+              },
+              "answerText": {
+                "type": "string",
+                "maxLength": 4000,
+                "description": "Redacted answer, as the model saw it."
+              }
+            }
+          }
+        },
+        "inbox": {
+          "type": "array",
+          "description": "Answers received by the API and not yet merged by the worker.",
+          "items": {
+            "title": "ReviewAnswer",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "qId",
+              "storageId",
+              "receivedAt",
+              "byUserId"
+            ],
+            "properties": {
+              "qId": {
+                "type": "string",
+                "pattern": "^f\\d{1,3}$"
+              },
+              "storageId": {
+                "$ref": "#/definitions/ObjectId"
+              },
+              "receivedAt": {
+                "$ref": "#/definitions/DateTime"
+              },
+              "byUserId": {
+                "$ref": "#/definitions/ObjectId"
+              }
+            }
+          }
+        },
+        "promptVersions": {
+          "type": "object"
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "calls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "step, ms, ok, round: timing only, never prompts or output."
+          }
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "RoutingRule": {
+      "title": "RoutingRule",
+      "description": "W-04: which partner organisation receives which trades, sectors and districts. Suggestions are still limited by the entrepreneur's consent.",
+      "x-collection": "routingRules",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "partnerOrgId",
+        "partnerType",
+        "active"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "partnerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "partnerType": {
+          "$ref": "#/definitions/PartnerType"
+        },
+        "tradeKeys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          }
+        },
+        "sectors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "districts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "createdByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Rubric": {
+      "title": "Rubric",
+      "description": "One immutable rubric version (PRD section 13, W-02). Saving a change creates a new version; evaluations record the version they used.",
+      "x-collection": "rubrics",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rubricKey",
+        "version",
+        "name",
+        "domains",
+        "bands",
+        "status"
+      ],
+      "properties": {
+        "rubricKey": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]{2,60}$"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "domains": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "title": "RubricDomain",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "label",
+              "weight",
+              "lowDescriptor",
+              "highDescriptor"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-z_]{2,40}$"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Percent; potential domains sum to 100."
+              },
+              "lowDescriptor": {
+                "type": "string",
+                "maxLength": 400,
+                "description": "What earns a 1."
+              },
+              "highDescriptor": {
+                "type": "string",
+                "maxLength": 400,
+                "description": "What earns a 5."
+              },
+              "evidenceFields": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/CanonicalField"
+                }
+              }
+            }
+          }
+        },
+        "completenessWeights": {
+          "type": "object",
+          "description": "Weight per canonical field for completeness; the weights total 100.",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "bands": {
+          "title": "RubricBands",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "strong",
+            "promising",
+            "minCoverage"
+          ],
+          "properties": {
+            "strong": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "promising": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "minCoverage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "pathwayRules": {
+          "title": "PathwayRules",
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Thresholds read by the pathway calculator (ai/intel/scoring.py). Missing keys use the calculator defaults.",
+          "properties": {
+            "requestInfoBelowCompleteness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Below this completeness the pathway is request information (default 70)."
+            },
+            "highCompleteness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Completeness at or above this counts as complete for the quadrant (default 70)."
+            },
+            "fundingMinFeasibility": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "Strong ideas need at least this feasibility score for funding consideration (default 4)."
+            },
+            "fundingMaxLoan": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Largest requested loan in rupees for funding consideration (default 200000)."
+            },
+            "skillingMaxReadiness": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "Readiness at or below this suggests skilling (default 2)."
+            },
+            "mentoringWeakAtOrBelow": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "A promising idea with any listed domain at or below this suggests mentoring (default 2)."
+            },
+            "mentoringWeakDomains": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z_]{2,40}$"
+              },
+              "description": "Domains checked for the mentoring rule."
+            }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "published",
+            "archived"
+          ]
+        },
+        "createdByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Segment": {
+      "title": "Segment",
+      "description": "The smallest piece of source text with an ID: every claim points to one (glossary, D-09). Text is redacted (A-10) before any model sees it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "segId",
+        "source",
+        "text",
+        "lang"
+      ],
+      "properties": {
+        "segId": {
+          "type": "string",
+          "pattern": "^s_\\d{4,}$"
+        },
+        "source": {
+          "$ref": "#/definitions/Anchor"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "lang": {
+          "$ref": "#/definitions/Language"
+        },
+        "textEn": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "translit": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "struck": {
+          "type": "boolean",
+          "default": false
+        },
+        "supersededBy": {
+          "type": "string",
+          "pattern": "^s_\\d{4,}$"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "Share": {
+      "title": "Share",
+      "description": "One consent-gated route of an idea to a partner (PRD section 5). The source of truth for partner access; the platform share-sync service mirrors it into Submission.partnerAccess.",
+      "x-collection": "shares",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "fromOrgId",
+        "toOrgId",
+        "partnerType",
+        "status"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "fromOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "toOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "partnerType": {
+          "$ref": "#/definitions/PartnerType"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "routingRuleId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "consentId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "SUGGESTED",
+            "SENT",
+            "VIEWED",
+            "INTERESTED",
+            "CONTACT_REQUESTED",
+            "CONTACT_ACCEPTED",
+            "DECLINED"
+          ]
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "title": "ShareEvent",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "status",
+              "at"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "SUGGESTED",
+                  "SENT",
+                  "VIEWED",
+                  "INTERESTED",
+                  "CONTACT_REQUESTED",
+                  "CONTACT_ACCEPTED",
+                  "DECLINED"
+                ]
+              },
+              "at": {
+                "$ref": "#/definitions/DateTime"
+              },
+              "byUserId": {
+                "$ref": "#/definitions/ObjectId"
+              }
+            }
+          }
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "StageEvent": {
+      "title": "StageEvent",
+      "description": "Progress of one pipeline stage (A-28, D-26). Written by the worker to the capped stageEvents collection; the API streams it over SSE to viewers whose scope includes ownerOrgId. summary must not contain personal data or model prompts.",
+      "x-collection": "stageEvents",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jobId",
+        "submissionId",
+        "ownerOrgId",
+        "stage",
+        "status",
+        "at"
+      ],
+      "properties": {
+        "jobId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "stage": {
+          "$ref": "#/definitions/Stage"
+        },
+        "status": {
+          "$ref": "#/definitions/StageStatus"
+        },
+        "at": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "summary": {
+          "type": "object",
+          "description": "Small, non-personal counts such as segments or languages for the live card."
+        },
+        "error": {
+          "type": "string",
+          "maxLength": 600
+        }
+      }
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "One idea from one entrepreneur (PRD section 19). Personal data belongs sealed on the Entrepreneur; the deprecated `applicant` field is the only exception (D-30). Every staff read is scoped by the tenancy rules in backend/src/auth.",
+      "x-collection": "submissions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entrepreneurId",
+        "ownerOrgId",
+        "createdByUserId",
+        "status",
+        "shares"
+      ],
+      "properties": {
+        "entrepreneurId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId",
+          "description": "The centre that owns and decides."
+        },
+        "sourceOrgId": {
+          "$ref": "#/definitions/ObjectId",
+          "description": "Who collected it, when different from the owner (an implementation partner)."
+        },
+        "programmeId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "cohortId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "createdByUserId": {
+          "$ref": "#/definitions/ObjectId",
+          "description": "Entrepreneur, facilitator or importing staff account."
+        },
+        "importBatchId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "channel": {
+          "$ref": "#/definitions/Channel",
+          "description": "How the submission arrived; optional until intake owners set it on every write."
+        },
+        "status": {
+          "$ref": "#/definitions/SubmissionStatus",
+          "default": "DRAFT"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Short English headline; empty until extraction."
+        },
+        "summaryEn": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "templateId": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Language"
+          }
+        },
+        "tradeKey": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "sector": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "documentIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ObjectId"
+          }
+        },
+        "qa": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/QA"
+          }
+        },
+        "fields": {
+          "type": "object",
+          "description": "Keyed by CanonicalField.",
+          "additionalProperties": {
+            "$ref": "#/definitions/FieldValue"
+          }
+        },
+        "profile": {
+          "title": "SubmissionProfile",
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Non-personal profile facts used for assessment.",
+          "properties": {
+            "education": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "marketType": {
+              "type": "string",
+              "enum": [
+                "urban",
+                "rural",
+                "semi_urban"
+              ]
+            },
+            "existingBusiness": {
+              "type": "boolean"
+            },
+            "investmentRequired": {
+              "$ref": "#/definitions/Rupees"
+            },
+            "selfInvestment": {
+              "$ref": "#/definitions/Rupees"
+            },
+            "expectedLoan": {
+              "$ref": "#/definitions/Rupees"
+            }
+          }
+        },
+        "location": {
+          "$ref": "#/definitions/Location"
+        },
+        "quality": {
+          "title": "SubmissionQuality",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "completeness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "coverage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "relevanceRatio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "flags": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Flag"
+              }
+            }
+          }
+        },
+        "followUps": {
+          "type": "array",
+          "items": {
+            "title": "FollowUp",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "qId",
+              "questionEn",
+              "status"
+            ],
+            "properties": {
+              "qId": {
+                "type": "string",
+                "pattern": "^f\\d{1,3}$"
+              },
+              "field": {
+                "$ref": "#/definitions/CanonicalField"
+              },
+              "questionEn": {
+                "type": "string",
+                "maxLength": 600
+              },
+              "questionLocal": {
+                "type": "string",
+                "maxLength": 1200
+              },
+              "audioDocumentId": {
+                "$ref": "#/definitions/ObjectId"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "answered",
+                  "skipped"
+                ]
+              },
+              "answerDocumentId": {
+                "$ref": "#/definitions/ObjectId"
+              }
+            }
+          }
+        },
+        "latestEvaluationId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "fundingReady": {
+          "type": "boolean",
+          "default": false
+        },
+        "applicant": {
+          "title": "LegacyApplicant",
+          "type": "object",
+          "additionalProperties": false,
+          "deprecated": true,
+          "description": "DEPRECATED, transitional (D-30): plaintext contact copied onto the submission by the starter flows. New code must read the applicant from Entrepreneur.personal; remove once assisted intake writes sealed profiles. Synthetic data only.",
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "phone": {
+              "type": "string",
+              "maxLength": 20
+            }
+          }
+        },
+        "shares": {
+          "type": "array",
+          "description": "Partner access index read by the shared submission scope: an active entry for the viewer's organisation and partner type grants access, and contactAccepted unlocks the applicant's contact details. Written by consent and share services (Devs 1 and 4); revocation deactivates entries so access ends on the next request.",
+          "items": {
+            "title": "SubmissionShare",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [],
+            "properties": {
+              "_id": {
+                "$ref": "#/definitions/ObjectId",
+                "description": "Generated per entry; the Idea Passport exposes it as shareId."
+              },
+              "orgId": {
+                "$ref": "#/definitions/ObjectId"
+              },
+              "partnerType": {
+                "$ref": "#/definitions/PartnerType"
+              },
+              "active": {
+                "type": "boolean"
+              },
+              "contactAccepted": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "description": "Fields may be absent on legacy entries; the scope only admits entries whose orgId, partnerType and active=true all match."
+          },
+          "default": []
+        },
+        "duplicateOf": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "linkedSubmissionIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ObjectId"
+          }
+        },
+        "inputVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Bumped when inputs change (follow-up answer, transcript edit); part of the job idempotency key."
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Trade": {
+      "title": "Trade",
+      "description": "Normalised business type (glossary). Dev 2 owns the trade content; HQ edits it through W-32.",
+      "x-collection": "trades",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "label",
+        "sector"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]{2,60}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "sector": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "nicCodes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^\\d{2,5}$"
+          }
+        },
+        "osmTags": {
+          "type": "array",
+          "description": "OpenStreetMap key=value tags for nearby-business search.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_:]+=[A-Za-z0-9_;:-]+$"
+          }
+        },
+        "synonyms": {
+          "type": "object",
+          "description": "Synonyms per language code.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 120
+            }
+          }
+        },
+        "active": {
+          "type": "boolean",
+          "default": true
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "Transcript": {
+      "title": "Transcript",
+      "description": "Versioned segments for one submission. Edits create a new version; old versions are kept.",
+      "x-collection": "transcripts",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "ownerOrgId",
+        "version",
+        "segments"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "ownerOrgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Segment"
+          }
+        },
+        "editedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    },
+    "User": {
+      "title": "User",
+      "description": "A sign-in account. Staff sign in by email and password; entrepreneurs by verified Firebase phone token. Password hashes are never selected by default or returned.",
+      "x-collection": "users",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "displayName",
+        "role"
+      ],
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "passwordHash": {
+          "type": "string"
+        },
+        "firebaseUid": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/definitions/Role"
+        },
+        "orgId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "disabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "invitedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/DateTime"
+        }
+      }
+    }
+  }
+}

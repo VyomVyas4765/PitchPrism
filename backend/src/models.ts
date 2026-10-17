@@ -1,3 +1,5 @@
+// Barrel kept for existing imports. Models live in ./models/index.ts and are built from the shared contracts.
+export * from './models/index.js';
 import mongoose, { Schema } from 'mongoose';
 import { ORG_TYPES, ROLES } from '@pitchprism/contracts';
 const orgSchema = new Schema({

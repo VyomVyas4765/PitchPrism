@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Decision",
+  "description": "A human decision (W-11). The AI never decides. Overriding the AI band or pathway requires a reason.",
+  "x-collection": "decisions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["submissionId", "ownerOrgId", "userId", "decision"],
+  "properties": {
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "userId": { "$ref": "common.json#/definitions/ObjectId" },
+    "evaluationId": { "$ref": "common.json#/definitions/ObjectId" },
+    "decision": { "type": "string", "enum": ["shortlist", "not_yet", "more_info"] },
+    "pathway": { "$ref": "common.json#/definitions/Pathway" },
+    "overrideReason": { "type": "string", "maxLength": 1000 },
+    "feedbackEn": { "type": "string", "maxLength": 4000 },
+    "feedbackLocal": { "type": "string", "maxLength": 8000 },
+    "feedbackLang": { "$ref": "common.json#/definitions/Language" },
+    "audioDocumentId": { "$ref": "common.json#/definitions/ObjectId" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

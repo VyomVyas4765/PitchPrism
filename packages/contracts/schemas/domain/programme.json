@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Programme",
+  "description": "A Tata STRIVE offering run by a centre, such as EDP Varanasi (glossary).",
+  "x-collection": "programmes",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["orgId", "name", "status"],
+  "properties": {
+    "orgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "rubricKey": { "type": "string", "maxLength": 60, "description": "Rubric family; new submissions use its latest published version." },
+    "languages": { "type": "array", "items": { "$ref": "common.json#/definitions/Language" } },
+    "districts": { "type": "array", "items": { "type": "string", "maxLength": 80 } },
+    "status": { "type": "string", "enum": ["draft", "active", "closed"] },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

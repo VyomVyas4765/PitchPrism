@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import { HttpError } from '../../errors.js';
-import { Org, Submission } from '../../models.js';
+import { enqueueJob } from '../../platform/jobs.js';
+import { Job, Org, Submission } from '../../models.js';
 import { requirePermission } from '../../auth/authorization.js';
 import { hasProcessingConsent } from './consent.js';
 import { Entrepreneur, LANGUAGES } from './models.js';
@@ -98,7 +99,7 @@ export function intakeRouter(config: Config) {
     } else {
       // Assisted pitch: the applicant must be one this facilitator registered; the centre comes from the session.
       if (!input.entrepreneurId || input.centreId) throw new HttpError(400, 'Check the request fields and try again.');
-      if (!await Entrepreneur.exists({ _id: input.entrepreneurId, createdVia: 'assisted', facilitatorId: user.id })) throw new HttpError(404, 'Applicant not found.');
+      if (!await Entrepreneur.exists({ _id: input.entrepreneurId, createdVia: 'assisted' }).setOptions({ tenant: { facilitatorId: user.id } })) throw new HttpError(404, 'Applicant not found.');
       entrepreneurId = input.entrepreneurId;
       sourceOrgId = user.orgId!;
       if (user.orgType === 'centre') centreId = user.orgId!;
@@ -209,12 +210,15 @@ export function intakeRouter(config: Config) {
           sha256: createHash('sha256').update(content).digest('hex'), receivedBytes: content.length, state: 'complete', storageId, completedAt: new Date() },
       }, { upsert: true });
     }
-    const submission = await Submission.create({ title: 'Pitch in progress', ownerOrgId: pitch.centreId, sourceOrgId: pitch.sourceOrgId,
+    // centreId is checked above; the contract Submission requires an owner.
+    const submission = await Submission.create({ title: 'Pitch in progress', ownerOrgId: pitch.centreId!, sourceOrgId: pitch.sourceOrgId ?? undefined,
       entrepreneurId: pitch.entrepreneurId, createdByUserId: pitch.createdByUserId, status: 'DRAFT' });
     // A concurrent submit loses this status guard and removes its own Submission: one draft, one Submission.
     const updated = await Pitch.findOneAndUpdate({ _id: pitch._id, status: 'DRAFT' },
       { $set: { status: 'SUBMITTED', submissionId: submission._id, pipeline: 'pending_queue', submittedAt: new Date() } }, { returnDocument: 'after' });
-    if (!updated) { await Submission.deleteOne({ _id: submission._id }); throw new HttpError(409, 'This pitch was already submitted.'); }
+    if (!updated) { await Submission.deleteOne({ _id: submission._id }).setOptions({ tenant: { createdByUserId: pitch.createdByUserId } }); throw new HttpError(409, 'This pitch was already submitted.'); }
+    // Processing starts at once (consent was checked above); the worker records each stage for the live card.
+    await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(pitch.centreId), fromStage: 'ingest', reason: 'new', requestedByUserId: String(pitch.createdByUserId) });
     res.status(201).json(pitchView(updated, await PitchDocument.find({ pitchId: pitch._id })));
     // Reading, transcription and translation run in the background on this host (no hosted service).
     void processPitch(updated._id, vault);

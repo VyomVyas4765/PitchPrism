@@ -1,0 +1,1163 @@
+{
+  "_comment": "Synthetic, contract-valid example documents (JSON form: ObjectIds and dates as strings). No organiser or real personal data. Validated by backend/tests/contracts.test.ts against the schemas and the Mongoose models. Keyed by collection name.",
+  "orgs": [
+    {
+      "_id": "650000000000000000000001",
+      "name": "Synthetic HQ",
+      "type": "hq",
+      "active": true,
+      "state": "Maharashtra",
+      "languages": [
+        "en",
+        "hi"
+      ]
+    },
+    {
+      "_id": "650000000000000000000002",
+      "name": "Synthetic Centre Nashik",
+      "type": "centre",
+      "parentOrgId": "650000000000000000000001",
+      "active": true,
+      "state": "Maharashtra",
+      "districts": [
+        "Nashik"
+      ],
+      "languages": [
+        "mr",
+        "hi",
+        "en"
+      ],
+      "sectors": [
+        "Services",
+        "Agriculture"
+      ]
+    },
+    {
+      "_id": "650000000000000000000003",
+      "name": "Synthetic Field NGO",
+      "type": "implementation_partner",
+      "parentOrgId": "650000000000000000000002",
+      "active": true,
+      "districts": [
+        "Nashik"
+      ]
+    },
+    {
+      "_id": "650000000000000000000004",
+      "name": "Synthetic Agri Partner",
+      "type": "sector_partner",
+      "parentOrgId": "650000000000000000000001",
+      "active": true,
+      "sectors": [
+        "Agriculture"
+      ],
+      "tradeKeys": [
+        "dairy"
+      ]
+    },
+    {
+      "_id": "650000000000000000000005",
+      "name": "Synthetic Lender",
+      "type": "funding_partner",
+      "parentOrgId": "650000000000000000000001",
+      "active": true,
+      "fundingMode": "lender"
+    }
+  ],
+  "users": [
+    {
+      "_id": "651000000000000000000001",
+      "displayName": "Synthetic HQ admin",
+      "email": "fixture.hq_admin@pitchprism.test",
+      "role": "hq_admin",
+      "orgId": "650000000000000000000001",
+      "disabled": false
+    },
+    {
+      "_id": "651000000000000000000002",
+      "displayName": "Synthetic assessor",
+      "email": "fixture.centre_assessor@pitchprism.test",
+      "role": "centre_assessor",
+      "orgId": "650000000000000000000002",
+      "disabled": false
+    },
+    {
+      "_id": "651000000000000000000003",
+      "displayName": "Synthetic facilitator",
+      "email": "fixture.facilitator@pitchprism.test",
+      "role": "facilitator",
+      "orgId": "650000000000000000000002",
+      "invitedByUserId": "651000000000000000000001"
+    },
+    {
+      "_id": "651000000000000000000004",
+      "displayName": "Entrepreneur",
+      "role": "entrepreneur",
+      "firebaseUid": "synthetic-firebase-uid"
+    },
+    {
+      "_id": "651000000000000000000005",
+      "displayName": "Synthetic agri partner reviewer",
+      "email": "fixture.sector_partner@pitchprism.test",
+      "role": "sector_partner",
+      "orgId": "650000000000000000000004"
+    },
+    {
+      "_id": "651000000000000000000006",
+      "displayName": "Synthetic lender reviewer",
+      "email": "fixture.funding_partner@pitchprism.test",
+      "role": "funding_partner",
+      "orgId": "650000000000000000000005"
+    },
+    {
+      "_id": "651000000000000000000007",
+      "displayName": "Synthetic NGO reviewer",
+      "email": "fixture.implementation_partner@pitchprism.test",
+      "role": "implementation_partner",
+      "orgId": "650000000000000000000003"
+    }
+  ],
+  "invitations": [
+    {
+      "_id": "65f000000000000000000001",
+      "tokenHash": "0000000000000000000000000000000000000000000000000000000000000001",
+      "email": "fixture.new_assessor@pitchprism.test",
+      "displayName": "Synthetic new assessor",
+      "role": "centre_assessor",
+      "orgId": "650000000000000000000002",
+      "invitedByUserId": "651000000000000000000001",
+      "expiresAt": "2026-10-20T10:00:00.000Z"
+    }
+  ],
+  "programmes": [
+    {
+      "_id": "652000000000000000000001",
+      "orgId": "650000000000000000000002",
+      "name": "EDP Nashik 2026",
+      "rubricKey": "edp-default",
+      "languages": [
+        "mr",
+        "hi",
+        "en"
+      ],
+      "districts": [
+        "Nashik"
+      ],
+      "status": "active"
+    }
+  ],
+  "cohorts": [
+    {
+      "_id": "653000000000000000000001",
+      "programmeId": "652000000000000000000001",
+      "orgId": "650000000000000000000002",
+      "name": "EDP Nashik, Oct 2026",
+      "intakeStart": "2026-10-01T00:00:00.000Z",
+      "intakeEnd": "2026-10-31T00:00:00.000Z",
+      "districts": [
+        "Nashik"
+      ],
+      "status": "open"
+    }
+  ],
+  "trades": [
+    {
+      "_id": "6a1000000000000000000001",
+      "key": "tailoring",
+      "label": "Tailoring and garment stitching",
+      "sector": "Services",
+      "nicCodes": [
+        "14101"
+      ],
+      "osmTags": [
+        "shop=tailor",
+        "craft=tailor"
+      ],
+      "synonyms": {
+        "hi": [
+          "सिलाई"
+        ],
+        "mr": [
+          "शिवणकाम"
+        ]
+      },
+      "active": true
+    },
+    {
+      "_id": "6a1000000000000000000002",
+      "key": "dairy",
+      "label": "Dairy and milk products",
+      "sector": "Agriculture",
+      "osmTags": [
+        "shop=dairy"
+      ],
+      "active": true
+    }
+  ],
+  "rubrics": [
+    {
+      "_id": "6a2000000000000000000001",
+      "rubricKey": "edp-default",
+      "version": 1,
+      "name": "EDP default (matches ai/intel/scoring.py)",
+      "status": "published",
+      "domains": [
+        {
+          "key": "clarity",
+          "label": "Clarity of the idea",
+          "weight": 10,
+          "lowDescriptor": "Cannot tell what is being sold or to whom",
+          "highDescriptor": "Clear offering, customer and how it reaches them",
+          "evidenceFields": [
+            "offering",
+            "customers"
+          ]
+        },
+        {
+          "key": "customer_need",
+          "label": "Customer need",
+          "weight": 15,
+          "lowDescriptor": "No problem or need named",
+          "highDescriptor": "Names who buys, why, and how often",
+          "evidenceFields": [
+            "customers"
+          ]
+        },
+        {
+          "key": "market_potential",
+          "label": "Market potential",
+          "weight": 15,
+          "lowDescriptor": "No sense of demand",
+          "highDescriptor": "Local demand evidence: market research, numbers",
+          "evidenceFields": [
+            "market_research"
+          ]
+        },
+        {
+          "key": "feasibility",
+          "label": "Feasibility and resources",
+          "weight": 15,
+          "lowDescriptor": "Start-up cost unknown or far beyond reach",
+          "highDescriptor": "Realistic cost, named suppliers and premises",
+          "evidenceFields": [
+            "location",
+            "raw_materials",
+            "suppliers",
+            "funding"
+          ]
+        },
+        {
+          "key": "competition_awareness",
+          "label": "Competition awareness",
+          "weight": 10,
+          "lowDescriptor": "Denies or ignores competition",
+          "highDescriptor": "Names local competitors and how they operate",
+          "evidenceFields": [
+            "competition"
+          ]
+        },
+        {
+          "key": "differentiation",
+          "label": "Differentiation",
+          "weight": 10,
+          "lowDescriptor": "Same as everyone else",
+          "highDescriptor": "A credible reason customers would choose this business",
+          "evidenceFields": [
+            "offering",
+            "competition"
+          ]
+        },
+        {
+          "key": "financial_logic",
+          "label": "Revenue and financial logic",
+          "weight": 15,
+          "lowDescriptor": "No idea how money is made",
+          "highDescriptor": "Price, cost, volume and margin reasoning; consistent numbers",
+          "evidenceFields": [
+            "funding",
+            "unit_price",
+            "monthly_revenue"
+          ]
+        },
+        {
+          "key": "entrepreneur_readiness",
+          "label": "Entrepreneur readiness",
+          "weight": 10,
+          "lowDescriptor": "Idea only, no link to skills or action",
+          "highDescriptor": "Relevant experience; has already started",
+          "evidenceFields": [
+            "skills",
+            "experience"
+          ]
+        }
+      ],
+      "completenessWeights": {
+        "location": 12,
+        "offering": 15,
+        "customers": 15,
+        "market_research": 10,
+        "raw_materials": 4,
+        "suppliers": 4,
+        "funding": 12,
+        "competition": 6,
+        "unit_price": 12,
+        "monthly_revenue": 10
+      },
+      "bands": {
+        "strong": 70,
+        "promising": 50,
+        "minCoverage": 60
+      },
+      "pathwayRules": {
+        "requestInfoBelowCompleteness": 70,
+        "highCompleteness": 70,
+        "fundingMinFeasibility": 4,
+        "fundingMaxLoan": 200000,
+        "skillingMaxReadiness": 2,
+        "mentoringWeakAtOrBelow": 2,
+        "mentoringWeakDomains": [
+          "market_potential",
+          "competition_awareness",
+          "financial_logic"
+        ]
+      },
+      "createdByUserId": "651000000000000000000001"
+    }
+  ],
+  "routingRules": [
+    {
+      "_id": "660000000000000000000001",
+      "name": "Dairy ideas in Nashik to the agri partner",
+      "partnerOrgId": "650000000000000000000004",
+      "partnerType": "sector_partner",
+      "tradeKeys": [
+        "dairy"
+      ],
+      "sectors": [
+        "Agriculture"
+      ],
+      "districts": [
+        "Nashik"
+      ],
+      "active": true,
+      "createdByUserId": "651000000000000000000001"
+    }
+  ],
+  "entrepreneurs": [
+    {
+      "_id": "651000000000000000000004",
+      "userId": "651000000000000000000004",
+      "personal": {
+        "v": 1,
+        "iv": "AAAAAAAAAAAAAAAA",
+        "tag": "AAAAAAAAAAAAAAAAAAAAAA==",
+        "ct": "AAAA"
+      },
+      "contactHashes": [
+        "00000000000000000000000000000000000000000000000000000000000000aa"
+      ],
+      "placeholderContact": false,
+      "language": "mr",
+      "district": "Nashik",
+      "pincode": "422001",
+      "trade": "Dairy",
+      "education": "12th pass",
+      "createdVia": "self",
+      "homeOrgId": "650000000000000000000002"
+    }
+  ],
+  "consents": [
+    {
+      "_id": "65e000000000000000000001",
+      "entrepreneurId": "651000000000000000000004",
+      "purpose": "processing",
+      "scope": "all",
+      "status": "active",
+      "method": "app_voice",
+      "language": "mr",
+      "noticeVersion": "consent-notice-2026-10-17",
+      "grantedAt": "2026-10-17T09:00:00.000Z",
+      "grantedByUserId": "651000000000000000000004"
+    },
+    {
+      "_id": "65e000000000000000000002",
+      "entrepreneurId": "651000000000000000000004",
+      "purpose": "partner_sharing",
+      "scope": "sector_partner",
+      "status": "active",
+      "method": "app_tap",
+      "language": "mr",
+      "noticeVersion": "consent-notice-2026-10-17",
+      "grantedAt": "2026-10-17T09:00:00.000Z",
+      "grantedByUserId": "651000000000000000000004"
+    }
+  ],
+  "submissions": [
+    {
+      "_id": "655000000000000000000001",
+      "entrepreneurId": "651000000000000000000004",
+      "ownerOrgId": "650000000000000000000002",
+      "programmeId": "652000000000000000000001",
+      "cohortId": "653000000000000000000001",
+      "createdByUserId": "651000000000000000000004",
+      "channel": "app",
+      "status": "READY",
+      "title": "A small dairy selling fresh milk and curd in a Nashik village",
+      "summaryEn": "Sells fresh milk, curd and paneer to nearby households from two cows, delivered each morning.",
+      "templateId": "app-guided",
+      "languages": [
+        "mr"
+      ],
+      "tradeKey": "dairy",
+      "sector": "Agriculture",
+      "documentIds": [
+        "656000000000000000000001"
+      ],
+      "qa": [
+        {
+          "qId": "q1",
+          "question": "What will you sell?",
+          "questionLang": "en",
+          "answerSegIds": [
+            "s_0001"
+          ],
+          "answerLangs": [
+            "mr"
+          ],
+          "canonicalField": "offering",
+          "state": "answered",
+          "relevant": true
+        },
+        {
+          "qId": "q2",
+          "question": "Who will buy from you?",
+          "questionLang": "en",
+          "answerSegIds": [
+            "s_0002"
+          ],
+          "answerLangs": [
+            "mr"
+          ],
+          "canonicalField": "customers",
+          "state": "answered",
+          "relevant": true
+        },
+        {
+          "qId": "q4",
+          "question": "Have you done market research?",
+          "questionLang": "en",
+          "answerSegIds": [],
+          "canonicalField": "market_research",
+          "state": "missing"
+        }
+      ],
+      "fields": {
+        "offering": {
+          "state": "answered",
+          "value": "ताजे दूध, दही आणि पनीर",
+          "valueEn": "Fresh milk, curd and paneer",
+          "segIds": [
+            "s_0001"
+          ],
+          "source": "extract"
+        },
+        "customers": {
+          "state": "answered",
+          "valueEn": "About 40 households in the village",
+          "number": 40,
+          "segIds": [
+            "s_0002"
+          ],
+          "source": "extract"
+        },
+        "market_research": {
+          "state": "missing",
+          "segIds": []
+        }
+      },
+      "profile": {
+        "education": "12th pass",
+        "marketType": "rural",
+        "existingBusiness": false,
+        "investmentRequired": 60000,
+        "selfInvestment": 20000,
+        "expectedLoan": 40000
+      },
+      "location": {
+        "village": "Synthetic village",
+        "block": "Niphad",
+        "district": "Nashik",
+        "state": "Maharashtra",
+        "pincode": "422001",
+        "geo": {
+          "type": "Point",
+          "coordinates": [
+            73.79,
+            20.0
+          ]
+        },
+        "precision": "block"
+      },
+      "quality": {
+        "completeness": 62,
+        "coverage": 75,
+        "relevanceRatio": 1,
+        "flags": [
+          {
+            "key": "missing",
+            "severity": "warn",
+            "message": "No answer was given for market research.",
+            "evidence": [
+              "check:missing_market_research"
+            ],
+            "field": "market_research"
+          }
+        ]
+      },
+      "followUps": [
+        {
+          "qId": "f1",
+          "field": "market_research",
+          "questionEn": "Have you asked any neighbours whether they would buy from you?",
+          "status": "pending"
+        }
+      ],
+      "latestEvaluationId": "658000000000000000000001",
+      "fundingReady": false,
+      "inputVersion": 1,
+      "shares": [
+        {
+          "_id": "65a000000000000000000001",
+          "orgId": "650000000000000000000004",
+          "partnerType": "sector_partner",
+          "active": true,
+          "contactAccepted": false
+        }
+      ]
+    }
+  ],
+  "documents": [
+    {
+      "_id": "656000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "kind": "audio",
+      "purpose": "pitch",
+      "mime": "audio/ogg",
+      "storageKey": "synthetic/655000000000000000000001/pitch-1.ogg",
+      "sha256": "00000000000000000000000000000000000000000000000000000000000000bb",
+      "bytes": 240000,
+      "durationSec": 118.5,
+      "codec": "opus",
+      "uploadedByUserId": "651000000000000000000004"
+    }
+  ],
+  "transcripts": [
+    {
+      "_id": "657000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "version": 1,
+      "segments": [
+        {
+          "segId": "s_0001",
+          "source": {
+            "type": "audio",
+            "documentId": "656000000000000000000001",
+            "start": 3.2,
+            "end": 9.8
+          },
+          "text": "मी ताजे दूध, दही आणि पनीर विकणार आहे.",
+          "lang": "mr",
+          "textEn": "I will sell fresh milk, curd and paneer.",
+          "struck": false,
+          "confidence": 0.91
+        },
+        {
+          "segId": "s_0002",
+          "source": {
+            "type": "audio",
+            "documentId": "656000000000000000000001",
+            "start": 10.1,
+            "end": 17.4
+          },
+          "text": "गावातील सुमारे चाळीस घरे माझे ग्राहक असतील.",
+          "lang": "mr",
+          "textEn": "About forty households in the village will be my customers.",
+          "struck": false,
+          "confidence": 0.88
+        }
+      ]
+    }
+  ],
+  "evaluations": [
+    {
+      "_id": "658000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "rubricKey": "edp-default",
+      "rubricVersion": 1,
+      "promptVersion": "score-v0-synthetic",
+      "models": {
+        "score": "unselected-local-model"
+      },
+      "domains": [
+        {
+          "key": "clarity",
+          "score": 4,
+          "reason": "Clear products and buyers.",
+          "evidence": [
+            "s_0001",
+            "s_0002"
+          ],
+          "confidence": "high",
+          "runs": [
+            4,
+            4
+          ]
+        },
+        {
+          "key": "customer_need",
+          "score": 3,
+          "reason": "Buyers named; frequency implied by daily delivery.",
+          "evidence": [
+            "s_0002"
+          ],
+          "confidence": "medium",
+          "runs": [
+            3,
+            3
+          ]
+        },
+        {
+          "key": "market_potential",
+          "score": null,
+          "reason": "Not assessed: no market research given.",
+          "evidence": [],
+          "confidence": "low",
+          "runs": [
+            null,
+            null
+          ]
+        }
+      ],
+      "potential": 66,
+      "completeness": 62,
+      "coverage": 25,
+      "band": "insufficient",
+      "quadrant": "high_potential_incomplete",
+      "pathway": "request_information",
+      "strengths": [
+        {
+          "text": "Knows exactly what to sell and to whom.",
+          "evidence": [
+            "s_0001",
+            "s_0002"
+          ]
+        }
+      ],
+      "gaps": [
+        {
+          "text": "No evidence yet that villagers would switch from their current milk supplier.",
+          "evidence": [
+            "check:missing_market_research"
+          ]
+        }
+      ],
+      "risks": [],
+      "toValidate": [
+        {
+          "text": "Forty households is an estimate.",
+          "evidence": [
+            "s_0002"
+          ]
+        }
+      ],
+      "interviewQuestions": [
+        {
+          "text": "Where do these households buy milk today?",
+          "evidence": [
+            "s_0002"
+          ]
+        }
+      ],
+      "financialChecks": [
+        {
+          "checkId": "check:investment_split",
+          "label": "Investment = self + loan",
+          "written": 60000,
+          "expected": 60000,
+          "ok": true,
+          "segIds": []
+        }
+      ],
+      "needsAttention": false
+    }
+  ],
+  "decisions": [
+    {
+      "_id": "659000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "userId": "651000000000000000000002",
+      "evaluationId": "658000000000000000000001",
+      "decision": "more_info",
+      "pathway": "request_information",
+      "feedbackEn": "Please ask five neighbours whether they would buy from you, and at what price.",
+      "feedbackLang": "mr"
+    }
+  ],
+  "shares": [
+    {
+      "_id": "65a000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "fromOrgId": "650000000000000000000002",
+      "toOrgId": "650000000000000000000004",
+      "partnerType": "sector_partner",
+      "reason": "Dairy idea in Nashik; matches routing rule.",
+      "routingRuleId": "660000000000000000000001",
+      "consentId": "65e000000000000000000002",
+      "status": "SENT",
+      "history": [
+        {
+          "status": "SUGGESTED",
+          "at": "2026-10-17T10:00:00.000Z"
+        },
+        {
+          "status": "SENT",
+          "at": "2026-10-17T10:05:00.000Z",
+          "byUserId": "651000000000000000000002"
+        }
+      ]
+    }
+  ],
+  "outcomes": [
+    {
+      "_id": "65b000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "ENROLLED",
+      "date": "2026-11-01T00:00:00.000Z",
+      "recordedByUserId": "651000000000000000000002"
+    }
+  ],
+  "jobs": [
+    {
+      "_id": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "fromStage": "ingest",
+      "reason": "new",
+      "rubricKey": "edp-default",
+      "rubricVersion": 1,
+      "inputVersion": 1,
+      "requestedByUserId": "651000000000000000000004",
+      "idempotencyKey": "655000000000000000000001:ingest:new:1",
+      "status": "done",
+      "attempts": 1,
+      "maxAttempts": 3,
+      "availableAt": "2026-10-17T10:00:00.000Z",
+      "workerId": "synthetic-worker",
+      "finishedAt": "2026-10-17T10:00:41.000Z"
+    }
+  ],
+  "stageEvents": [
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "ingest",
+      "status": "done",
+      "at": "2026-10-17T10:00:01.000Z",
+      "ms": 300,
+      "summary": {
+        "documents": 1
+      }
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "classify",
+      "status": "done",
+      "at": "2026-10-17T10:00:02.000Z",
+      "ms": 200,
+      "summary": {
+        "formats": [
+          "audio"
+        ]
+      }
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "read",
+      "status": "done",
+      "at": "2026-10-17T10:00:12.000Z",
+      "ms": 9800,
+      "summary": {
+        "segments": 2,
+        "languages": [
+          "mr"
+        ]
+      }
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "structure",
+      "status": "done",
+      "at": "2026-10-17T10:00:13.000Z",
+      "ms": 900,
+      "summary": {
+        "questions": 3
+      }
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "redact",
+      "status": "done",
+      "at": "2026-10-17T10:00:13.500Z",
+      "ms": 400
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "translate",
+      "status": "done",
+      "at": "2026-10-17T10:00:17.000Z",
+      "ms": 3400,
+      "summary": {
+        "segments": 2
+      }
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "extract",
+      "status": "done",
+      "at": "2026-10-17T10:00:23.000Z",
+      "ms": 5900,
+      "summary": {
+        "fields": 3
+      }
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "quality",
+      "status": "done",
+      "at": "2026-10-17T10:00:26.000Z",
+      "ms": 2800,
+      "summary": {
+        "flags": 1
+      }
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "followup",
+      "status": "done",
+      "at": "2026-10-17T10:00:28.000Z",
+      "ms": 2100,
+      "summary": {
+        "questions": 1
+      }
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "normalise",
+      "status": "done",
+      "at": "2026-10-17T10:00:29.000Z",
+      "ms": 700
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "similar",
+      "status": "done",
+      "at": "2026-10-17T10:00:30.000Z",
+      "ms": 1100,
+      "summary": {
+        "similar": 0
+      }
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "local",
+      "status": "skipped",
+      "at": "2026-10-17T10:00:30.100Z",
+      "ms": 50,
+      "error": "Local market data not yet available"
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "score",
+      "status": "done",
+      "at": "2026-10-17T10:00:36.000Z",
+      "ms": 5800
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "narrative",
+      "status": "done",
+      "at": "2026-10-17T10:00:39.000Z",
+      "ms": 2900
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "rank",
+      "status": "done",
+      "at": "2026-10-17T10:00:39.400Z",
+      "ms": 300
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "feedback",
+      "status": "done",
+      "at": "2026-10-17T10:00:40.500Z",
+      "ms": 1000
+    },
+    {
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "route",
+      "status": "done",
+      "at": "2026-10-17T10:00:41.000Z",
+      "ms": 400,
+      "summary": {
+        "suggestions": 1
+      }
+    }
+  ],
+  "pipelineRuns": [
+    {
+      "_id": "65c100000000000000000001",
+      "jobId": "65c000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "stage": "score",
+      "status": "done",
+      "startedAt": "2026-10-17T10:00:30.200Z",
+      "endedAt": "2026-10-17T10:00:36.000Z",
+      "ms": 5800,
+      "provider": "ollama-local",
+      "model": "unselected-local-model",
+      "tokensIn": 2600,
+      "tokensOut": 700,
+      "llmCalls": 2,
+      "computeSeconds": 5.8,
+      "hostedCostInr": 0
+    }
+  ],
+  "auditLogs": [
+    {
+      "_id": "65d100000000000000000001",
+      "actorUserId": "651000000000000000000002",
+      "actorRole": "centre_assessor",
+      "orgId": "650000000000000000000002",
+      "targetOrgId": "650000000000000000000002",
+      "action": "submission.view",
+      "targetType": "submission",
+      "targetId": "655000000000000000000001",
+      "outcome": "allowed",
+      "at": "2026-10-17T10:10:00.000Z"
+    }
+  ],
+  "importBatches": [
+    {
+      "_id": "65d000000000000000000001",
+      "orgId": "650000000000000000000002",
+      "cohortId": "653000000000000000000001",
+      "uploadedByUserId": "651000000000000000000002",
+      "fileCount": 2,
+      "status": "processing",
+      "items": [
+        {
+          "index": 0,
+          "kind": "pdf",
+          "status": "queued"
+        },
+        {
+          "index": 1,
+          "kind": "audio",
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "reviewSamples": [
+    {
+      "_id": "6b1000000000000000000001",
+      "decisionId": "659000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "reviewerUserId": "651000000000000000000001",
+      "agrees": true,
+      "note": "Synthetic second review: asking for more information was right."
+    }
+  ],
+  "evalRuns": [
+    {
+      "_id": "6b2000000000000000000001",
+      "reportSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "runAt": "2026-10-17T10:00:00.000Z",
+      "manifestVersion": "1",
+      "rubricKey": "edp-default",
+      "rubricVersion": "edp-draft-v1",
+      "promptVersion": "edp-score-v1",
+      "models": [
+        "local-synthetic"
+      ],
+      "total": 3,
+      "assessed": 2,
+      "missingExtraction": 1,
+      "failed": 0,
+      "complete": false,
+      "fieldStateAccuracy": 0.9,
+      "flagRecall": 0.5,
+      "durationP50Ms": 1200,
+      "durationP95Ms": 1900,
+      "computeSeconds": 3.1,
+      "parity": [
+        {
+          "group": "synthetic-tailoring",
+          "count": 2,
+          "gap": 3,
+          "pass": true
+        }
+      ],
+      "perFile": [
+        {
+          "id": "synthetic-1",
+          "status": "assessed",
+          "band": "Promising",
+          "potential": 62,
+          "durationMs": 1200,
+          "fieldChecks": 10,
+          "fieldChecksCorrect": 9
+        },
+        {
+          "id": "synthetic-2",
+          "status": "assessed",
+          "band": "Promising",
+          "potential": 59,
+          "durationMs": 1900,
+          "fieldChecks": 10,
+          "fieldChecksCorrect": 9
+        },
+        {
+          "id": "synthetic-3",
+          "status": "missing_extraction"
+        }
+      ]
+    }
+  ],
+  "passwordResets": [
+    {
+      "_id": "6b3000000000000000000001",
+      "tokenHash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "userId": "651000000000000000000002",
+      "orgId": "650000000000000000000002",
+      "issuedByUserId": "651000000000000000000001",
+      "expiresAt": "2026-10-18T10:00:00.000Z",
+      "usedAt": "2026-10-17T11:00:00.000Z"
+    }
+  ],
+  "reviewSessions": [
+    {
+      "_id": "6b4000000000000000000001",
+      "submissionId": "655000000000000000000001",
+      "ownerOrgId": "650000000000000000000002",
+      "version": 1,
+      "status": "needs_input",
+      "round": 1,
+      "segments": [
+        {
+          "segId": "s1",
+          "textEn": "I want to start a tailoring shop that stitches blouses.",
+          "lang": "en",
+          "source": {
+            "type": "text",
+            "documentId": "synthetic-pitch",
+            "start": 0,
+            "end": 55
+          }
+        }
+      ],
+      "redactedSpans": 0,
+      "fields": {
+        "offering": {
+          "state": "answered",
+          "evidence": [
+            "s1"
+          ],
+          "value": "A tailoring shop stitching blouses."
+        }
+      },
+      "numbers": {},
+      "businessType": "tailoring shop",
+      "verdicts": {
+        "offering": {
+          "verdict": "sufficient",
+          "reason": ""
+        },
+        "customers": {
+          "verdict": "missing",
+          "reason": "The pitch does not say."
+        }
+      },
+      "attempts": {
+        "customers": 1
+      },
+      "declined": {},
+      "questions": [
+        {
+          "qId": "f1",
+          "field": "customers",
+          "round": 1,
+          "questionEn": "Who will buy from you, and where are they? About how many customers do you expect?",
+          "reason": "The pitch does not say.",
+          "status": "pending"
+        }
+      ],
+      "inbox": [],
+      "promptVersions": {
+        "extract": "review-extract-v1",
+        "judge": "review-judge-v1",
+        "ask": "review-ask-v1"
+      },
+      "model": "synthetic-local",
+      "calls": [
+        {
+          "step": "extract:offer",
+          "ms": 1200,
+          "ok": true,
+          "round": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Transcript",
+  "description": "Versioned segments for one submission. Edits create a new version; old versions are kept.",
+  "x-collection": "transcripts",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["submissionId", "ownerOrgId", "version", "segments"],
+  "properties": {
+    "submissionId": { "$ref": "common.json#/definitions/ObjectId" },
+    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId" },
+    "version": { "type": "integer", "minimum": 1 },
+    "segments": { "type": "array", "items": { "$ref": "segment.json" } },
+    "editedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

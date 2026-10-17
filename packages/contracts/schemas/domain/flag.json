@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Flag",
+  "description": "One data-quality finding (PRD section 12), linked to its evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["key", "severity", "message", "evidence"],
+  "properties": {
+    "key": {
+      "type": "string",
+      "enum": ["missing", "not_asked", "irrelevant", "unassessable", "overwritten", "implausible", "inconsistent", "financial_inconsistency", "language_mismatch", "low_read_confidence", "blurred_page", "placeholder_contact", "possible_duplicate", "shared_contact", "custom_template"]
+    },
+    "severity": { "type": "string", "enum": ["info", "warn", "block"] },
+    "message": { "type": "string", "maxLength": 400 },
+    "evidence": { "type": "array", "description": "Segment IDs (s_0001) or computed check IDs (check:<name>).", "items": { "type": "string", "pattern": "^(s_\\d{4,}|check:[a-z0-9_]+)$" } },
+    "field": { "$ref": "common.json#/definitions/CanonicalField" }
+  }
+}

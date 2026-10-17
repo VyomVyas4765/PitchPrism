@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Trade",
+  "description": "Normalised business type (glossary). Dev 2 owns the trade content; HQ edits it through W-32.",
+  "x-collection": "trades",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["key", "label", "sector"],
+  "properties": {
+    "key": { "type": "string", "pattern": "^[a-z0-9_]{2,60}$" },
+    "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "sector": { "type": "string", "maxLength": 80 },
+    "nicCodes": { "type": "array", "items": { "type": "string", "pattern": "^\\d{2,5}$" } },
+    "osmTags": { "type": "array", "description": "OpenStreetMap key=value tags for nearby-business search.", "items": { "type": "string", "pattern": "^[a-z_:]+=[A-Za-z0-9_;:-]+$" } },
+    "synonyms": { "type": "object", "description": "Synonyms per language code.", "additionalProperties": { "type": "array", "items": { "type": "string", "maxLength": 120 } } },
+    "active": { "type": "boolean", "default": true },
+    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
+    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+  }
+}

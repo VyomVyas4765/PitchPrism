@@ -104,10 +104,10 @@ If `quality` marks a submission Unassessable, stages 10–17 are skipped except 
 These are summaries; the JSON Schemas in `packages/contracts/schemas/` are authoritative (D-03).
 
 ```jsonc
-// JobPayload — API → worker (queue "pipeline")
+// JobPayload — API → worker (MongoDB "jobs" collection, claimed with an atomic lease; D-26)
 { "jobId": "uuid", "submissionId": "ObjectId", "fromStage": "ingest", "reason": "new|followup|rescore|retry", "rubricVersionId": "ObjectId", "requestedBy": "userId|entrepreneurId" }
 
-// StageEvent — worker → API (persisted MongoDB stage events) → SSE event "stage"
+// StageEvent — worker → MongoDB capped "stageEvents" collection → API → SSE event "stage" (planned; D-26, D-29)
 { "submissionId": "ObjectId", "ownerOrgId": "ObjectId", "stage": "translate", "status": "started|done|skipped|failed", "at": "ISO", "ms": 812, "summary": { "segments": 24, "languages": ["te", "en"] } }
 
 // Segment — the unit every claim points to

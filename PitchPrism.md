@@ -628,7 +628,7 @@ flowchart LR
     W --> SV["Sarvam AI<br/>STT · translate · TTS · Vision"]
     W --> LLM["LLM and VLM adapter"]
     W --> GEO["OpenStreetMap Overpass · Nominatim<br/>Google Places (optional)"]
-    W -->|"stage progress (pub/sub)"| Q
+    W -->|"stage events (capped collection)"| DB
     API -->|"server-sent events"| WEB
     API -->|"FCM push"| APP
 ```
@@ -797,7 +797,7 @@ The hackathon build covers the whole screening engine end to end, the multi-org 
 | --- | --- | --- | --- |
 | [Dev 1](docs/duties/dev-1-entrepreneur-facilitator.md) | Entrepreneur and field facilitator | Mobile, local ingestion and language providers | Unassigned · Q-01 |
 | [Dev 2](docs/duties/dev-2-centre-cohort.md) | Centre assessor and cohort lead | Local intelligence, scoring and evaluation | Unassigned · Q-01 |
-| [Dev 3](docs/duties/dev-3-hq-platform.md) | HQ programme admin | Auth, tenancy, contracts, database, queue and platform | Unassigned · Q-01 |
+| [Dev 3](docs/duties/dev-3-hq-platform.md) | HQ programme admin | Auth, tenancy, contracts, database, queue and platform | Vyom |
 | [Dev 4](docs/duties/dev-4-partners.md) | Implementation, sector and funding partner reviewers | Shared dashboard shell and UI/viewer primitives | Unassigned · Q-01 |
 
 Each owner implements their roles across UI, API, persistence, AI integration and tests, reusing the shared services. The [duty index](docs/duties/README.md) and [88-requirement matrix](docs/implementation-matrix.md) define the detailed responsibilities. Other agents may be working concurrently: check their progress notes and existing code before adding logic.
@@ -862,7 +862,7 @@ Updated 17 October 2026 against D-23/D-24, the authentication foundation and the
 
 | ID | Remaining question | Already established | Still missing / action |
 | --- | --- | --- | --- |
-| Q-01 | Which person takes each of the four role-based developer briefs? | Vyom, Rayyan, Arnav and Komal are the team; the four role-based responsibility groups are defined. | Named assignment to each brief; relevant skills and language-review availability. Assign before parallel role implementation. |
+| Q-01 | Which person takes each of the four role-based developer briefs? | Vyom, Rayyan, Arnav and Komal are the team; the four role-based responsibility groups are defined. Vyom takes Dev 3 (HQ and platform). | Named assignment for Devs 1, 2 and 4; relevant skills and language-review availability. Assign before parallel role implementation. |
 | Q-02 | How long is the final demo, and is there a screening round? | 30-hour build; mentor review is 5 minutes. | Organiser-confirmed final slot and screening format. The §24 final script still assumes 8 minutes; use a shortened 5-minute mentor version. |
 | Q-03 | What are the official EDP rubric and real application volumes? | Real form templates and 55 sample files are available. | Official scoring rubric and actual scale. §13 rubric and §22 pilot volumes remain provisional. |
 | Q-04 | Which local LLM and vision models pass the required evaluation? | ₹0 hosted AI API policy; heavy compute stays on the local Python worker. M2/8 GiB host and Ollama adapter exist; llama3.2 passed only a synthetic JSON smoke test. API credits are no longer relevant. | Licence, peak RAM, latency and six-language/format results; approved reasoning and vision models. Benchmark early; retain H14 as the original first-eval selection gate. Production processing location is Q-13. |

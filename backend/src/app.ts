@@ -13,7 +13,7 @@ import { sessionService, userContext, SESSION_COOKIE } from './auth/session.js';
 import { hashPassword, verifyPassword } from './auth/password.js';
 import { requirePermission, submissionScope } from './auth/authorization.js';
 import { centreRouter } from './modules/centre/router.js';
-import type { AssessmentResult } from './modules/centre/runner.js';
+import type { AssessmentResult, PdfAssessment } from './modules/centre/runner.js';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { entrepreneurRouter } from './modules/entrepreneur/index.js';
 import { followupRouter } from './modules/entrepreneur/followup-router.js';
@@ -95,7 +95,7 @@ export function createApp(config: Config, options: { assessIdea?: (input: Centre
     if (req.auth!.user.role !== role) throw new HttpError(403, 'This workspace belongs to a different role.');
     res.json({ role, permissions: ROLE_PERMISSIONS[role], message: `${ROLE_LABELS[role]} workspace is ready. Feature workflows are assigned in docs/duties.` });
   });
-  app.use('/api/v1/centre', centreRouter(options.assessIdea));
+  app.use('/api/v1/centre', centreRouter(options.assessIdea, config, options.assessPdf));
   app.use('/api/v1/partners', partnerRouter()); // Dev 4 handoff: behind the shared session middleware
   app.use('/api/v1/hq', hqRouter());
   app.use('/api/v1/hq/reports', hqReportsRouter());

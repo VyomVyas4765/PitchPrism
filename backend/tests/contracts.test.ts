@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 import { Ajv } from 'ajv';
 import addFormatsModule from 'ajv-formats';
 import { COLLECTIONS, domainSchema, type EntityName } from '@pitchprism/contracts';
-import { ALL_MODELS } from '../src/models.js';
+import { ALL_MODELS } from '../src/models/index.js';
 import { contactHasher, isPlaceholderContact, normaliseContact, sameDigest } from '../src/crypto.js';
 
 // The contract bundle, the generated Mongoose models and the published fixtures must agree (D-03).

@@ -43,6 +43,20 @@ class CentreScoringTests(unittest.TestCase):
         self.assertIn("missing", [f["key"] for f in result["flags"]])
         self.assertIn("not_asked", [f["key"] for f in result["flags"]])
 
+    def test_readiness_requires_cited_skills_or_experience(self):
+        idea = sample()
+        del idea["fields"]["skills"]
+        result = evaluate(idea, scorer=scorer)
+        readiness = next(domain for domain in result["domains"] if domain["key"] == "entrepreneur_readiness")
+        self.assertIsNone(readiness["score"])
+        self.assertEqual(readiness["evidence"], [])
+        self.assertIn("Ask the applicant", readiness["reason"])
+        idea["fields"]["experience"] = {"state": "answered", "evidence": ["s_10"]}
+        result = evaluate(idea, scorer=scorer)
+        readiness = next(domain for domain in result["domains"] if domain["key"] == "entrepreneur_readiness")
+        self.assertEqual(readiness["score"], 4)
+        self.assertEqual(readiness["evidence"], ["s_10"])
+
     def test_unassessable_skips_model(self):
         idea = sample()
         for key in list(FIELDS)[:7]:

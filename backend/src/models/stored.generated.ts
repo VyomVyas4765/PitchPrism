@@ -338,6 +338,7 @@ export interface Entrepreneur {
   createdVia: "self" | "assisted" | "import";
   facilitatorId?: ObjectId;
   /**
+   * Facilitator device ID used to make assisted applicant creation idempotent.
    * Assisted mode: the facilitator device's ID for this applicant, so an offline retry does not register them twice (Dev 1).
    */
   clientApplicantId?: string;

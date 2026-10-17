@@ -168,8 +168,12 @@ def evaluate(idea: dict[str, Any], adapter: LocalJsonAdapter | None = None,
               + json.dumps({"domains": score_keys, "evidence": source}, ensure_ascii=False))
     runs = []
     for _ in range(2):
-        result = scorer(prompt, _score_schema(score_keys))
-        domains = result.get("domains", [])
+        chunk_size = getattr(adapter, "max_domains_per_call", len(score_keys)) if adapter else len(score_keys)
+        domains = []
+        for start in range(0, len(score_keys), chunk_size):
+            keys = score_keys[start:start + chunk_size]
+            result = scorer(prompt_for(keys), _score_schema(keys))
+            domains.extend(result.get("domains", []))
         if len(domains) != len(score_keys) or {d.get("key") for d in domains} != set(score_keys):
             raise InvalidEvidence("Scorer omitted or duplicated a domain.")
         for item in domains:
@@ -178,13 +182,17 @@ def evaluate(idea: dict[str, Any], adapter: LocalJsonAdapter | None = None,
                 raise InvalidEvidence("Invalid domain score.")
             if not item.get("evidence") or len(item["evidence"]) > 3 or not set(item["evidence"]) <= allowed_by_domain[key]:
                 raise InvalidEvidence("Domain score has unsupported evidence.")
-            if item.get("confidence") not in {"high", "medium", "low"} or not item.get("reason"):
+            if item.get("confidence") not in {"high", "medium", "low"} or not item.get("reason") or find_pii(item["reason"]):
                 raise InvalidEvidence("Domain judgement is incomplete.")
         runs.append({item["key"]: item for item in domains})
     domains = []
     for key, (weight, _) in domain_map.items():
         if key not in score_keys:
-            domains.append({"key": key, "weight": weight, "score": None, "runs": [], "reason": "Not assessed: no cited evidence", "evidence": [], "confidence": "none"})
+            reason = ("Not assessed: no validated training, experience, or completed-action evidence was mapped "
+                      "from this PDF. Ask the applicant before scoring readiness." if key == "entrepreneur_readiness"
+                      else "Not assessed: no cited evidence")
+            domains.append({"key": key, "weight": weight, "score": None, "runs": [], "reason": reason,
+                            "evidence": [], "confidence": "none"})
             continue
         first, second = runs[0][key], runs[1][key]
         score = _round(Decimal(first["score"] + second["score"]) / 2)

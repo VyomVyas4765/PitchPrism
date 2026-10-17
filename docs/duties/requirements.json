@@ -551,7 +551,7 @@
     "owner": "dev-3-hq-platform",
     "priority": "P0",
     "requirement": "Routing rules: which partner orgs receive which trades, sectors and districts",
-    "implementation": "Partner routing-rule administration",
+    "implementation": "HQ routing API exists; activation now checks current processing and partner-type consent. Rule form, domain-contract migration, and complete audit remain pending.",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Deterministic trade/district rule forms; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
@@ -646,7 +646,7 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Review queue for the centre, sortable by score, completeness, date and language, with lanes: Ready, Needs attention, Unassessable, Possible duplicate",
-    "implementation": "Centre review queue/lanes",
+    "implementation": "Scoped centre queue with search, lanes, summary metrics and pending/scored states",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Scoped queries and quality flags; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
@@ -659,26 +659,32 @@
     "evidence": [
       "backend/src/modules/centre/router.ts",
       "frontend/features/centre/CentreWorkspace.tsx",
-      "backend/tests/centre.test.ts"
+      "backend/tests/centre.test.ts",
+      "frontend/features/centre/centre-workspace.module.css"
     ]
   },
   "W-10": {
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Idea card v2. Header with trade, sector, cohort, district, language and format chips, and data-quality flags. Recommendation strip with band, pathway and quadrant position. English summary and canonical fields. Domain scores, each with the quote that earned it. Strengths, gaps, risks and items to validate. Financial checks. Similar ideas. Local market. Trade and cohort rank. Original and translation side by side. Audio player and page viewer that jump to the quoted moment or region",
-    "implementation": "Evidence-linked consolidated idea card",
+    "implementation": "One-view evaluator card with non-production unsaved PDF-to-results preview, safe allowlisted extraction/worker failure reasons and selected-file diagnostics, private stored-plan original, recorded-consent handoff, evidence/domain chart with each cited redacted PDF answer and page link, explicit unscored-readiness explanation and follow-up, quadrant, decision drawer and scoped API; highlighted boxes and full intelligence remain pending",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Shared viewer + A-12/A-22/A-23 outputs; no browser-side hosted AI key or duplicate pipeline",
+    "local_strategy": "Shared viewer plus centre PDF Groq exception (D-31); demo preview is unsaved and disabled in production, while stored assessments require active consent; no browser-side key or fabricated score",
     "dependencies": [
       "Shared viewer + A-12/A-22/A-23 outputs",
       "Role/org/consent guards; shared contracts"
     ],
-    "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate evidence-linked consolidated idea card with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
+    "cost_exposure": "Dashboard itself has no model cost; the user-requested centre Groq scoring action incurs metered hosted inference (D-31).",
+    "acceptance_test": "Upload different supported PDFs and verify each scored domain displays its own cited redacted answer and opens the cited PDF page; test loading/error/empty states, PRD role scope, cross-org denial and permitted projection. Precise region highlighting remains pending.",
     "status": "partial",
     "evidence": [
       "frontend/features/centre/CentreWorkspace.tsx",
-      "packages/contracts/schemas/centre-extracted-input.json"
+      "packages/contracts/schemas/centre-extracted-input.json",
+      "frontend/features/centre/centre-workspace.module.css",
+      "backend/src/modules/centre/plan-intake.ts",
+      "backend/src/modules/centre/runner.ts",
+      "ai/intel/pdf_cli.py",
+      "backend/tests/centre.test.ts"
     ]
   },
   "W-11": {
@@ -771,22 +777,23 @@
     "owner": "dev-4-partners",
     "priority": "P0",
     "requirement": "Own submissions, first-level review, forward to the linked centre",
-    "implementation": "Isolated own-org read queue/status totals and partner UI prepared; intake, first-level review and forwarding pending integration",
+    "implementation": "Own-org read queue/status totals and partner UI are mounted in the authenticated dashboard; intake, first-level review and forwarding remain pending",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Read-only sourceOrg scope through shared session/permission/query guards; unmounted router/UI; reuse shared intake/review services when agreed; no duplicate AI pipeline",
+    "local_strategy": "Read-only sourceOrg scope through shared session/permission/query guards and mounted dashboard; reuse shared intake/review services when agreed; no duplicate AI pipeline",
     "dependencies": [
       "Dev 1 intake and Dev 2 review/evidence services with sourceOrg scope",
-      "Dev 3 API mount, linked-centre relationship, generated read/domain contracts and audited transitions; separate dashboard integration"
+      "Dev 3 linked-centre relationship, generated read/domain contracts and audited transitions"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Read harness tests source-org items/totals, sibling denial, role/session changes, safe projection, filters and pagination; typecheck/build pass. Still verify mounted UI/loading/error/empty states, real intake, review persistence and linked-centre forwarding end to end; visual browser QA pending.",
-    "status": "feature_partial_unmounted",
+    "acceptance_test": "Read harness tests source-org items/totals, sibling denial, role/session changes, safe projection, filters and pagination; mounted role login and scoped API smoke pass. Still verify visual/loading/error/empty states, real intake, review persistence and linked-centre forwarding end to end.",
+    "status": "api_ui_partial",
     "evidence": [
       "backend/tests/auth.test.ts",
       "docs/auth.md",
       "backend/tests/partners.test.ts",
       "backend/src/modules/partners/router.ts",
       "frontend/features/partners/partner-workspace.tsx",
+      "frontend/app/dashboard/DashboardView.tsx",
       "backend/src/modules/partners/HANDOFF.md"
     ]
   },
@@ -794,22 +801,23 @@
     "owner": "dev-4-partners",
     "priority": "P0 (one partner type in demo)",
     "requirement": "Consented ideas in its sector; Express interest sends a contact request to the entrepreneur",
-    "implementation": "Isolated active-share opportunities list and partner UI prepared; sector eligibility, contact requests and mentoring integration pending",
+    "implementation": "Active-share opportunities list and partner UI are mounted in the authenticated dashboard; sector eligibility, contact requests and mentoring remain pending",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Recheck active sector shares per read; list has no applicant fields; reuse protected detail projection and shared entrepreneur contact responses; no duplicate AI pipeline",
     "dependencies": [
       "Dev 1 authoritative consent/contact request and entrepreneur response lifecycle",
-      "Dev 2 sector eligibility/routing and mentoring visibility; Dev 3 generated contracts, audit/notification transport and API mount; separate dashboard integration"
+      "Dev 2 sector eligibility/routing and mentoring visibility; Dev 3 generated contracts and audit/notification transport"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Read harness tests active-share org/type matching, immediate revocation on next read, role isolation and no applicant list fields. Still verify sector matching, mounted visual/loading/error/empty states, real contact acceptance before PII, request deduplication and mentoring visibility end to end.",
-    "status": "feature_partial_unmounted",
+    "acceptance_test": "Read harness tests active-share org/type matching, immediate revocation on next read, role isolation and no applicant list fields; mounted role login and scoped API smoke pass. Still verify sector matching, visual/loading/error/empty states, real contact acceptance before PII, request deduplication and mentoring visibility end to end.",
+    "status": "api_ui_partial",
     "evidence": [
       "backend/tests/auth.test.ts",
       "docs/auth.md",
       "backend/tests/partners.test.ts",
       "backend/src/modules/partners/router.ts",
       "frontend/features/partners/partner-workspace.tsx",
+      "frontend/app/dashboard/DashboardView.tsx",
       "backend/src/modules/partners/HANDOFF.md"
     ]
   },
@@ -817,22 +825,23 @@
     "owner": "dev-4-partners",
     "priority": "P2",
     "requirement": "Consented loan-ready shortlist; CSR impact report with totals only, no personal data",
-    "implementation": "Isolated lender shortlist read UI/API prepared at P2; CSR individual access denied and aggregate report explicitly pending",
+    "implementation": "Lender shortlist read UI/API is mounted at P2; CSR individual access is denied and the aggregate report remains explicitly pending",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Shared funding-ready/shortlisted/active-share scope and server-derived lender/CSR mode; no fabricated CSR totals or browser-side AI",
     "dependencies": [
       "Dev 2 funding-readiness evidence and approved aggregate impact metrics",
-      "Dev 3 programme/org scope, CSR privacy/aggregation contracts and API mount; Dev 1 active consent/contact lifecycle; separate dashboard integration"
+      "Dev 3 programme/org scope and CSR privacy/aggregation contracts; Dev 1 active consent/contact lifecycle"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Read harness tests lender readiness/shortlist/consent together, status-filter bypass denial, server-derived funding mode and CSR list denial. Still verify mounted UI/visual states, authoritative readiness/consent and aggregate-only CSR scope/privacy end to end; no report is claimed.",
-    "status": "feature_partial_unmounted",
+    "acceptance_test": "Read harness tests lender readiness/shortlist/consent together, status-filter bypass denial, server-derived funding mode and CSR list denial; mounted role login and scoped API smoke pass. Still verify visual states, authoritative readiness/consent and aggregate-only CSR scope/privacy end to end; no report is claimed.",
+    "status": "api_ui_partial",
     "evidence": [
       "backend/tests/auth.test.ts",
       "docs/auth.md",
       "backend/tests/partners.test.ts",
       "backend/src/modules/partners/router.ts",
       "frontend/features/partners/partner-workspace.tsx",
+      "frontend/app/dashboard/DashboardView.tsx",
       "backend/src/modules/partners/HANDOFF.md"
     ]
   },
@@ -840,23 +849,27 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Bulk import: drag in files or a ZIP, choose the cohort, see per-file progress, detected language and format, and errors",
-    "implementation": "Bulk files/ZIP import with progress",
+    "implementation": "Single two-page centre PDF intake with encrypted applicant details, private original and recorded processing consent; separate non-production unsaved PDF preview; bulk/ZIP, cohort and processing progress pending",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Private import service + A-01–A-12 + stage events; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
       "Private import service + A-01–A-12 + stage events",
       "Role/org/consent guards; shared contracts"
     ],
-    "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
+    "cost_exposure": "Stored intake has no inference call; non-production preview invokes metered Groq twice per successful assessment (D-31). Hosting/storage and messaging costs remain separate.",
     "acceptance_test": "Demonstrate bulk files/zip import with progress with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "api_ui_partial",
+    "evidence": [
+      "backend/src/modules/centre/plan-intake.ts",
+      "backend/tests/centre.test.ts",
+      "frontend/features/centre/CentreWorkspace.tsx"
+    ]
   },
   "W-20": {
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Original viewer: rendered PDF pages with the evidence region highlighted and struck values shown crossed out; audio waveform that jumps to a segment; typed text with highlights. Personal details are blurred for roles that may not see them",
-    "implementation": "Original PDF/audio/text evidence viewer",
+    "implementation": "Scoped original PDF read endpoint and embedded viewer; page-region highlights and audio/text viewers pending",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Source anchors; safe page projections; shared viewer; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
@@ -865,8 +878,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate original pdf/audio/text evidence viewer with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "api_ui_partial",
+    "evidence": [
+      "backend/src/modules/centre/plan-intake.ts",
+      "backend/tests/centre.test.ts",
+      "frontend/features/centre/CentreWorkspace.tsx"
+    ]
   },
   "W-21": {
     "owner": "dev-2-centre-cohort",
@@ -1053,7 +1070,7 @@
     "owner": "dev-3-hq-platform",
     "priority": "P0",
     "requirement": "Cohort and trade admin: create cohorts, edit the trade list, synonyms and OSM tags",
-    "implementation": "Cohort/trade admin",
+    "implementation": "Cohort API derives centre ownership from the session, validates active centre targets, and tests cross-centre denial. Trade API and UI still need contract-aligned completion.",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Shared admin service with narrower centre permissions; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
@@ -1197,7 +1214,7 @@
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Extract text spans with bounding box, font and colour, plus drawn lines and table rules; rebuild question and answer cells from the layout, not the content-stream order",
-    "implementation": "Digital PDF geometry and table reconstruction",
+    "implementation": "English digital EDP and Business Idea form-fillup families: EDP fixed anchors and form-fillup printed-question/right-column pairing with source boxes, missing/not-asked states, affirmative existing-business experience evidence, local redaction and fail-closed mapping; general PDFs/OCR pending Dev 1",
     "execution": "worker",
     "local_strategy": "pdfplumber + pypdfium2 (permissive) geometry; organiser PDFs not yet run",
     "dependencies": [
@@ -1272,9 +1289,9 @@
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Pair questions with answers whatever the template. Map each question to a canonical field (Appendix B) by matching against a multilingual question bank with embeddings, confirmed by the LLM. Questions the template did not ask are recorded as \"not asked\". Unknown questions are kept as additional Q&A",
-    "implementation": "Schema-agnostic Q&A and canonical mapping",
+    "implementation": "Narrow English Business Idea form-fillup question-anchor and right-column answer pairing, with missing/not-asked distinction; schema-agnostic multilingual mapping and unknown-Q retention pending Dev 1",
     "execution": "worker",
-    "local_strategy": "Deterministic pairing + local embeddings/structured generator",
+    "local_strategy": "Deterministic printed-question pairing for known English family; local multilingual embeddings/structured generator remain pending",
     "dependencies": [
       "Question bank; Segment/QA contracts"
     ],
@@ -1332,9 +1349,9 @@
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Fill the canonical idea fields, \"problem addressed\" and a one-line summary. Each field cites segment IDs. A field with no citation is dropped, never invented",
-    "implementation": "Cited canonical fields and summary",
+    "implementation": "Existing canonical contract plus ten-field English EDP mapping with redacted segments and PDF boxes; broad document extraction quality pending",
     "execution": "worker",
-    "local_strategy": "Local JSON adapter + schema/evidence validators; model unvalidated",
+    "local_strategy": "Local layout mapping and schema/citation validation; model quality and non-English extraction unvalidated",
     "dependencies": [
       "Translated QA; canonical schema"
     ],
@@ -1499,34 +1516,44 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Score each domain 1 to 5 with a reason, evidence segment IDs and a confidence level. Run twice; if any domain differs by more than 1 point, flag for close review. Potential, completeness, band, quadrant and pathway are computed in code, not by the LLM",
-    "implementation": "Double-run domain scoring and deterministic totals",
+    "implementation": "Two-run cited provisional domain scoring; live Groq centre PDF adapter with strict schema and deterministic totals. Readiness remains unscored without cited skills/experience evidence, with an explicit reason and follow-up. Supplied English sample passes scored 80, 83 and 80/100 at 90% domain coverage; organiser accuracy and parity remain unverified.",
     "execution": "worker",
-    "local_strategy": "Local structured model for cited domain judgements; arithmetic in code",
+    "local_strategy": "User-requested D-31 exception: Groq only for redacted centre EDP domain judgements; all totals and missing-domain rules remain local code",
     "dependencies": [
-      "Versioned rubric; evidence; local eval"
+      "Versioned rubric; evidence; local eval",
+      "Active processing consent and approved hosted-data policy",
+      "Working Groq project key and official rubric"
     ],
-    "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
-    "acceptance_test": "Null for unassessed, correct potential/completeness/pathway; parity gap ≤5",
+    "cost_exposure": "Metered Groq input/output tokens for two model calls per assessment; rate and volume to be measured. Other AI tasks remain local.",
+    "acceptance_test": "Synthetic guard/access tests prove missing Readiness stays unscored and cited experience enables it; private live sample report (80 potential, 100 completeness, 90 coverage) remains provisional. Still compare against official ground truth and verify language/format parity gap ≤5.",
     "status": "partial",
     "evidence": [
       "ai/intel/scoring.py",
-      "ai/tests/test_centre_scoring.py"
+      "ai/tests/test_centre_scoring.py",
+      "ai/intel/groq.py",
+      "ai/intel/pdf_cli.py",
+      "ai/tests/test_edp_groq.py",
+      "backend/tests/centre.test.ts",
+      "docs/centre-groq-evaluation-plan.md"
     ]
   },
   "A-23": {
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Strengths, gaps, risks, items to validate and interview questions, each citing segments or checks",
-    "implementation": "Cited narrative and interview questions",
+    "implementation": "Missing-field follow-up questions now include an explicit training/experience/completed-action question when Readiness is unscored; full cited strengths, gaps, risks and validation narrative remain pending",
     "execution": "worker",
     "local_strategy": "Local structured generator + evidence validation",
     "dependencies": [
       "Evaluation/flags/segments"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
-    "acceptance_test": "Every strength/gap/risk/claim cites a segment or computed check",
-    "status": "planned",
-    "evidence": []
+    "acceptance_test": "Readiness follow-up appears without validated skills/experience and disappears when cited experience exists; complete strengths/gaps/risks must each cite a segment or computed check before A-23 is complete",
+    "status": "worker_partial",
+    "evidence": [
+      "ai/intel/narrative.py",
+      "ai/tests/test_edp_groq.py"
+    ]
   },
   "A-24": {
     "owner": "dev-2-centre-cohort",
@@ -1603,7 +1630,7 @@
     "owner": "dev-3-hq-platform",
     "priority": "P0",
     "requirement": "Publish each stage's result as it finishes, so the dashboard card fills in progressively over server-sent events",
-    "implementation": "Live incremental card and stage events",
+    "implementation": "MongoDB job leases emit durable stage records and a scoped SSE route supports Last-Event-ID replay. Real ingestion/intelligence stages and incremental card rendering remain pending",
     "execution": "worker + API + web",
     "local_strategy": "MongoDB job leases and durable capped stage events followed by a tailable cursor, scoped SSE; no Redis or hosted AI",
     "dependencies": [
@@ -1625,13 +1652,13 @@
     "owner": "dev-3-hq-platform",
     "priority": "P1",
     "requirement": "Log model, tokens, cost and duration per stage",
-    "implementation": "Per-stage local resource/cost telemetry",
+    "implementation": "Queue attempt timing persists; centre PDF Groq adapter captures model, duration and input/output tokens across two successful calls (saved sample: 2322 input/1518 output). API cost accounting and HQ telemetry remain pending.",
     "execution": "worker + API",
-    "local_strategy": "Local timing/model/token/API-cost metrics; no paid telemetry dependency",
+    "local_strategy": "Local timing plus centre Groq usage metrics; no prompts/PII in metrics; hosted API cost calculation pending",
     "dependencies": [
       "Provider wrapper; pipeline/run IDs"
     ],
-    "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
+    "cost_exposure": "Metered Groq tokens for the centre exception; compute, storage and hosting separate. Cost-per-run and budget alerts pending.",
     "acceptance_test": "Log model/latency/tokens/API cost without prompts/PII; attempt blocks visible",
     "status": "implemented",
     "evidence": [

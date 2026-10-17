@@ -57,3 +57,7 @@ export async function readOriginal(storageId: mongoose.Types.ObjectId) {
   for await (const part of bucket().openDownloadStream(storageId)) parts.push(part as Buffer);
   return Buffer.concat(parts);
 }
+
+export async function deleteOriginal(storageId: mongoose.Types.ObjectId) {
+  await bucket().delete(storageId);
+}

@@ -14,6 +14,7 @@ import { requirePermission, submissionScope } from './auth/authorization.js';
 import { centreRouter } from './modules/centre/router.js';
 import type { AssessmentResult } from './modules/centre/runner.js';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
+import { entrepreneurRouter } from './modules/entrepreneur/index.js';
 
 const loginInput = z.object({ email: z.email().max(254).transform(value => value.toLowerCase()), password: z.string().min(1).max(128), client: z.enum(['web', 'mobile']).default('web') }).strict();
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
@@ -94,6 +95,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
     res.json({ id: String(submission._id), title: submission.title, status: submission.status,
       ...(!partner || contactAccepted ? { applicant: submission.applicant } : {}) });
   });
+  app.use('/api/v1', entrepreneurRouter(config));
   app.use((_req, res) => { res.status(404).json({ error: 'Endpoint not found.' }); });
   app.use(errorHandler);
   return app;

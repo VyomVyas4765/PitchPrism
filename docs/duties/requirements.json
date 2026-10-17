@@ -9,12 +9,16 @@
     "dependencies": [
       "Auth/consent contracts",
       "Private submission API",
-      "Local worker capabilities where required"
+      "Local worker capabilities where required",
+      "Flutter picker with per-locale TTS check (pending)"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "All six locale choices are usable; unavailable voices are explicit",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-02": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -50,8 +54,11 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Consent is recorded per purpose and can be withdrawn",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-04": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -67,8 +74,11 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Profile edit persists without leaking sensitive attributes to models",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-05": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -85,7 +95,9 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Each source format reaches the same submission pipeline",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "docs/duties/dev-1-intake-proposal.md"
+    ]
   },
   "M-06": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -102,7 +114,10 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Pause/re-record works and evidence retains timestamps",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "data/seed/question-bank.json",
+      "ai/tests/test_question_bank.py"
+    ]
   },
   "M-07": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -187,7 +202,9 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Airplane-mode recording survives restart and uploads once",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "docs/duties/dev-1-intake-proposal.md"
+    ]
   },
   "M-12": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -204,7 +221,9 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Lifecycle updates remain scoped and refresh after reconnection",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-13": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -250,12 +269,16 @@
     "dependencies": [
       "Auth/consent contracts",
       "Private submission API",
-      "Local worker capabilities where required"
+      "Local worker capabilities where required",
+      "Share contact-request state (W-17, Dev 4) for accept/decline"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Revoke and contact decline remove partner access immediately",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-16": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -309,7 +332,9 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Restart/reconnect does not lose or mix applicants",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-19": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -643,57 +668,69 @@
     "owner": "dev-4-partners",
     "priority": "P0",
     "requirement": "Own submissions, first-level review, forward to the linked centre",
-    "implementation": "Implementation-partner own-org review",
+    "implementation": "Isolated own-org read queue/status totals and partner UI prepared; intake, first-level review and forwarding pending integration",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Shared intake/review services with sourceOrg scope; no browser-side hosted AI key or duplicate pipeline",
+    "local_strategy": "Read-only sourceOrg scope through shared session/permission/query guards; unmounted router/UI; reuse shared intake/review services when agreed; no duplicate AI pipeline",
     "dependencies": [
-      "Shared intake/review services with sourceOrg scope",
-      "Role/org/consent guards; shared contracts"
+      "Dev 1 intake and Dev 2 review/evidence services with sourceOrg scope",
+      "Dev 3 API mount, linked-centre relationship, generated read/domain contracts and audited transitions; separate dashboard integration"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate implementation-partner own-org review with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "foundation_partial",
+    "acceptance_test": "Read harness tests source-org items/totals, sibling denial, role/session changes, safe projection, filters and pagination; typecheck/build pass. Still verify mounted UI/loading/error/empty states, real intake, review persistence and linked-centre forwarding end to end; visual browser QA pending.",
+    "status": "feature_partial_unmounted",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/tests/partners.test.ts",
+      "backend/src/modules/partners/router.ts",
+      "frontend/features/partners/partner-workspace.tsx",
+      "backend/src/modules/partners/HANDOFF.md"
     ]
   },
   "W-17": {
     "owner": "dev-4-partners",
     "priority": "P0 (one partner type in demo)",
     "requirement": "Consented ideas in its sector; Express interest sends a contact request to the entrepreneur",
-    "implementation": "Sector-partner consented ideas/contact requests",
+    "implementation": "Isolated active-share opportunities list and partner UI prepared; sector eligibility, contact requests and mentoring integration pending",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Active shares and entrepreneur contact responses; no browser-side hosted AI key or duplicate pipeline",
+    "local_strategy": "Recheck active sector shares per read; list has no applicant fields; reuse protected detail projection and shared entrepreneur contact responses; no duplicate AI pipeline",
     "dependencies": [
-      "Active shares and entrepreneur contact responses",
-      "Role/org/consent guards; shared contracts"
+      "Dev 1 authoritative consent/contact request and entrepreneur response lifecycle",
+      "Dev 2 sector eligibility/routing and mentoring visibility; Dev 3 generated contracts, audit/notification transport and API mount; separate dashboard integration"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate sector-partner consented ideas/contact requests with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "foundation_partial",
+    "acceptance_test": "Read harness tests active-share org/type matching, immediate revocation on next read, role isolation and no applicant list fields. Still verify sector matching, mounted visual/loading/error/empty states, real contact acceptance before PII, request deduplication and mentoring visibility end to end.",
+    "status": "feature_partial_unmounted",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/tests/partners.test.ts",
+      "backend/src/modules/partners/router.ts",
+      "frontend/features/partners/partner-workspace.tsx",
+      "backend/src/modules/partners/HANDOFF.md"
     ]
   },
   "W-18": {
     "owner": "dev-4-partners",
     "priority": "P2",
     "requirement": "Consented loan-ready shortlist; CSR impact report with totals only, no personal data",
-    "implementation": "Funding shortlist and CSR aggregate report",
+    "implementation": "Isolated lender shortlist read UI/API prepared at P2; CSR individual access denied and aggregate report explicitly pending",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Funding-ready scoped shares; CSR aggregation only; no browser-side hosted AI key or duplicate pipeline",
+    "local_strategy": "Shared funding-ready/shortlisted/active-share scope and server-derived lender/CSR mode; no fabricated CSR totals or browser-side AI",
     "dependencies": [
-      "Funding-ready scoped shares; CSR aggregation only",
-      "Role/org/consent guards; shared contracts"
+      "Dev 2 funding-readiness evidence and approved aggregate impact metrics",
+      "Dev 3 programme/org scope, CSR privacy/aggregation contracts and API mount; Dev 1 active consent/contact lifecycle; separate dashboard integration"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate funding shortlist and csr aggregate report with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "foundation_partial",
+    "acceptance_test": "Read harness tests lender readiness/shortlist/consent together, status-filter bypass denial, server-derived funding mode and CSR list denial. Still verify mounted UI/visual states, authoritative readiness/consent and aggregate-only CSR scope/privacy end to end; no report is claimed.",
+    "status": "feature_partial_unmounted",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/tests/partners.test.ts",
+      "backend/src/modules/partners/router.ts",
+      "frontend/features/partners/partner-workspace.tsx",
+      "backend/src/modules/partners/HANDOFF.md"
     ]
   },
   "W-19": {
@@ -981,7 +1018,9 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Saved original hashes match; no overwrite on retry",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "docs/duties/dev-1-intake-proposal.md"
+    ]
   },
   "A-02": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -995,8 +1034,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "All organiser formats classified or explicitly unknown",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/classify.py",
+      "ai/tests/test_ingest_classify.py"
+    ]
   },
   "A-03": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1004,14 +1046,17 @@
     "requirement": "Convert to 16 kHz mono with ffmpeg; split at silences with a voice-activity detector into chunks under 30 s, each with its start time; reject near-silent or clipped audio with a re-record prompt",
     "implementation": "Audio normalization and pause-based chunks",
     "execution": "worker",
-    "local_strategy": "Installed ffmpeg; local VAD candidate not yet validated",
+    "local_strategy": "Installed ffmpeg; silencedetect pause baseline; Silero-class VAD comparison and threshold tuning not yet validated",
     "dependencies": [
       "Original audio; timestamps"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "16 kHz mono chunks under 30 s preserve time anchors",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/audio.py",
+      "ai/tests/test_ingest_audio.py"
+    ]
   },
   "A-04": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1101,7 +1146,9 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Custom/changed forms distinguish missing, not asked and unknown Q&A",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "data/seed/question-bank.json"
+    ]
   },
   "A-10": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1115,8 +1162,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Phone/email/name never reach model/map payloads or partner images",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/pii.py",
+      "ai/tests/test_ingest_pii.py",
+      "backend/src/modules/entrepreneur/pii-vault.ts"
+    ]
   },
   "A-11": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1146,7 +1197,10 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "At least 90% canonical field accuracy; drop uncited claims",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "packages/contracts/schemas/drafts/ingest-output.v0.json",
+      "packages/contracts/fixtures/ingest/README.md"
+    ]
   },
   "A-13": {
     "owner": "dev-2-centre-cohort",

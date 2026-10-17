@@ -80,10 +80,21 @@ A feature is done when UI, API, persistence, permissions, loading/error states, 
 
 ## In progress
 
-iOS device build/install and local API connectivity; generated iOS platform + existing auth entry; Firebase deferred.
+2026-10-17 · Branch `arnav` · Waiting on external inputs before the next P0 slices:
+- Flutter onboarding screens (M-01/M-03/M-04 client, M-19): the Flutter SDK is not installed on this dev machine yet.
+- Intake, offline queue, assisted applicants, A-01: Dev 3 agreement on [the intake proposal](dev-1-intake-proposal.md) (owning centre, storage, queue after Redis removal, status enum, `parentOrgId`).
+- A-05/A-06/A-08 PDF layout: team decision on the PDF library licence (PyMuPDF AGPL-3.0 vs permissive pdfplumber/pypdfium2) and Dev 3 approval for `ai/requirements.txt`.
+- A-04/A-07/A-11/A-12: no local STT/OCR/translation model selected or evaluated; organiser files are not on this machine.
+
+**Awaiting review (shared edits on `arnav`):** Dev 3: router mount in `backend/src/app.ts`; `PII_ENCRYPTION_KEY` in `backend/src/config.ts`, `.env.example`, `scripts/setup-env.mjs` (existing `.env` files need the key added by hand); `api_partial`/`worker_partial` legend in `scripts/generate-matrix.mjs`; drafts in `packages/contracts/schemas/drafts/` and `packages/contracts/fixtures/ingest/` (generator untouched). Dev 2: prompt PII guard in `ai/llm/adapter.py`; draft ingest-output contract and fixtures. Revocation deactivates existing `Submission.shares` entries using starter fields only (no contract change).
 
 ## Done
 
 - 2026-10-17 · First milestone foundation: Mobile session restoration, secure token storage, facilitator password login and Firebase phone exchange are implemented. Real phone sign-in still needs Firebase configuration and device verification.
 
 - 2026-10-17 · D-24 foundation: local-only settings, task-provider interfaces, installed-model JSON/vision adapter, spending/proxy/redirect guards, capability registry and ten policy/output tests. Synthetic local JSON smoke passed; six-language/OCR/model quality remain unevaluated.
+
+- 2026-10-17 · Onboarding API (server side only; M-01/M-03/M-04/M-15 are `api_partial`, not complete): `GET/PUT /me` (language before consent; name/gender sealed with AES-256-GCM; profile needs processing consent), `POST /consents` and `/consents/:id/revoke` (per purpose, notice version/language/method recorded, idempotent, append-only; revocation closes matching partner shares immediately), `GET /me/passport`, and `sharingAllowed()` for routing owners. 15 Mongo-backed access/behavior tests. Pending: Flutter screens and spoken notice, contact accept/decline (W-17 state), assisted consent evidence, device checks. Contract: [module README](../../backend/src/modules/entrepreneur/README.md).
+
+- 2026-10-17 · Deterministic ingestion helpers (A-02/A-03/A-10 are `worker_partial`, not complete): ffmpeg 16 kHz mono normalisation, `silencedetect` pause baseline packing speech into ≤ 29.5 s chunks with original-time anchors, `too_short`/`near_silent`/`clipped` rejection; content-signature format detection with ffprobe stream checks; phone/email/ID/known-name redaction including Indic digits, and a prompt guard in the shared adapter that blocks unredacted contacts before any runtime call. 18 new worker tests on synthetic audio/text (plus 5 for fixtures and the question bank; 33 worker tests in total). Thresholds are untuned; no organiser-data evaluation yet. See [ingest README](../../ai/ingest/README.md).
+- 2026-10-17 · For Dev 2: draft [ingest-output.v0](../../packages/contracts/schemas/drafts/ingest-output.v0.json) (Segment, QA, cited fields) and three synthetic [fixtures](../../packages/contracts/fixtures/ingest/README.md) checked against the evidence rules. Draft question bank and guided prompt cards in `data/seed/question-bank.json` (non-English prompts unreviewed, Q-05). Read-only own-submission lists for entrepreneurs and facilitators (`GET /me/submissions`, `GET /assisted/submissions`) with isolation tests; 16 entrepreneur-module tests in total. Intake [proposal](dev-1-intake-proposal.md) written for Dev 3; not yet reviewed.

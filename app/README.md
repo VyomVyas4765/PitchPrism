@@ -4,7 +4,7 @@ Flutter app for entrepreneurs and field facilitators. **iOS is the build target 
 
 The login page also has **Explore offline demo** for a device without access to the local API. Install a standalone iPhone demo with `pnpm ios --offline-demo`; no IP address or backend is required. It opens the entrepreneur consent, prefilled synthetic onboarding and home screens without creating an account or token. The demo API adapter stays entirely on the device; sample pitches and sharing switches are simulated, and any demo answers/files are cleared when leaving the tour. It cannot read or submit real account data. Use sample details only.
 
-What the app does: language picker with spoken prompts, consent read aloud, profile, Speak (guided questions or free talk) / Type / Upload with an offline outbox and resumable uploads, transcript review with playback and corrections, Idea Passport, idea status, and assisted mode for facilitators. See [the Dev 1 brief](../docs/duties/dev-1-entrepreneur-facilitator.md) for what is still pending.
+What the app does: language picker with spoken prompts, consent read aloud, one-time About and Location onboarding (contact, education/work background, optional credit score and location), then Speak (guided questions or free talk) / Type / Upload for business ideas with an offline outbox and resumable uploads, transcript review with playback and corrections, Idea Passport, idea status, and assisted mode for facilitators. See [the Dev 1 brief](../docs/duties/dev-1-entrepreneur-facilitator.md) for what is still pending.
 
 ## Spoken prompts on iPhone
 

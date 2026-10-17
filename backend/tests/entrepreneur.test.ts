@@ -14,13 +14,9 @@ import { sharingAllowed } from '../src/modules/entrepreneur/index.js';
 const config = configSchema.parse({ NODE_ENV: 'test', JWT_SECRET: 'test-only-secret-with-more-than-thirty-two-characters', PII_ENCRYPTION_KEY: 'ab'.repeat(32) });
 const syntheticName = 'Synthetic Applicant Kumari';
 const onboarding = {
-  name: syntheticName, mobile: '+91 9123456789', trade: 'Tailoring', village: 'Synthetic Nagar',
+  name: syntheticName, mobile: '+91 9123456789', village: 'Synthetic Nagar',
   block: 'Sample Block', district: 'Nashik', state: 'Maharashtra', pincode: '422001',
-  setupLocation: 'A rented room', productsServices: 'Garment stitching', targetCustomers: 'Local families',
-  marketResearch: 'Spoke with local households', rawMaterials: 'Fabric and thread',
-  suppliers: 'Local wholesaler', fundingSources: 'Savings and a small loan',
-  competition: 'Two nearby tailors', prices: 'Blouse stitching 400 rupees',
-  expectedMonthlyRevenue: '40000 rupees', education: 'Trade training',
+  education: 'Trade training',
   workBackground: 'Two years of stitching', gender: null, creditScore: null,
 };
 let mongo: MongoMemoryServer;
@@ -86,7 +82,7 @@ describe('entrepreneur access', () => {
 });
 
 describe('language and profile', () => {
-  it('accepts a complete onboarding only once after consent and seals the answers', async () => {
+  it('accepts contact, background and location once after consent and seals the details', async () => {
     const auth = await as(applicant);
     await request(app).post('/api/v1/me/onboarding').set('Authorization', auth).send(onboarding).expect(403);
     await grantProcessing(auth);
@@ -96,8 +92,11 @@ describe('language and profile', () => {
       .send({ ...onboarding, mobile: '----------' }).expect(400);
     await request(app).post('/api/v1/me/onboarding').set('Authorization', auth)
       .send({ ...onboarding, entrepreneurId: String(other._id) }).expect(400);
+    await request(app).post('/api/v1/me/onboarding').set('Authorization', auth)
+      .send({ ...onboarding, trade: 'Tailoring' }).expect(400);
     const saved = await request(app).post('/api/v1/me/onboarding').set('Authorization', auth).send(onboarding).expect(201);
-    expect(saved.body).toMatchObject({ onboardingComplete: true, profile: { name: syntheticName, trade: 'Tailoring' } });
+    expect(saved.body).toMatchObject({ onboardingComplete: true, profileComplete: true,
+      profile: { name: syntheticName, trade: null, district: 'Nashik' } });
     expect(JSON.stringify(saved.body)).not.toContain(onboarding.mobile);
     const raw = await mongoose.connection.collection('entrepreneurs').findOne({ _id: applicant._id });
     expect(JSON.stringify(raw)).not.toContain(onboarding.mobile);

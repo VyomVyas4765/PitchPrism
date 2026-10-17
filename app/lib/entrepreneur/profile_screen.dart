@@ -71,7 +71,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: TextFormField(
         key: Key('profile-$key'), controller: _fields[key],
         maxLines: lines, keyboardType: keyboard,
-        maxLength: key == 'name' ? 100 : (key == 'trade' || key == 'district' || key == 'village' || key == 'block' ? 80 :
+        maxLength: key == 'name' ? 100 : (key == 'district' || key == 'village' || key == 'block' ? 80 :
           key == 'education' ? 150 : key == 'mobile' ? 20 :
           key == 'pincode' ? 6 : key == 'creditScore' ? 3 : 300),
         decoration: InputDecoration(labelText: c(key), alignLabelWithHint: lines > 1),
@@ -132,8 +132,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onChanged: _saving ? null : (value) => setState(() => _state = value),
           validator: (value) => value == null ? widget.ctx.t('required') : null,
         ),
-        _section(context, c('idea'), ['trade', 'setupLocation', 'productsServices', 'targetCustomers',
-          'marketResearch', 'rawMaterials', 'suppliers', 'fundingSources', 'competition', 'prices', 'expectedMonthlyRevenue']),
         if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 12),
           child: Semantics(liveRegion: true, child: Text(_error!, style: TextStyle(color: theme.colorScheme.error)))),
         FilledButton(key: const Key('profile-save'), onPressed: _saving ? null : _save,
@@ -143,8 +141,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-const _longFields = {'workBackground', 'setupLocation', 'productsServices', 'targetCustomers', 'marketResearch',
-  'rawMaterials', 'suppliers', 'fundingSources', 'competition', 'prices', 'expectedMonthlyRevenue'};
+const _longFields = {'workBackground'};
 const _labels = ['name', 'mobile', 'education', 'workBackground', 'creditScore', 'village', 'block', 'district',
-  'pincode', 'trade', 'setupLocation', 'productsServices', 'targetCustomers', 'marketResearch', 'rawMaterials',
-  'suppliers', 'fundingSources', 'competition', 'prices', 'expectedMonthlyRevenue'];
+  'pincode'];

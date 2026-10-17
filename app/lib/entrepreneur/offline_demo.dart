@@ -63,15 +63,8 @@ class _DemoApi implements ApiClient {
 
   static const _sampleProfile = <String, dynamic>{
     'name': 'Demo Entrepreneur', 'mobile': '9000000080', 'education': 'Secondary school',
-    'workBackground': 'Sample tailoring experience', 'creditScore': '', 'village': 'Demo Village',
+    'workBackground': 'Two years of sample work experience', 'creditScore': '', 'village': 'Demo Village',
     'block': 'Demo Block', 'district': 'Nashik', 'state': 'Maharashtra', 'pincode': '422001',
-    'trade': 'Tailoring', 'setupLocation': 'A sample shop in Demo Village',
-    'productsServices': 'Clothing alterations and stitching',
-    'targetCustomers': 'Local households', 'marketResearch': 'Sample conversations with neighbours',
-    'rawMaterials': 'Fabric and thread', 'suppliers': 'Sample local wholesale shop',
-    'fundingSources': 'Sample personal savings', 'competition': 'Other sample tailoring shops',
-    'prices': 'Sample price per alteration: 100 rupees',
-    'expectedMonthlyRevenue': 'Sample estimate: 10000 rupees',
   };
 
   Map<String, dynamic> _consents() => {

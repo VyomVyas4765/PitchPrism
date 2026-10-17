@@ -80,6 +80,7 @@ A feature is done when UI, API, persistence, permissions, loading/error states, 
 
 ## In progress
 
+
 2026-10-17 · Branch `arnav` · Team direction (Arnav): email-only sign-in for every role (phone OTP/Firebase removed; entrepreneurs self-register with email and password, staff by invitation) and an iOS-only build target for now (Android ignored, not deleted); iOS text-to-speech; IndicTrans2 install after the account owner signs in; first organiser-data run. Touches shared auth (`backend/src/app.ts`, `config.ts`, `models.ts`, `auth/firebase.ts` removed, `backend/package.json`), `app/`, docs and a new decision entry.
 
 2026-10-17 · Branch `arnav` · Everything below needs an input this branch cannot supply (team chose "Dev 1 only" for cross-owner pieces):
@@ -97,6 +98,8 @@ A feature is done when UI, API, persistence, permissions, loading/error states, 
 **Shared edits on `arnav` awaiting owner review:** Dev 3: `ai/requirements.txt` pins (new `ai/requirements-models.txt` for model runtimes); router mount in `backend/src/app.ts`; `PII_ENCRYPTION_KEY` in `backend/src/config.ts`, `.env.example`, `scripts/setup-env.mjs` (existing `.env` files need the key added by hand); status legend in `scripts/generate-matrix.mjs`; additive `audio` source (`chunkId`/`start`/`end`) in `packages/contracts/schemas/centre-extracted-input.json` with regenerated types. Dev 2: prompt PII guard in `ai/llm/adapter.py`; scorer now uses the shared `ai/ingest/pii.find_pii`; CLI writes UTF-8 (Windows fix); runner finds the Windows venv; centre validator accepts audio segments. Rayyan: restored his Release `Info.plist`/`Release.xcconfig` lost in the merge.
 
 ## Done
+
+- 2026-10-18 · Removed Business Idea and its eleven fields from one-time iOS onboarding after language and consent; About and Location remain, with work background phrased as personal experience in all six draft locales. The owner-scoped API now validates and seals only contact, background and location details; onboarding completion no longer depends on trade, while existing legacy profile completion remains valid. Updated the offline demo, focused widget/API tests, M-04 matrix and endpoint docs. Backend typecheck and all 152 tests pass; matrix and duties checks pass. Flutter analysis/widget and iPhone checks need the Mac. **Dev 3 handoff:** update the shared Entrepreneur schema's `onboarding` description, which still mentions EDP answers; no schema structure was changed here. Business details remain in the later pitch flow.
 
 - 2026-10-18 · Added an **Explore offline demo** entry on the mobile login page and `pnpm ios --offline-demo` to install a standalone Profile build without a backend address. It reuses the entrepreneur consent, synthetic prefilled onboarding, home, pitch, status and Passport screens through an in-memory `ApiClient` with no session token or network forwarding. The demo has its own memory outbox and temporary file directory; leaving deletes that directory. An in-flight real session restore cannot replace the demo. Added widget tests for the full demo path, pitch editor and pending-session case; `git diff --check`, script syntax and duties check pass. Flutter tooling is unavailable on this Windows host, so `flutter analyze`, widget tests and iPhone tap-through remain required on the Mac. This is a demo of the UI only, not a PRD completion claim.
 

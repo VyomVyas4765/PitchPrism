@@ -135,13 +135,13 @@ void main() {
     await tester.tap(find.byKey(const Key('profile-save')));
     await tester.pump();
     expect(api.calls, isEmpty);
+    expect(find.text(onboardingText('mr', 'idea')), findsNothing);
+    expect(find.byKey(const Key('profile-trade')), findsNothing);
+    expect(find.byKey(const Key('profile-productsServices')), findsNothing);
     const values = {
       'name': 'Synthetic Applicant', 'mobile': '+91 9123456789', 'education': 'Trade training',
       'workBackground': 'Two years stitching', 'village': 'Sample village', 'block': 'Sample block',
-      'district': 'Nashik', 'pincode': '422001', 'trade': 'Tailoring', 'setupLocation': 'Rented room',
-      'productsServices': 'Garments', 'targetCustomers': 'Local families', 'marketResearch': 'Visited shops',
-      'rawMaterials': 'Fabric', 'suppliers': 'Wholesalers', 'fundingSources': 'Savings',
-      'competition': 'Two tailors', 'prices': '400 rupees', 'expectedMonthlyRevenue': '40000 rupees',
+      'district': 'Nashik', 'pincode': '422001',
     };
     for (final entry in values.entries) {
       final field = find.byKey(Key('profile-${entry.key}'));

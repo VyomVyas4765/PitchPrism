@@ -69,7 +69,7 @@
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Short profile by voice or tap: name, district or pincode, trade or skill, optional gender",
-    "implementation": "One-time iOS tap form after consent with encrypted applicant contact/background, credit score, location and ten EDP idea-brief answers; voice input pending",
+    "implementation": "One-time iOS tap form after consent with encrypted applicant contact/background, optional credit score and location; business questions are deferred to the pitch flow by product direction, and voice input is pending",
     "execution": "Flutter iOS mobile + scoped API and MongoDB",
     "local_strategy": "Tap form in six draft locales; local speech adapter only when validated, no hosted AI",
     "dependencies": [
@@ -78,7 +78,7 @@
       "Local worker capabilities where required"
     ],
     "cost_exposure": "No hosted AI calls; MongoDB profile storage and iOS device costs remain. No SMS/OTP sign-in (D-27).",
-    "acceptance_test": "After language, email sign-in and consent, iOS form validates every field, saves once, blocks repeat and cross-user writes, and seals contact/background/answers. Verify on device and review draft translations; voice input remains pending.",
+    "acceptance_test": "After language, email sign-in and consent, iOS form asks only for contact, background and location; it validates and saves once, blocks repeat and cross-user writes, seals private details, and marks onboarding complete without a trade. Verify on device and review draft translations; voice input and trade or skill capture in the pitch flow remain pending.",
     "status": "client_partial",
     "evidence": [
       "backend/src/modules/entrepreneur/README.md",

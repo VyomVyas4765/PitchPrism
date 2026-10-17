@@ -1,0 +1,12 @@
+#!/bin/sh
+# Refuse to push commits that carry AI attribution as author, committer or co-author (see CLAUDE.md).
+zero=0000000000000000000000000000000000000000
+while read local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue
+  if [ "$remote_sha" = "$zero" ]; then range="$local_sha"; else range="$remote_sha..$local_sha"; fi
+  if git log --format='%an <%ae>%n%cn <%ce>%n%B' $range | grep -i -E 'anthropic\.com|^co-authored-by:.*claude|^claude-session:' >/dev/null; then
+    echo "pre-push: Claude/Anthropic attribution found in commits ($range). Push blocked." >&2
+    exit 1
+  fi
+done
+exit 0

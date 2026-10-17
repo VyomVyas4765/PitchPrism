@@ -26,7 +26,7 @@ Entrepreneurs act on their own pitches; facilitators only on pitches and applica
 | `POST /pitches/:id/documents` | `{clientFileId, kind, bytes, sha256, mime, promptStep?}`; kind-specific size and MIME limits; at most 20 files |
 | `PUT /documents/:id/content` | Raw `application/octet-stream` chunk (≤ 1 MiB) at `Upload-Offset`; a wrong offset gets 409 with the server's `receivedBytes`. The final chunk is checked against size and sha256: `complete` (immutable GridFS original) or `rejected` |
 | `GET /documents/:id` | Resume point after an app restart |
-| `POST /pitches/:id/submit` | Needs processing consent, a centre, finished uploads and some content. Typed answers become an immutable text original. Creates one `Submission` (owner = centre, source = facilitator's org) and marks `pipeline: pending_queue`; no queue consumer exists yet, so nothing claims processing happened |
+| `POST /pitches/:id/submit` | Needs processing consent, a centre, finished uploads and some content. Typed answers become an immutable text original. Creates one `Submission` (owner = centre, source = facilitator's org) and idempotently enqueues ingestion; a repeat submit repairs a missing job. The local worker records `capability_unavailable` until validated ingestion handlers are integrated, so no assessment is claimed. |
 | `POST /assisted/applicants`, `GET /assisted/applicants` | Facilitator registers applicants (name/gender sealed) and lists only their own |
 | `POST /assisted/applicants/:id/evidence` | Registers the spoken-consent recording; uploaded through the content route |
 | `POST /assisted/applicants/:id/consents` | Records consent with `method: assisted_recorded`; needs a complete evidence recording and `checkboxConfirmed: true` |

@@ -3,7 +3,7 @@ import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { requirePermission } from '../../auth/authorization.js';
 import { HttpError } from '../../errors.js';
-import { AuditEvent, Cohort, ClusterPoint, EvaluationRun, Job, Org, Programme, ReviewSample, RoutingRule, Rubric, StageEvent, Submission, Trade } from '../../models.js';
+import { AuditEvent, Cohort, ClusterPoint, EvaluationRun, Org, Programme, ReviewSample, RoutingRule, Rubric, StageEvent, Submission, Trade } from '../../models.js';
 import { sharingAllowed } from '../entrepreneur/index.js';
 
 const id = z.string().regex(/^[a-f\d]{24}$/i);
@@ -20,10 +20,8 @@ const pipelineQuery = pagination.extend({
 }).strict();
 const activeUpdate = z.object({ active: z.boolean() }).strict();
 const evaluation = z.object({ promptVersion: text.optional(), rubricVersionId: id.optional(), models: z.array(text).max(20).default([]), metrics: z.record(z.string(), z.unknown()), perFile: z.record(z.string(), z.unknown()).optional() }).strict();
-const stage = z.object({ submissionId: id, stage: text, status: z.enum(['started', 'completed', 'failed']), durationMs: z.number().int().nonnegative().optional(), model: text.optional(), tokens: z.number().int().nonnegative().optional(), cost: z.number().nonnegative().optional(), detail: z.record(z.string(), z.unknown()).optional() }).strict();
 const classification = z.object({ cohortId: id.nullable().optional(), trade: text.nullable().optional(), sector: text.nullable().optional(), district: text.nullable().optional(), language: text.nullable().optional(), inputFormat: text.nullable().optional(), gender: text.nullable().optional(), band: text.nullable().optional(), pathway: text.nullable().optional(), score: z.number().min(0).max(100).nullable().optional() }).strict();
 const override = z.object({ decision: z.string().trim().min(1).max(100), reason: z.string().trim().min(10).max(2000) }).strict();
-const lease = z.object({ workerId: text.max(100) }).strict();
 
 function clusterKey(value: string) {
   return createHash('sha256').update(value).digest('hex').slice(0, 8);
@@ -173,31 +171,6 @@ export function hqAdminRouter() {
   router.get('/hq/audit', platform, async (_req, res) => res.json({ events: await AuditEvent.find().sort({ createdAt: -1 }).limit(500).lean() }));
   router.get('/hq/evaluations', platform, async (_req, res) => res.json({ runs: await EvaluationRun.find().sort({ createdAt: -1 }).limit(100).lean() }));
   router.post('/hq/evaluations', platform, async (req, res) => res.status(201).json(await EvaluationRun.create(evaluation.parse(req.body))));
-  router.get('/hq/stage-events/:submissionId', platform, async (req, res) => res.json({ events: await StageEvent.find({ submissionId: id.parse(req.params.submissionId) }).sort({ createdAt: 1 }).lean() }));
-  router.post('/hq/stage-events', platform, async (req, res) => res.status(201).json(await StageEvent.create(stage.parse(req.body))));
-  router.get('/hq/stage-events/:submissionId/stream', platform, async (req, res) => {
-    const submissionId = id.parse(req.params.submissionId);
-    res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-    res.flushHeaders();
-    let last = new Date(0);
-    const poll = async () => {
-      const events = await StageEvent.find({ submissionId, createdAt: { $gt: last } }).sort({ createdAt: 1 }).lean();
-      for (const event of events) { last = new Date(event.createdAt); res.write(`id: ${String(event._id)}\ndata: ${JSON.stringify(event)}\n\n`); }
-    };
-    await poll();
-    const timer = setInterval(() => { void poll().catch(() => undefined); }, 1500);
-    req.on('close', () => clearInterval(timer));
-  });
-  router.post('/hq/jobs/claim', platform, async (req, res) => {
-    const input = lease.parse(req.body);
-    const now = new Date();
-    const job = await Job.findOneAndUpdate({ $or: [{ state: 'queued', availableAt: { $lte: now } }, { state: 'leased', leaseUntil: { $lt: now } }] }, { $set: { state: 'leased', workerId: input.workerId, leaseUntil: new Date(Date.now() + 60_000) }, $inc: { attempts: 1 } }, { sort: { createdAt: 1 }, returnDocument: 'after' }).lean();
-    res.json({ job });
-  });
-  router.post('/hq/jobs/:id/complete', platform, async (req, res) => {
-    const item = await Job.findOneAndUpdate({ _id: id.parse(req.params.id), state: 'leased' }, { $set: { state: 'completed', completedAt: new Date() } }, { returnDocument: 'after' }).lean();
-    if (!item) { res.status(404).json({ error: 'Leased job not found.' }); return; }
-    res.json(item);
-  });
+  router.get('/hq/stage-events/:submissionId', platform, async (req, res) => res.json({ events: await StageEvent.find({ submissionId: id.parse(req.params.submissionId) }).sort({ at: 1, _id: 1 }).lean() }));
   return router;
 }

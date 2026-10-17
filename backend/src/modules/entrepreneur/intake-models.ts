@@ -23,7 +23,7 @@ const pitchSchema = new Schema({
   typedAnswers: [{ _id: false, step: { type: String, enum: GUIDED_STEPS }, text: String }],
   status: { type: String, enum: ['DRAFT', 'SUBMITTED'], default: 'DRAFT', required: true },
   submissionId: Schema.Types.ObjectId,
-  // No worker queue exists yet; processing is explicitly pending, never implied (D-24).
+  // Queue state is tracked on Job; this pitch flag does not imply that AI processing succeeded.
   pipeline: { type: String, enum: ['not_requested', 'pending_queue'], default: 'not_requested' },
   submittedAt: Date,
 }, { timestamps: true });

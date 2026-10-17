@@ -90,10 +90,10 @@ describe('HQ administration routes', () => {
     await request(app).post(path).set('Cookie', hqCookie).set('Origin', config.WEB_ORIGIN).send({}).expect(200);
     expect((await Submission.findById(submission._id))?.shares?.[0]?.orgId?.toString()).toBe(String(partner._id));
   });
-  it('creates a durable processing job when a job is explicitly queued', async () => {
-    const job = await Job.create({ type: 'submission.process', payload: { submissionId: submission.id } });
-    expect(job.state).toBe('queued');
-    await request(app).post('/api/v1/hq/jobs/claim').set('Cookie', hqCookie).set('Origin', config.WEB_ORIGIN).send({ workerId: 'test-worker' }).expect(200);
-    expect((await Job.findById(job._id))?.state).toBe('leased');
+  it('does not expose worker job controls to an HQ browser session', async () => {
+    await request(app).post('/api/v1/hq/jobs/claim').set('Cookie', hqCookie).set('Origin', config.WEB_ORIGIN)
+      .send({ workerId: 'test-worker' }).expect(404);
+    await request(app).post('/api/v1/hq/stage-events').set('Cookie', hqCookie).set('Origin', config.WEB_ORIGIN)
+      .send({ submissionId: submission.id, stage: 'score', status: 'done' }).expect(404);
   });
 });

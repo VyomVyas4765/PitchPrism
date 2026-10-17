@@ -76,18 +76,6 @@ const evaluationRunSchema = new Schema({
   promptVersion: String, rubricVersionId: Schema.Types.ObjectId, models: [String],
   metrics: Schema.Types.Mixed, perFile: Schema.Types.Mixed, createdAt: { type: Date, default: Date.now },
 });
-const stageEventSchema = new Schema({
-  submissionId: Schema.Types.ObjectId, stage: { type: String, required: true },
-  status: { type: String, enum: ['started', 'completed', 'failed'], required: true },
-  durationMs: Number, model: String, tokens: Number, cost: Number, detail: Schema.Types.Mixed,
-}, { timestamps: true });
-const jobSchema = new Schema({
-  type: { type: String, required: true }, payload: { type: Schema.Types.Mixed, required: true },
-  state: { type: String, enum: ['queued', 'leased', 'completed', 'failed'], default: 'queued' },
-  attempts: { type: Number, default: 0 }, leaseUntil: Date, workerId: String, error: String,
-  availableAt: { type: Date, default: Date.now }, completedAt: Date,
-}, { timestamps: true });
-jobSchema.index({ state: 1, availableAt: 1, leaseUntil: 1 });
 const reviewSampleSchema = new Schema({
   submissionId: { type: Schema.Types.ObjectId, required: true, unique: true },
   reason: { type: String, required: true }, sampledAt: { type: Date, default: Date.now },
@@ -105,8 +93,19 @@ export const Cohort = mongoose.model('Cohort', cohortSchema);
 export const Trade = mongoose.model('Trade', tradeSchema);
 export const AuditEvent = mongoose.model('AuditEvent', auditEventSchema);
 export const EvaluationRun = mongoose.model('EvaluationRun', evaluationRunSchema);
-export const StageEvent = mongoose.model('StageEvent', stageEventSchema);
-export const Job = mongoose.model('Job', jobSchema);
+export const StageEvent = mongoose.model<Stored.StageEvent>('StageEvent', contractSchema('StageEvent', {
+  options: { capped: { size: 64 * 1024 * 1024, max: 250_000 } },
+  indexes: [[{ submissionId: 1 }], [{ ownerOrgId: 1, at: 1 }]],
+}));
+export const Job = mongoose.model<Stored.Job>('Job', contractSchema('Job', {
+  indexes: [
+    [{ idempotencyKey: 1 }, { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } }],
+    [{ status: 1, availableAt: 1, createdAt: 1 }], [{ submissionId: 1, createdAt: -1 }],
+  ],
+}));
+export const PipelineRun = mongoose.model<Stored.PipelineRun>('PipelineRun', contractSchema('PipelineRun', {
+  indexes: [[{ jobId: 1 }], [{ submissionId: 1 }], [{ ownerOrgId: 1, startedAt: -1 }]],
+}));
 export const ReviewSample = mongoose.model('ReviewSample', reviewSampleSchema);
 export const ClusterPoint = mongoose.model('ClusterPoint', clusterPointSchema);
 // These two collections already use the reviewed domain contracts; the other live models still

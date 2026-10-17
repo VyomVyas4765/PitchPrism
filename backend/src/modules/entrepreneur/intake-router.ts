@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import { HttpError } from '../../errors.js';
-import { Job, Org, Submission } from '../../models.js';
+import { Org, Submission } from '../../models.js';
+import { enqueueJob } from '../../queue/jobs.js';
 import { requirePermission } from '../../auth/authorization.js';
 import { hasProcessingConsent } from './consent.js';
 import { Entrepreneur, LANGUAGES } from './models.js';
@@ -173,11 +174,18 @@ export function intakeRouter() {
     res.json(documentView(result!));
   });
 
-  // Submitting turns the draft into a Submission owned by a centre. Processing is queued only when the
-  // shared worker queue exists; until then the pitch records pipeline: pending_queue (no fake progress).
+  // Submitting turns the draft into a centre-owned Submission and idempotently enqueues ingestion.
+  // The pitch remains pending until a validated local handler records real processing results.
   router.post('/pitches/:id/submit', canPitch, async (req, res) => {
     const pitch = await ownPitch(req, req.params.id as string);
-    if (pitch.status === 'SUBMITTED') { res.json(pitchView(pitch, await PitchDocument.find({ pitchId: pitch._id }))); return; }
+    if (pitch.status === 'SUBMITTED') {
+      if (!await hasProcessingConsent(pitch.entrepreneurId)) throw new HttpError(403, 'Processing consent is needed before submitting.');
+      if (!pitch.submissionId || !pitch.centreId) throw new HttpError(409, 'This submission needs queue repair.');
+      await enqueueJob({ submissionId: pitch.submissionId, ownerOrgId: pitch.centreId, requestedByUserId: req.auth!.user.id,
+        fromStage: 'ingest', reason: 'new' });
+      res.json(pitchView(pitch, await PitchDocument.find({ pitchId: pitch._id })));
+      return;
+    }
     if (!await hasProcessingConsent(pitch.entrepreneurId)) throw new HttpError(403, 'Processing consent is needed before submitting.');
     if (!pitch.centreId) throw new HttpError(409, req.auth!.user.role === 'facilitator'
       ? 'Your organisation is not linked to a centre yet.' : 'Choose the centre you are applying to.');
@@ -202,7 +210,8 @@ export function intakeRouter() {
     const updated = await Pitch.findOneAndUpdate({ _id: pitch._id, status: 'DRAFT' },
       { $set: { status: 'SUBMITTED', submissionId: submission._id, pipeline: 'pending_queue', submittedAt: new Date() } }, { returnDocument: 'after' });
     if (!updated) { await Submission.deleteOne({ _id: submission._id }); throw new HttpError(409, 'This pitch was already submitted.'); }
-    await Job.create({ type: 'submission.process', payload: { submissionId: String(submission._id), pitchId: String(pitch._id) } });
+    await enqueueJob({ submissionId: submission._id, ownerOrgId: pitch.centreId, requestedByUserId: req.auth!.user.id,
+      fromStage: 'ingest', reason: 'new' });
     res.status(201).json(pitchView(updated, await PitchDocument.find({ pitchId: pitch._id })));
   });
 

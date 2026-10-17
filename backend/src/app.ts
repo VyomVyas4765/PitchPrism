@@ -20,6 +20,7 @@ import { entrepreneurRouter } from './modules/entrepreneur/index.js';
 import { partnerRouter } from './modules/partners/router.js';
 import { accessRouter, inviteAcceptRouter } from './modules/hq/router.js';
 import { hqAdminRouter } from './modules/hq/admin-router.js';
+import { eventsRouter } from './queue/events-router.js';
 
 const loginInput = z.object({ email: z.email().max(254).transform(value => value.toLowerCase()), password: z.string().min(1).max(128), client: z.enum(['web', 'mobile']).default('web') }).strict();
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
@@ -83,6 +84,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
   });
   app.use('/api/v1/centre', centreRouter(options.assessIdea));
   app.use('/api/v1/partners', partnerRouter()); // Dev 4 handoff: behind the shared session middleware
+  app.use('/api/v1', eventsRouter());
   app.get('/api/v1/admin/overview', requirePermission('manage_platform'), async (_req, res) => {
     const [organisations, activeOrganisations, users, activeUsers, submissions, byStatus, byOrganisation] = await Promise.all([
       Org.countDocuments(), Org.countDocuments({ active: true }), User.countDocuments({ role: { $ne: 'entrepreneur' } }),

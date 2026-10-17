@@ -1,30 +1,36 @@
 import { randomUUID } from 'node:crypto';
+import mongoose from 'mongoose';
 import { connectDatabase } from './database.js';
 import { readConfig } from './config.js';
-import { Job, StageEvent } from './models.js';
+import { claimJob, failJob } from './queue/jobs.js';
 
 const config = readConfig();
 const workerId = `local-${randomUUID()}`;
 await connectDatabase(config);
 console.log(`MongoDB job worker ${workerId} started.`);
 
+let inFlight: Promise<void> | null = null;
+let stopping = false;
 async function tick() {
-  const now = new Date();
-  const job = await Job.findOneAndUpdate(
-    { $or: [{ state: 'queued', availableAt: { $lte: now } }, { state: 'leased', leaseUntil: { $lt: now } }] },
-    { $set: { state: 'leased', workerId, leaseUntil: new Date(Date.now() + 60_000) }, $inc: { attempts: 1 } },
-    { sort: { createdAt: 1 }, returnDocument: 'after' },
-  );
-  if (!job) return;
-  const submissionId = typeof job.payload?.submissionId === 'string' ? job.payload.submissionId : null;
-  if (job.type !== 'submission.process' || !submissionId) {
-    job.state = 'failed'; job.error = 'Unsupported job payload.'; await job.save(); return;
-  }
-  await StageEvent.create({ submissionId, stage: 'processing', status: 'failed', detail: { code: 'capability_pending', message: 'No validated local ingestion worker is configured.' } });
-  job.state = 'failed'; job.error = 'capability_pending'; job.completedAt = new Date(); await job.save();
+  if (stopping || inFlight) return;
+  inFlight = (async () => {
+    const job = await claimJob(workerId);
+    if (!job) return;
+    // Dev 1/2 stage handlers are not integrated yet. Do not claim an assessment succeeded.
+    await failJob(job._id, workerId, 'capability_unavailable', false);
+  })();
+  try { await inFlight; }
+  finally { inFlight = null; }
 }
 
-const timer = setInterval(() => { void tick().catch(error => console.error('Job tick failed:', error)); }, 1000);
-const stop = async () => { clearInterval(timer); await (await import('mongoose')).default.disconnect(); process.exit(0); };
+const timer = setInterval(() => { void tick().catch(error => console.error('Job tick failed:', error instanceof Error ? error.name : 'UnknownError')); }, 1000);
+const stop = async () => {
+  if (stopping) return;
+  stopping = true;
+  clearInterval(timer);
+  if (inFlight) await inFlight.catch(() => undefined);
+  await mongoose.disconnect();
+  process.exit(0);
+};
 process.once('SIGINT', () => { void stop(); });
 process.once('SIGTERM', () => { void stop(); });

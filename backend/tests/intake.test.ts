@@ -149,6 +149,9 @@ describe('self-service pitch', () => {
     const siblingAssessor = await User.create({ displayName: 'Synthetic sibling', email: 's@pitchprism.test', role: 'centre_assessor', orgId: sibling._id });
     await request(app).get(`/api/v1/submissions/${submitted.body.submissionId}`).set('Authorization', await as(assessor)).expect(200);
     await request(app).get(`/api/v1/submissions/${submitted.body.submissionId}`).set('Authorization', await as(siblingAssessor)).expect(404);
+    const processingConsent = await Consent.findOne({ entrepreneurId: applicant._id, purpose: 'processing', status: 'active' });
+    await request(app).post(`/api/v1/consents/${processingConsent!._id}/revoke`).set('Authorization', auth).send({}).expect(200);
+    await submit().expect(403);
   });
 });
 

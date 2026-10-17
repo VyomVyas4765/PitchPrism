@@ -1502,22 +1502,22 @@
     "owner": "dev-3-hq-platform",
     "priority": "P0",
     "requirement": "Publish each stage's result as it finishes, so the dashboard card fills in progressively over server-sent events",
-    "implementation": "Live incremental card and stage events",
+    "implementation": "MongoDB job leases emit durable stage records and a scoped SSE route supports Last-Event-ID replay. Real ingestion/intelligence stages and incremental card rendering remain pending",
     "execution": "worker + API + web",
-    "local_strategy": "Planned MongoDB job leases and durable stage events + scoped SSE; no Redis or hosted AI",
+    "local_strategy": "MongoDB leases, capped stage events and scoped SSE; no Redis or hosted AI. A missing local handler records capability_unavailable.",
     "dependencies": [
       "StageEvent contract; tenancy; persisted results"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
-    "acceptance_test": "Events scoped to viewer; reconnect does not lose or invent completed stages",
-    "status": "planned",
-    "evidence": []
+    "acceptance_test": "Events scoped to viewer; reconnect does not lose or invent completed stages, including role changes and share revocation; card shows actual persisted stages within the target time after real handlers are integrated.",
+    "status": "api_partial",
+    "evidence": ["backend/tests/queue.test.ts", "backend/tests/events.test.ts"]
   },
   "A-29": {
     "owner": "dev-3-hq-platform",
     "priority": "P1",
     "requirement": "Log model, tokens, cost and duration per stage",
-    "implementation": "Per-stage local resource/cost telemetry",
+    "implementation": "PipelineRun now records start, end, failure and duration for queue attempts with zero hosted cost. Real model/token/compute measurements and an HQ telemetry view remain pending",
     "execution": "worker + API",
     "local_strategy": "Local timing/model/token/API-cost metrics; no paid telemetry dependency",
     "dependencies": [
@@ -1525,10 +1525,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Log model/latency/tokens/API cost without prompts/PII; attempt blocks visible",
-    "status": "adapter_partial",
+    "status": "worker_partial",
     "evidence": [
       "ai/llm/adapter.py",
-      "ai/tests/test_local_runtime.py"
+      "ai/tests/test_local_runtime.py",
+      "backend/tests/queue.test.ts"
     ]
   },
   "A-30": {

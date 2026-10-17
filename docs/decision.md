@@ -42,6 +42,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-30 | Contracts absorb the first role modules' tested conventions | ✅ | Dev 3 |
 | D-31 | Second-review samples, rerun semantics and the tenancy rollout | ✅ | Dev 3 |
 | D-32 | The worker runs real stages; rubrics drive scoring; decided ideas keep their status | ✅ | Dev 3, Dev 2 |
+| D-33 | AI pitch review: text pitch, gaps, follow-up questions until complete, then evaluation | ✅ | All (AI focus) |
 
 ---
 
@@ -320,4 +321,19 @@ Current register after D-25. The complete answered/partial/open classification i
 - Staff password resets follow the invitation pattern: an administrator in scope issues a one-time link (24 hours, fragment token); using it ends every session.
 
 **Consequences.** The centre card fills in live from real work. Dev 1 adds intake stages to the same worker; Dev 2 owns the stage functions it calls. 25 stored collections.
+
+### D-33 · AI pitch review: gaps and follow-up questions until the pitch is complete ✅
+
+**Context.** From 17 October the team works on the AI across the old role split. The entrepreneur's pitch arrives as plain text. The AI must find missing or weak information, ask follow-up questions, and evaluate only a pitch that is complete (PRD section 5: "the entrepreneur and the AI pass the idea back and forth until it is complete").
+
+**Decision.**
+- **Local model only** (D-24): Ollama on the worker host. Small, schema-constrained calls (three extraction groups, one judge, one question call per round) so a 3B model on a CPU-only laptop copes; `LOCAL_LLM_NUM_CTX` and `LOCAL_LLM_NUM_PREDICT` set the budget.
+- **Read:** the text is redacted (`ai/ingest/pii`) and split into numbered lines; every extracted topic must cite real lines, and places and amounts must appear in the cited line, or they are dropped (D-09).
+- **Judge:** code rules first (topic absent, no amount in rupees, no district and state, too brief, sums that disagree via `check_finances`), then each topic's checklist from the question bank (`review.checks`), applied by the model.
+- **Ask:** at most three questions a round, highest impact first, plain English, one topic each, referring to what was said. Code refuses questions that ask for personal details or lead the answer and falls back to the bank's wording.
+- **Until complete, and always ending:** a topic is resolved when it meets its checklist or the entrepreneur says they have not decided. That is recorded as *declined*, shown to assessors and scored as missing evidence (D-11). A topic is asked at most three times, the last time with "or say if you have not decided"; still unclear, it is scored as written and flagged.
+- **Flow:** the worker reviews a submitted text pitch and ends the job with `NEEDS_INPUT` while questions are open (not a failure). The app answers all open questions together (`/me` or `/assisted/submissions/:id/follow-ups`); answers are private originals in an inbox; a `followup` job reviews again. When complete, the centre case input is written and scoring runs as before. One `reviewSessions` record per submission keeps rounds, verdicts, questions, redacted answers, prompt versions and call timings. Centre staff read it on the card.
+- **English only for now**; other languages and voice follow.
+
+**Consequences.** `ai/eval/review_harness.py` measures gap recall and precision, wasted and rule-breaking questions, rounds and completeness on 15 synthetic text pitches with a simulated entrepreneur. Targets with the chosen local model: gap recall ≥ 0.85, no personal-data questions, median rounds ≤ 3. Organiser files are PDFs and audio, so they reach this loop once intake can turn them into text.
 

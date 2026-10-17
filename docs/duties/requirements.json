@@ -182,8 +182,12 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Missing-field answers re-enter ingestion without losing history",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": [
+      "app/lib/entrepreneur/followup_screen.dart",
+      "app/test/followup_test.dart"
+    ],
+    "notes": "Typed English answers in the app (with \"not decided yet\"); voice questions and answers pending. The widget test needs Flutter 3.47 to run."
   },
   "M-10": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1283,10 +1287,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "At least 90% canonical field accuracy; drop uncited claims",
-    "status": "planned",
+    "status": "partial",
     "evidence": [
-      "packages/contracts/fixtures/extracted-input/README.md"
-    ]
+      "ai/review/extract.py",
+      "ai/tests/test_review.py"
+    ],
+    "notes": "Text pitches: the ten EDP topics plus skills and experience are extracted by the local model with cited lines; uncited claims and places or amounts not in the cited line are dropped. Audio, PDF and photo intake pending."
   },
   "A-13": {
     "owner": "dev-2-centre-cohort",
@@ -1353,8 +1359,13 @@
     "acceptance_test": "3–5 useful questions, original language, answers rerun correct stages",
     "status": "partial",
     "evidence": [
-      "ai/intel/narrative.py"
-    ]
+      "ai/review/session.py",
+      "ai/worker.py",
+      "backend/src/modules/entrepreneur/followup-router.ts",
+      "ai/tests/test_worker_review.py",
+      "backend/tests/followups.test.ts"
+    ],
+    "notes": "Text pitches (D-33): up to 3 questions a round until every topic is answered or declined; answers re-run extraction. English only; translation and voice pending; imported-file requests for information pending."
   },
   "A-17": {
     "owner": "dev-2-centre-cohort",

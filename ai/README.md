@@ -23,6 +23,18 @@ Settings load from the ignored root `.env` or explicit process environment. `mak
 - Callers must redact PII before generation/vision and validate evidence after generation. `complete_json`/`vision_json` validate JSON Schema, not truth, citations, fairness, language quality or financial arithmetic. Those guards remain the stage owners' duties.
 - Logged metrics contain provider/model, duration, token counts and zero hosted API cost, without prompts/model output. Compute, electricity, disks, production hosting and SMS/identity services have separate costs.
 
+## Pitch review (D-33)
+
+`ai/review` turns a plain-text pitch into a complete, cited idea before scoring. It reads the pitch (redacted, numbered lines), extracts the ten EDP topics with the local model, judges each against the question bank's `review.checks`, and asks at most three follow-up questions a round until every topic is answered or the entrepreneur says they have not decided. The worker runs it for text pitches and ends with `NEEDS_INPUT` while questions are open; answers come back through the API and a `followup` job reviews again.
+
+```bash
+ollama pull qwen2.5:3b-instruct            # once, by you: nothing downloads automatically
+# .env: LOCAL_LLM_MODEL=qwen2.5:3b-instruct, LOCAL_LLM_NUM_CTX=4096, LOCAL_LLM_NUM_PREDICT=768
+python -m ai.review my-pitch.txt --evaluate   # answer the questions in the terminal, then score
+python -m ai.eval.review_harness              # 15 synthetic pitches with a simulated entrepreneur
+python -m ai.eval.review_harness --fake       # the same without a model (plumbing only)
+```
+
 ## Job queue (D-29)
 
 `ai/jobqueue.py` is the worker side of the MongoDB queue; `backend/src/platform/jobs.ts` is the API side, and the two implement one protocol. The API enqueues after checking consent and access. The worker connects to `MONGODB_URI`, claims one job at a time with an atomic lease, and wraps each stage in `run.stage(name)`. That records `started` and `done`/`skipped`/`failed` stage events for the live card (streamed over SSE), writes a `pipelineRuns` row with timing and model use (A-29), and extends the lease.

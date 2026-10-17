@@ -58,8 +58,8 @@ export const Decision = define<S.Decision>('Decision', { indexes: [[{ submission
 export const Share = define<S.Share>('Share', { indexes: [[{ toOrgId: 1, status: 1 }], [{ submissionId: 1 }]] });
 export const Outcome = define<S.Outcome>('Outcome', { indexes: [[{ submissionId: 1 }], [{ ownerOrgId: 1, stage: 1 }]] });
 export const Job = define<S.Job>('Job', {
-  overrides: { idempotencyKey: { unique: true } },
-  indexes: [[{ status: 1, availableAt: 1, createdAt: 1 }], [{ submissionId: 1, createdAt: -1 }]],
+  indexes: [[{ idempotencyKey: 1 }, { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } }],
+    [{ status: 1, availableAt: 1, createdAt: 1 }], [{ submissionId: 1, createdAt: -1 }]],
 });
 // Capped and insert-only: the API follows it with a tailable cursor for SSE (D-26).
 export const StageEvent = define<S.StageEvent>('StageEvent', {

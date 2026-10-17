@@ -2,10 +2,16 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { HttpError } from '../../errors.js';
-import { requirePermission, submissionScope } from '../../auth/authorization.js';
-import { AuditEvent, Submission } from '../../models.js';
+import { requirePermission, scoped, submissionScope } from '../../auth/authorization.js';
+import { AuditEvent, Entrepreneur, Submission } from '../../models.js';
 import { CentreCase } from './model.js';
-import { assessLocally, type AssessmentResult } from './runner.js';
+import { assessLocally, assessPdfWithGroq, type AssessmentResult, type PdfAssessment } from './runner.js';
+import { planIntakeRouter } from './plan-intake.js';
+import type { Config } from '../../config.js';
+import { PitchDocument } from '../entrepreneur/intake-models.js';
+import { readOriginal } from '../entrepreneur/storage.js';
+import { hasProcessingConsent } from '../entrepreneur/consent.js';
+import { piiVault, type Sealed } from '../entrepreneur/pii-vault.js';
 
 const id = z.string().regex(/^[a-f\d]{24}$/i);
 const segment = z.object({ segId: z.string().min(1).max(80), textEn: z.string().max(2000), textOriginal: z.string().max(2000).optional(),
@@ -30,6 +36,7 @@ const inputSchema = z.object({ template: z.literal('edp-idea-brief'),
 const decisions = z.object({ decision: z.enum(['shortlist', 'not_yet', 'more_info']),
   reason: z.string().trim().max(1000).optional(), pathwayOverride: z.string().trim().max(100).optional(),
   bandOverride: z.enum(['Strong', 'Promising', 'Not yet', 'Insufficient information']).optional() }).strict();
+const inFlightPdf = new Set<string>();
 
 function stateOf(result: AssessmentResult): string {
   if (result.status === 'pending_model') return 'PENDING_MODEL';
@@ -37,40 +44,49 @@ function stateOf(result: AssessmentResult): string {
   return result.evaluation?.needsAttention ? 'NEEDS_ATTENTION' : 'READY';
 }
 
-export function centreRouter(assess: (input: CentreExtractedInput) => Promise<AssessmentResult> = assessLocally) {
+export function centreRouter(assess: (input: CentreExtractedInput) => Promise<AssessmentResult> = assessLocally, config?: Config,
+                             assessPdf: (pdf: Buffer, district: string, applicantName: string, documentId: string) => Promise<PdfAssessment> = assessPdfWithGroq) {
   const router = Router();
   router.use(requirePermission('review_centre'));
+  if (config) router.use(planIntakeRouter(config, assessPdf));
 
   router.get('/queue', async (req, res) => {
     const actor = req.auth!.user;
     const match = actor.role === 'hq_admin' ? {} : { ownerOrgId: actor.orgId };
-    const cases = await CentreCase.find(match).sort({ updatedAt: -1 }).limit(100).lean();
-    const submissions = await Submission.find({ _id: { $in: cases.map(item => item.submissionId) }, ...submissionScope(req.auth!) })
-      .select('title status ownerOrgId').lean();
-    const byId = new Map(submissions.map(item => [String(item._id), item]));
-    res.json({ items: cases.filter(item => byId.has(String(item.submissionId))).map(item => ({
-      submissionId: String(item.submissionId), title: byId.get(String(item.submissionId))!.title,
-      state: item.state, status: byId.get(String(item.submissionId))!.status,
-      potential: item.evaluation?.potential ?? null, completeness: item.evaluation?.completeness ?? item.quality?.completeness ?? null,
-      band: item.evaluation?.band ?? null, updatedAt: item.updatedAt,
-    })) });
+    const submissions = await Submission.find(scoped(submissionScope(req.auth!), {}))
+      .select('title status ownerOrgId').sort({ _id: -1 }).limit(100).lean();
+    const cases = await CentreCase.find({ ...match, submissionId: { $in: submissions.map(item => item._id) } }).lean();
+    const byId = new Map(cases.map(item => [String(item.submissionId), item]));
+    res.json({ items: submissions.map(submission => {
+      const item = byId.get(String(submission._id));
+      return {
+        submissionId: String(submission._id), title: submission.title,
+        state: item?.state ?? 'PENDING_MODEL', status: submission.status, reviewAvailable: !!item,
+        potential: item?.evaluation?.potential ?? null, completeness: item?.evaluation?.completeness ?? item?.quality?.completeness ?? null,
+        band: item?.evaluation?.band ?? null, updatedAt: item?.updatedAt ?? submission._id.getTimestamp(),
+      };
+    }) });
   });
 
   router.post('/submissions/:id/assessment', async (req, res) => {
     const submissionId = id.parse(req.params.id);
-    const submission = await Submission.findOne({ _id: submissionId, ...submissionScope(req.auth!) });
+    const submission = await Submission.findOne(scoped(submissionScope(req.auth!), { _id: submissionId }));
     if (!submission) throw new HttpError(404, 'Submission not found.');
+    if (!await hasProcessingConsent(submission.entrepreneurId))
+      throw new HttpError(403, 'Active processing consent is required before assessment.');
     const input = inputSchema.parse(req.body) as CentreExtractedInput;
     if (input.segments.some(segment => [segment.textEn, segment.textOriginal ?? ''].some(text =>
       /\b[^\s@]+@[^\s@]+\.[^\s@]+\b|(?<!\d)(?:\+?91[-\s]?)?[6-9]\d{9}(?!\d)/.test(text))))
       throw new HttpError(422, 'Extracted text must be redacted before assessment.');
+    const previous = await CentreCase.findOne({ submissionId, ownerOrgId: submission.ownerOrgId });
+    if (previous?.decision) throw new HttpError(409, 'A decided submission requires a versioned rescore.');
     // Rubric settings come from the server until Dev 3 mounts published rubric versions.
     let result: AssessmentResult;
     try { result = await assess(input); }
     catch { throw new HttpError(422, 'The local assessment could not validate or score this evidence.'); }
+    if (!await hasProcessingConsent(submission.entrepreneurId))
+      throw new HttpError(403, 'Processing consent was withdrawn during assessment.');
     const state = stateOf(result);
-    const previous = await CentreCase.findOne({ submissionId });
-    if (previous?.decision) throw new HttpError(409, 'A decided submission requires a versioned rescore.');
     const update = { $set: {
       ownerOrgId: submission.ownerOrgId, input, evaluation: result.evaluation ?? null,
       quality: result.quality ?? null, financialChecks: result.financialChecks ?? result.evaluation?.financialChecks ?? [],
@@ -87,6 +103,57 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
       planDraft: record!.planDraft, reason: record!.reason });
   });
 
+  router.post('/submissions/:id/evaluate-pdf', async (req, res) => {
+    const submissionId = id.parse(req.params.id);
+    const submission = await Submission.findOne(scoped(submissionScope(req.auth!), { _id: submissionId }));
+    if (!submission) throw new HttpError(404, 'Submission not found.');
+    if (!await hasProcessingConsent(submission.entrepreneurId))
+      throw new HttpError(403, 'Active processing consent is required before assessment.');
+    const previous = await CentreCase.findOne({ submissionId, ownerOrgId: submission.ownerOrgId });
+    if (previous?.decision) throw new HttpError(409, 'A decided submission requires a versioned rescore.');
+    if (previous?.evaluation) throw new HttpError(409, 'This plan is already scored; use a versioned rescore.');
+    if (inFlightPdf.has(submissionId)) throw new HttpError(409, 'This plan is already being evaluated.');
+    inFlightPdf.add(submissionId);
+    try {
+      const document = await PitchDocument.findOne({ submissionId: submission._id, entrepreneurId: submission.entrepreneurId,
+        kind: 'pdf', purpose: 'pitch', state: 'complete' }).select('storageId bytes').lean();
+      if (!document?.storageId || !document.bytes || document.bytes > 12 * 1024 * 1024)
+        throw new HttpError(404, 'A supported pitch plan was not found.');
+      const applicant = await Entrepreneur.findOne({ _id: submission.entrepreneurId, homeOrgId: submission.ownerOrgId }).select('+personal').lean();
+      const vault = config?.PII_ENCRYPTION_KEY && piiVault(config.PII_ENCRYPTION_KEY);
+      if (!applicant?.personal || !vault) throw new HttpError(503, 'Private applicant details are unavailable.');
+      const name = vault.open<{ name?: string }>(applicant.personal as Sealed, String(applicant._id)).name;
+      if (!name) throw new HttpError(422, 'The applicant name is needed for redaction.');
+      let output: PdfAssessment;
+      try { output = await assessPdf(await readOriginal(document.storageId), submission.district ?? 'Not recorded', name, String(document._id)); }
+      catch { throw new HttpError(422, 'This PDF could not be safely extracted or assessed.'); }
+      // Consent may have been revoked during the two model calls.
+      if (!await hasProcessingConsent(submission.entrepreneurId))
+        throw new HttpError(403, 'Processing consent was withdrawn during assessment.');
+      if (await CentreCase.exists({ submissionId, ownerOrgId: submission.ownerOrgId, decision: { $exists: true } }))
+        throw new HttpError(409, 'A decision was recorded during assessment.');
+      const input = inputSchema.parse(output.input) as CentreExtractedInput;
+      const result = output.assessment;
+      const state = stateOf(result);
+      const update = { $set: {
+        ownerOrgId: submission.ownerOrgId, input, evaluation: result.evaluation ?? null,
+        quality: result.quality ?? null, financialChecks: result.financialChecks ?? result.evaluation?.financialChecks ?? [],
+        followUps: result.followUps ?? result.evaluation?.followUps ?? [], planDraft: result.planDraft ?? result.evaluation?.planDraft ?? null,
+        state, reason: result.reason ?? null, metrics: result.metrics ?? null,
+      }, ...(previous?.evaluation ? { $push: { evaluationHistory: { evaluation: previous.evaluation, archivedAt: new Date().toISOString() } } } : {}) };
+      const record = await CentreCase.findOneAndUpdate({ submissionId, ownerOrgId: submission.ownerOrgId }, update,
+        { upsert: true, returnDocument: 'after', runValidators: true });
+      if (result.status === 'assessed' && ['DRAFT', 'READY', 'UNASSESSABLE'].includes(submission.status)) {
+        submission.status = state === 'UNASSESSABLE' ? 'UNASSESSABLE' : 'READY'; await submission.save();
+      }
+      await AuditEvent.create({ actorUserId: req.auth!.user.id, action: 'score', resourceType: 'Submission',
+        resourceId: submissionId, metadata: { state, provider: 'groq', model: result.metrics?.model } });
+      res.status(previous ? 200 : 201).json({ submissionId, state: record!.state, evaluation: record!.evaluation,
+        quality: record!.quality, financialChecks: record!.financialChecks, followUps: record!.followUps,
+        planDraft: record!.planDraft, reason: record!.reason, metrics: record!.metrics ?? null });
+    } finally { inFlightPdf.delete(submissionId); }
+  });
+
   router.get('/submissions/:id/card', async (req, res) => {
     const submissionId = id.parse(req.params.id);
     const submission = await Submission.findOne({ _id: submissionId, ...submissionScope(req.auth!) }).lean();
@@ -96,7 +163,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     res.json({ submissionId, title: submission.title, status: submission.status, state: item.state,
       input: item.input, evaluation: item.evaluation, quality: item.quality, financialChecks: item.financialChecks,
       followUps: item.followUps, planDraft: item.planDraft,
-      reason: item.reason, decision: item.decision ?? null, feedback: item.feedback ?? null,
+      reason: item.reason, metrics: item.metrics ?? null, decision: item.decision ?? null, feedback: item.feedback ?? null,
       previousEvaluations: item.evaluationHistory?.length ?? 0 });
   });
 

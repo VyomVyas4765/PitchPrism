@@ -291,3 +291,11 @@ Current register after D-25. The complete answered/partial/open classification i
 - Dev 4's partner router is mounted at `/api/v1/partners` behind the shared session middleware, as its handoff requested.
 
 **Consequences.** All 104 backend tests (all four roles) and 49 worker tests pass on the shared models. Role routes still compose scope by object spread in places; that is safe while no scope uses `_id`, but new code should use `scoped()`. Follow-ups: remove `applicant` (Dev 1, Dev 3), and route partner and consent writes through one share service when partner actions land (Devs 1, 4).
+
+### D-31 · User-requested Groq exception for centre EDP scoring
+
+**Context.** The user asked for Groq to score a supplied two-page business-idea PDF and to remain the ongoing centre scoring provider, using the provisional PRD §13 rubric. This explicitly overrides D-24's hosted-inference ban and zero-API-spend target for this one workflow; the official rubric and organiser-dataset quality gate remain outstanding.
+
+**Decision.** Preserve D-24 for all other AI tasks. The centre PDF path locally extracts and redacts the known English digital EDP and English Business Idea form-fillup families, then the server-side worker sends only approved answer evidence to a fixed Groq endpoint using strict structured output. The latter family pairs printed question anchors with answer regions instead of fixed row positions. Active processing consent, centre scope, bounded responses, two model runs, citation validation, deterministic totals and human decision are mandatory for persisted scoring. The non-production unsaved preview remains a separate demo entry point. An unavailable provider or unsupported PDF returns pending/error rather than a score. The key stays in ignored `.env`, never the browser or app. Hosted usage is nonzero and must be measured before scale-up.
+
+**Limits.** The PDF mapping remains specific to two known English digital form families; Dev 1 still owns general PDF/OCR/language ingestion and licence review. Dev 2 still owns scorer quality and parity. The examples are not ground truth for domain ratings. Hosted processing of live organiser records needs the required consent and organiser policy approval. See [centre scoring plan](centre-groq-evaluation-plan.md).

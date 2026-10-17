@@ -14,7 +14,7 @@ import { firebasePhoneVerifier, type VerifyPhoneToken } from './auth/firebase.js
 import { hashPassword, verifyPassword } from './auth/password.js';
 import { requirePermission, scoped, submissionScope } from './auth/authorization.js';
 import { centreRouter } from './modules/centre/router.js';
-import type { AssessmentResult } from './modules/centre/runner.js';
+import type { AssessmentResult, PdfAssessment } from './modules/centre/runner.js';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { entrepreneurRouter } from './modules/entrepreneur/index.js';
 import { partnerRouter } from './modules/partners/router.js';
@@ -26,7 +26,8 @@ const loginInput = z.object({ email: z.email().max(254).transform(value => value
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 const dummyHash = hashPassword('unused-random-timing-placeholder');
 
-export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPhoneToken; assessIdea?: (input: CentreExtractedInput) => Promise<AssessmentResult> } = {}) {
+export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPhoneToken; assessIdea?: (input: CentreExtractedInput) => Promise<AssessmentResult>;
+  assessPdf?: (pdf: Buffer, district: string, applicantName: string, documentId: string) => Promise<PdfAssessment> } = {}) {
   const app = express();
   const sessions = sessionService(config);
   const vault = piiVault(config.PII_ENCRYPTION_KEY);
@@ -82,7 +83,7 @@ export function createApp(config: Config, options: { verifyPhoneToken?: VerifyPh
     if (req.auth!.user.role !== role) throw new HttpError(403, 'This workspace belongs to a different role.');
     res.json({ role, permissions: ROLE_PERMISSIONS[role], message: `${ROLE_LABELS[role]} workspace is ready. Feature workflows are assigned in docs/duties.` });
   });
-  app.use('/api/v1/centre', centreRouter(options.assessIdea));
+  app.use('/api/v1/centre', centreRouter(options.assessIdea, config, options.assessPdf));
   app.use('/api/v1/partners', partnerRouter()); // Dev 4 handoff: behind the shared session middleware
   app.use('/api/v1', eventsRouter());
   app.get('/api/v1/admin/overview', requirePermission('manage_platform'), async (_req, res) => {

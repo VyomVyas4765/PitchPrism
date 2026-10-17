@@ -15,6 +15,8 @@ Settings load from the ignored root `.env` or explicit process environment. `mak
 
 ## Spending and data boundaries
 
+- **Centre EDP exception (D-31):** The user requested Groq for ongoing centre scoring. `ai/intel/pdf_cli.py` alone sends locally extracted, redacted EDP answer evidence to Groq after the API checks centre scope and active processing consent. The original PDF, applicant name and exact address stay local. A missing/rejected key or invalid output leaves the card pending. The hosted call incurs usage cost; this exception does not change the local policy for other tasks. See [the scoring plan](../docs/centre-groq-evaluation-plan.md).
+- This narrow PDF path needs `pdfplumber` from `ai/requirements.txt`, system `curl` for the Groq HTTPS call, and `ffmpeg` to validate recorded consent audio. The curl configuration carries the key and prompt on stdin, with redirects and proxies disabled.
 - `AI_RUNTIME=local`, `AI_HOSTED_APIS_ENABLED=false`: hosted AI configurations are rejected; there is no hosted fallback or provider API key in Android.
 - The shared connector accepts HTTP loopback **IP addresses** only (default `http://127.0.0.1:11434`). Environment proxies and redirects are disabled so prompts are not accidentally forwarded outside the worker.
 - Select an already installed model via `LOCAL_LLM_MODEL`; no model is downloaded automatically. Cloud selectors/remote metadata are rejected. Start your Ollama daemon with `OLLAMA_NO_CLOUD=1` for server-level cloud disablement too; setting this in the worker alone does not change an already running daemon.

@@ -32,6 +32,8 @@ pitchSchema.index({ createdByUserId: 1, clientDraftId: 1 }, { unique: true });
 // PRD §19 `documents`: originals are immutable once complete; sha256 is checked on the server.
 const documentSchema = new Schema({
   pitchId: Schema.Types.ObjectId,
+  // Centre imports link the original directly to the scoped submission.
+  submissionId: Schema.Types.ObjectId,
   entrepreneurId: { type: Schema.Types.ObjectId, required: true },
   createdByUserId: { type: Schema.Types.ObjectId, required: true },
   purpose: { type: String, enum: ['pitch', 'consent_evidence'], required: true },
@@ -48,6 +50,7 @@ const documentSchema = new Schema({
 }, { timestamps: true });
 documentSchema.index({ createdByUserId: 1, clientFileId: 1 }, { unique: true });
 documentSchema.index({ pitchId: 1 });
+documentSchema.index({ submissionId: 1 });
 
 // Staged upload chunks; removed once the original is verified and stored.
 const chunkSchema = new Schema({

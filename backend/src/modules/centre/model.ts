@@ -12,6 +12,7 @@ const centreCaseSchema = new Schema({
   planDraft: { type: Schema.Types.Mixed },
   state: { type: String, enum: ['PENDING_MODEL', 'READY', 'NEEDS_ATTENTION', 'UNASSESSABLE'], required: true },
   reason: String,
+  metrics: { type: Schema.Types.Mixed },
   decision: { type: Schema.Types.Mixed },
   feedback: { type: Schema.Types.Mixed },
 }, { timestamps: true, minimize: false });

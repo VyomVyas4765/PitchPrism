@@ -2,7 +2,7 @@
 
 v2 · Oct 17, 2026 · @Rayyan Shaikh
 
-**Implementation addendum · 17 October 2026.** [D-24](docs/decision.md) updates the provider/runtime strategy to local-only AI with zero hosted AI API spending and a lightweight Android client. This supersedes Sarvam/hosted-provider defaults below; all feature requirements, priorities, language/format support and acceptance targets remain unchanged. The four role-based developer assignments remain D-23. Track implementation and validation in [the complete requirement matrix](docs/implementation-matrix.md).
+**Implementation addendum · 17 October 2026.** [D-24](docs/decision.md) established local-only AI with zero hosted AI API spending and a lightweight Android client, superseding Sarvam/hosted-provider defaults below. [D-31](docs/decision.md) records the user's later, narrow Groq exception for centre EDP scoring; other AI tasks retain D-24. All feature requirements, priorities, language/format support and acceptance targets remain unchanged. The four role-based developer assignments remain D-23. Track implementation and validation in [the complete requirement matrix](docs/implementation-matrix.md).
 
 **What changed in v2.** Rewritten against the organisers' revised problem statement and the 55 sample files they shared. The 18-section structure of v1 grew to 26 sections; v1 is kept unchanged in `PitchPrism.v1.md`. In short:
 

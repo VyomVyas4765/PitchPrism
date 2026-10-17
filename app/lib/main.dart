@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import 'auth/auth_screen.dart';
 import 'core/speech.dart';
+import 'demo/demo_screen.dart';
 import 'onboarding/language_screen.dart';
+
+const _demoMode = kDebugMode && bool.fromEnvironment('DEMO_MODE');
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,7 +14,11 @@ void main() {
 }
 
 class PitchPrismApp extends StatelessWidget {
-  const PitchPrismApp({super.key, this.speech, this.languages = const LanguageStore()});
+  const PitchPrismApp({
+    super.key,
+    this.speech,
+    this.languages = const LanguageStore(),
+  });
   final Speech? speech;
   final LanguageStore languages;
   @override
@@ -73,10 +81,23 @@ class _AppRootState extends State<AppRoot> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_loaded) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (!_loaded) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final language = _language;
     if (language == null || _choosing) {
-      return LanguageScreen(speech: widget.speech, selected: language, onChosen: _choose);
+      return LanguageScreen(
+        speech: widget.speech,
+        selected: language,
+        onChosen: _choose,
+      );
+    }
+    if (_demoMode) {
+      return DemoScreen(
+        language: language,
+        speech: widget.speech,
+        onChangeLanguage: () => setState(() => _choosing = true),
+      );
     }
     return AuthScreen(
       key: ValueKey(language),

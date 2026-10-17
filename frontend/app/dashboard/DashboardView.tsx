@@ -10,6 +10,7 @@ import DashboardShell from '../../features/shell/DashboardShell';
 import HqWorkspace from '../../features/hq/HqWorkspace';
 import HqAdminTools from '../../features/hq/HqAdminTools';
 import HqOperations from '../../features/hq/HqOperations';
+import { PartnerWorkspace } from '../../features/partners/partner-workspace';
 
 export type DashboardSection = 'overview' | 'pipeline' | 'configuration' | 'operations' | 'access' | 'review-queue' | 'cohorts' | 'submissions' | 'applicants' | 'organisation' | 'opportunities' | 'funding' | 'reports';
 
@@ -50,21 +51,23 @@ export default function DashboardView({ role, section = 'overview' }: { role: st
   if (!user || !workspace) return <main className="workspace"><h1>PitchPrism</h1><p role={error ? 'alert' : 'status'}>{error || 'Opening your workspace…'}</p>{error && <a href="/">Return to sign in</a>}</main>;
 
   const isHq = user.role === 'hq_admin';
+  const isCentre = user.role === 'centre_assessor' || user.role === 'cohort_lead';
   const content = isHq ? (
     section === 'configuration' ? <HqAdminTools /> :
     section === 'operations' || section === 'audit' || section === 'clusters' ? <HqOperations /> :
     section === 'access' ? <AccessAdmin isHq selfId={user.id} /> :
     <HqWorkspace />
-  ) : (user.role === 'centre_assessor' || user.role === 'cohort_lead') ? <CentreWorkspace /> :
+  ) : isCentre ? <CentreWorkspace /> :
+    ['implementation_partner', 'sector_partner', 'funding_partner'].includes(user.role) ? <PartnerWorkspace /> :
     workspace.permissions.includes('manage_org_users') ? <AccessAdmin isHq={false} selfId={user.id} /> :
     <section className="dashboard-placeholder"><span className="eyebrow">Workspace section</span><h2>{section.replaceAll('-', ' ')}</h2><p>This role section is ready for its scoped workflow.</p></section>;
 
   return <DashboardShell user={user} workspace={workspace} onLogout={logout} busy={busy}>
     <main className="dashboard-page">
-      <section className="dashboard-overview">
+      {!isCentre && <section className="dashboard-overview">
         <div><span className="eyebrow">Your workspace</span><h2>{isHq ? section === 'overview' ? 'Keep the network moving.' : section.replaceAll('-', ' ') : 'Keep the next decision moving.'}</h2><p>Review evidence, follow progress, and take the next action for your organisation.</p></div>
         <div className="overview-meta"><span>Organisation</span><strong>{user.orgType ? user.orgType.replaceAll('_', ' ') : 'Personal account'}</strong><span>Access</span><strong>{workspace.permissions.length} permissions</strong></div>
-      </section>
+      </section>}
       {error && <p className="error dashboard-error" role="alert">{error}</p>}
       {content}
     </main>

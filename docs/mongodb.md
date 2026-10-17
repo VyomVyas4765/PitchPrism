@@ -16,7 +16,11 @@ Connections use IPv4 to avoid unsupported IPv6 routes, a pool of 10, and bounded
 
 ## Offline development alternative
 
-If campus policy blocks Atlas, start Docker and `docker compose up -d --wait mongo redis`, then explicitly set `MONGODB_URI=mongodb://127.0.0.1:27017/pitchprism` in root `.env`. Run `pnpm db:check`, `pnpm seed`, and `pnpm dev`. This is a separate local database; it does not synchronize Atlas data. Named Docker volumes preserve local data. Restore your private Atlas URI when returning to that database.
+Run `pnpm dev:local`. It starts real MongoDB 7.0.24 on loopback port 27017 with WiredTiger files in ignored `local/mongodb/`, seeds synthetic staff idempotently, and starts the API/dashboard. It needs no Docker or Redis; the MongoDB launcher package downloads the pinned binary only if it is not already cached. Its name includes “memory-server”, but this development mode explicitly uses a persistent database path; restart persistence was checked. Keep that folder to retain your data.
+
+The launcher overrides `MONGODB_URI` only for its child API/seed processes and preserves your private Atlas configuration. `pnpm db:local` starts only the same database for custom workflows; stop one launcher before using the other. `pnpm db:check` still checks the URI in root `.env`; to check a running local database explicitly, use `MONGODB_URI=mongodb://127.0.0.1:27017/pitchprism pnpm db:check`.
+
+This is a separate database and does not synchronize Atlas data. MongoDB binds to loopback, while the authenticated API can be reached from the phone on the Mac's LAN address. Redis is removed. Alternatively, run `docker compose up -d --wait mongo` and explicitly point your own API process at the local URI. The Docker volume and `local/mongodb/` are independent data stores; do not confuse them.
 
 ## Observed diagnosis · 17 October 2026
 

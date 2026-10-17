@@ -37,7 +37,7 @@ const consentView = (consent: ConsentRecord) => ({
   method: consent.method, language: consent.language,
 });
 async function consentState(entrepreneurId: string) {
-  const active = await Consent.find({ entrepreneurId, status: 'active' }).lean();
+  const active = await Consent.find({ status: 'active' }).setOptions({ tenant: { entrepreneurId } }).lean();
   const find = (purpose: string, scope: string) => active.find(item => item.purpose === purpose && item.scope === scope);
   const processing = find('processing', 'all');
   return {
@@ -57,7 +57,7 @@ export function entrepreneurRouter(config: Config) {
   const self = (req: Request) => req.auth!.user.id;
 
   async function profileView(entrepreneurId: string) {
-    const record = await Entrepreneur.findById(entrepreneurId).select('+personal').lean();
+    const record = await Entrepreneur.findById(entrepreneurId).setOptions({ tenant: { _id: entrepreneurId } }).select('+personal').lean();
     if (record?.personal && !vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
     const personal = record?.personal && vault ? vault.open<{ name?: string; gender?: string | null }>(record.personal as Sealed, entrepreneurId) : {};
     const profile = {
@@ -83,11 +83,12 @@ export function entrepreneurRouter(config: Config) {
     const update: Record<string, unknown> = { ...coarse, ...(language ? { language } : {}) };
     if (name !== undefined || gender !== undefined) {
       if (!vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
-      const existing = await Entrepreneur.findById(id).select('+personal').lean();
+      const existing = await Entrepreneur.findById(id).setOptions({ tenant: { _id: id } }).select('+personal').lean();
       const current = existing?.personal ? vault.open<{ name?: string; gender?: string | null }>(existing.personal as Sealed, id) : {};
       update.personal = vault.seal({ ...current, ...(name !== undefined ? { name } : {}), ...(gender !== undefined ? { gender } : {}) }, id);
     }
-    await Entrepreneur.updateOne({ _id: id }, { $set: update, $setOnInsert: { userId: id, createdVia: 'self' } }, { upsert: true, runValidators: true });
+    // Upsert: the key lives only in the scope (MongoDB cannot seed an insert from a path matched twice).
+    await Entrepreneur.updateOne({}, { $set: update, $setOnInsert: { userId: id, createdVia: 'self' } }, { upsert: true, runValidators: true }).setOptions({ tenant: { _id: id } });
     res.json(await profileView(id));
   });
 
@@ -115,13 +116,13 @@ export function entrepreneurRouter(config: Config) {
 
   // M-12 basis: the caller's own ideas and their current status, via the shared scope.
   router.get('/me/submissions', entrepreneurOnly, async (req, res) => {
-    const submissions = await Submission.find(submissionScope(req.auth!)).select('title status').sort({ _id: -1 }).lean();
+    const submissions = await Submission.find({}).setOptions({ tenant: submissionScope(req.auth!) }).select('title status').sort({ _id: -1 }).lean();
     res.json({ submissions: submissions.map(item => ({ id: String(item._id), title: item.title, status: item.status })) });
   });
 
   // M-18: a facilitator sees only submissions they created, with contact details (PRD §4 permission matrix).
   router.get('/assisted/submissions', requirePermission('submit_assisted'), async (req, res) => {
-    const submissions = await Submission.find(submissionScope(req.auth!)).select('title status applicant').sort({ _id: -1 }).lean();
+    const submissions = await Submission.find({}).setOptions({ tenant: submissionScope(req.auth!) }).select('title status applicant').sort({ _id: -1 }).lean();
     res.json({ submissions: submissions.map(item => ({ id: String(item._id), title: item.title, status: item.status,
       applicant: { name: item.applicant?.name ?? null, phone: item.applicant?.phone ?? null } })) });
   });
@@ -129,7 +130,7 @@ export function entrepreneurRouter(config: Config) {
   // M-15: which organisations can see each idea now, and why. Partners appear only with an active share.
   router.get('/me/passport', entrepreneurOnly, async (req, res) => {
     const id = self(req);
-    const submissions = await Submission.find(submissionScope(req.auth!)).select('title status ownerOrgId sourceOrgId shares').lean();
+    const submissions = await Submission.find({}).setOptions({ tenant: submissionScope(req.auth!) }).select('title status ownerOrgId sourceOrgId shares').lean();
     const orgIds = new Set<string>();
     for (const item of submissions) {
       orgIds.add(String(item.ownerOrgId));

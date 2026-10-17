@@ -94,7 +94,7 @@ export function intakeRouter() {
     } else {
       // Assisted pitch: the applicant must be one this facilitator registered; the centre comes from the session.
       if (!input.entrepreneurId || input.centreId) throw new HttpError(400, 'Check the request fields and try again.');
-      if (!await Entrepreneur.exists({ _id: input.entrepreneurId, createdVia: 'assisted', facilitatorId: user.id })) throw new HttpError(404, 'Applicant not found.');
+      if (!await Entrepreneur.exists({ _id: input.entrepreneurId, createdVia: 'assisted' }).setOptions({ tenant: { facilitatorId: user.id } })) throw new HttpError(404, 'Applicant not found.');
       entrepreneurId = input.entrepreneurId;
       sourceOrgId = user.orgId!;
       if (user.orgType === 'centre') centreId = user.orgId!;
@@ -202,7 +202,7 @@ export function intakeRouter() {
     // A concurrent submit loses this status guard and removes its own Submission: one draft, one Submission.
     const updated = await Pitch.findOneAndUpdate({ _id: pitch._id, status: 'DRAFT' },
       { $set: { status: 'SUBMITTED', submissionId: submission._id, pipeline: 'pending_queue', submittedAt: new Date() } }, { returnDocument: 'after' });
-    if (!updated) { await Submission.deleteOne({ _id: submission._id }); throw new HttpError(409, 'This pitch was already submitted.'); }
+    if (!updated) { await Submission.deleteOne({ _id: submission._id }).setOptions({ tenant: { createdByUserId: pitch.createdByUserId } }); throw new HttpError(409, 'This pitch was already submitted.'); }
     res.status(201).json(pitchView(updated, await PitchDocument.find({ pitchId: pitch._id })));
   });
 

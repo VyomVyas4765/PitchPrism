@@ -57,12 +57,12 @@ export function partnerRouter() {
     const scope = submissionScope(req.auth!);
     const filter = { $and: [scope, ...(status ? [{ status }] : []), ...(after ? [{ _id: { $lt: after } }] : [])] };
     const [rows, total, draft, ready, shortlisted] = await Promise.all([
-      Submission.find(filter).select({ _id: 1, title: 1, status: 1 })
+      Submission.find(filter).setOptions({ tenant: scope }).select({ _id: 1, title: 1, status: 1 })
         .sort({ _id: -1 }).limit(limit + 1).lean(),
-      Submission.countDocuments(scope),
-      Submission.countDocuments({ $and: [scope, { status: 'DRAFT' }] }),
-      Submission.countDocuments({ $and: [scope, { status: 'READY' }] }),
-      Submission.countDocuments({ $and: [scope, { status: 'SHORTLISTED' }] }),
+      Submission.countDocuments({}).setOptions({ tenant: scope }),
+      Submission.countDocuments({ status: 'DRAFT' }).setOptions({ tenant: scope }),
+      Submission.countDocuments({ status: 'READY' }).setOptions({ tenant: scope }),
+      Submission.countDocuments({ status: 'SHORTLISTED' }).setOptions({ tenant: scope }),
     ]);
     const page = rows.slice(0, limit);
     res.json({

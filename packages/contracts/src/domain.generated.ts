@@ -12,10 +12,12 @@ export type ObjectId = string;
  */
 export type DateTime = string;
 /**
+ * ISO 639-1 codes for the six launch languages, plus und when undetermined.
+ *
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
- * via the `definition` "PartnerType".
+ * via the `definition` "Language".
  */
-export type PartnerType = "sector_partner" | "funding_partner";
+export type Language = "hi" | "mr" | "te" | "or" | "bn" | "en" | "und";
 /**
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
  * via the `definition` "Pathway".
@@ -27,27 +29,6 @@ export type Pathway =
   | "skilling"
   | "request_information"
   | "resubmit_with_help";
-/**
- * ISO 639-1 codes for the six launch languages, plus und when undetermined.
- *
- * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
- * via the `definition` "Language".
- */
-export type Language = "hi" | "mr" | "te" | "or" | "bn" | "en" | "und";
-/**
- * AES-256-GCM ciphertext written by the platform crypto helper: v<keyVersion>:<iv>:<tag>:<data>, base64url parts. Never store plaintext personal data in this field.
- *
- * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
- * via the `definition` "Encrypted".
- */
-export type Encrypted = string;
-/**
- * How a submission arrived (PRD section 6).
- *
- * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
- * via the `definition` "Channel".
- */
-export type Channel = "app" | "assisted" | "import" | "pwa" | "whatsapp" | "platform";
 /**
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
  * via the `definition` "Band".
@@ -101,6 +82,11 @@ export type Rupees = number;
  */
 export type StageStatus = "started" | "done" | "skipped" | "failed";
 /**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PartnerType".
+ */
+export type PartnerType = "sector_partner" | "funding_partner";
+/**
  * PRD Appendix B.1: the ten EDP fields, then extended fields. Dev 1 owns the question bank that maps wordings to these keys.
  *
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
@@ -139,7 +125,14 @@ export type CanonicalField =
   | "customer_age_range"
   | "customer_segment";
 /**
- * Lifecycle in docs/flow.md section 1.2.
+ * How a submission arrived (PRD section 6).
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "Channel".
+ */
+export type Channel = "app" | "assisted" | "import" | "pwa" | "whatsapp" | "platform";
+/**
+ * Lifecycle in docs/flow.md section 1.2. MORE_INFO is the assessor's More info decision (Dev 2); NEEDS_INPUT is the pipeline waiting on follow-up answers.
  *
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
  * via the `definition` "SubmissionStatus".
@@ -155,6 +148,7 @@ export type SubmissionStatus =
   | "IN_REVIEW"
   | "SHORTLISTED"
   | "NOT_YET"
+  | "MORE_INFO"
   | "SHARED";
 /**
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
@@ -228,7 +222,7 @@ export interface Cohort {
   updatedAt?: DateTime;
 }
 /**
- * A consent the entrepreneur gave or withdrew (PRD sections 5 and 21). Processing consent is required; partner sharing is separate and optional. Revocation takes effect on the next request.
+ * A consent the entrepreneur gave (PRD sections 5 and 21), append-only per purpose: revoking stamps the record and granting again adds a new one. Processing consent is required; partner sharing is separate and optional, scoped by partner type. Revocation takes effect on the next request. Service logic: backend/src/modules/entrepreneur/consent.ts (Dev 1).
  *
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
  * via the `definition` "Consent".
@@ -236,17 +230,19 @@ export interface Cohort {
 export interface Consent {
   entrepreneurId: ObjectId;
   purpose: "processing" | "partner_sharing";
-  scopePartnerType?: PartnerType;
-  scopeOrgId?: ObjectId;
-  status: "granted" | "revoked";
-  grantedAt?: DateTime;
-  revokedAt?: DateTime;
-  method: "app_tap" | "app_voice" | "assisted_recording" | "paper";
+  /**
+   * all for processing; the partner type for partner_sharing.
+   */
+  scope: "all" | "sector_partner" | "funding_partner";
+  status: "active" | "revoked";
+  method: "app_tap" | "app_voice" | "assisted_recorded";
+  language: Language;
   noticeVersion: string;
+  grantedAt: DateTime;
+  grantedByUserId: ObjectId;
+  revokedAt?: DateTime;
+  revokedByUserId?: ObjectId;
   evidenceDocumentId?: ObjectId;
-  recordedByUserId?: ObjectId;
-  createdAt?: DateTime;
-  updatedAt?: DateTime;
 }
 /**
  * A human decision (W-11). The AI never decides. Overriding the AI band or pathway requires a reason.
@@ -303,20 +299,16 @@ export interface DocumentPage {
   blurBoxes?: [number, number, number, number][];
 }
 /**
- * The applicant as a person, separate from any sign-in account: imported and facilitator-assisted applicants may never sign in. Personal fields are encrypted; contactHash is a keyed hash for duplicate matching (D-14). Nothing here is sent to models or map services (D-13).
+ * The applicant as a person (PRD section 19). For phone sign-in the _id equals the entrepreneur's User _id, so submission scope can use the signed-in user ID; assisted and imported applicants get their own _id. Personal details are sealed in `personal` (never selected by default) and contactHashes allow duplicate matching without decrypting. Nothing here is sent to models or map services (D-13).
  *
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
  * via the `definition` "Entrepreneur".
  */
 export interface Entrepreneur {
   userId?: ObjectId;
-  nameEnc?: Encrypted;
-  phoneEnc?: Encrypted;
-  emailEnc?: Encrypted;
-  addressEnc?: Encrypted;
-  socialCategoryEnc?: Encrypted;
+  personal?: Sealed;
   /**
-   * HMAC-SHA256 of each normalised phone/email, hex. Lets duplicate matching work without decrypting.
+   * Keyed HMAC-SHA256 of each normalised phone/email (backend/src/crypto.ts), hex.
    */
   contactHashes?: string[];
   /**
@@ -326,17 +318,28 @@ export interface Entrepreneur {
   language?: Language;
   district?: string;
   pincode?: string;
-  tradeKey?: string;
-  education?: string;
   /**
-   * Optional; aggregate fairness monitoring only.
+   * Trade or skill as given; the normalised trade key lives on the submission.
    */
-  gender?: "female" | "male" | "other" | "undisclosed";
-  homeOrgId: ObjectId;
-  createdVia: Channel;
-  facilitatorUserId?: ObjectId;
+  trade?: string;
+  education?: string;
+  createdVia: "self" | "assisted" | "import";
+  facilitatorId?: ObjectId;
+  homeOrgId?: ObjectId;
   createdAt?: DateTime;
   updatedAt?: DateTime;
+}
+/**
+ * AES-256-GCM sealed JSON written by the entrepreneur PII vault (backend/src/modules/entrepreneur/pii-vault.ts), bound to its record ID so a copied ciphertext cannot be opened on another record. Base64 parts. Never store plaintext personal data outside a Sealed value.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "Sealed".
+ */
+export interface Sealed {
+  v: 1;
+  iv: string;
+  tag: string;
+  ct: string;
 }
 /**
  * One scoring of one submission (PRD sections 13-14). Dev 2 owns the content; potential, completeness, band, quadrant and pathway are computed in code (D-12). A null domain score means Not assessed (D-11). Old evaluations are kept.
@@ -680,7 +683,7 @@ export interface StageEvent {
   error?: string;
 }
 /**
- * One idea from one entrepreneur (PRD section 19). Holds no personal data: name, phone and address live encrypted on the Entrepreneur. Every staff read is scoped by the tenancy rules in backend/src/auth.
+ * One idea from one entrepreneur (PRD section 19). Personal data belongs sealed on the Entrepreneur; the deprecated `applicant` field is the only exception (D-30). Every staff read is scoped by the tenancy rules in backend/src/auth.
  *
  * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
  * via the `definition` "Submission".
@@ -693,7 +696,7 @@ export interface Submission {
   cohortId?: ObjectId;
   createdByUserId: ObjectId;
   importBatchId?: ObjectId;
-  channel: Channel;
+  channel?: Channel;
   status: SubmissionStatus;
   /**
    * Short English headline; empty until extraction.
@@ -718,10 +721,11 @@ export interface Submission {
   followUps?: FollowUp[];
   latestEvaluationId?: ObjectId;
   fundingReady?: boolean;
+  applicant?: LegacyApplicant;
   /**
-   * Denormalised access index maintained only by the platform share-sync service from the shares and consents collections. Never written by feature code directly.
+   * Partner access index read by the shared submission scope: an active entry for the viewer's organisation and partner type grants access, and contactAccepted unlocks the applicant's contact details. Written by consent and share services (Devs 1 and 4); revocation deactivates entries so access ends on the next request.
    */
-  partnerAccess?: PartnerAccess[];
+  shares: SubmissionShare[];
   duplicateOf?: ObjectId;
   linkedSubmissionIds?: ObjectId[];
   /**
@@ -870,12 +874,23 @@ export interface FollowUp {
   status: "pending" | "answered" | "skipped";
   answerDocumentId?: ObjectId;
 }
-export interface PartnerAccess {
-  shareId?: ObjectId;
-  orgId: ObjectId;
-  partnerType: PartnerType;
-  active: boolean;
-  contactAccepted: boolean;
+/**
+ * @deprecated
+ * DEPRECATED, transitional (D-30): plaintext contact copied onto the submission by the starter flows. New code must read the applicant from Entrepreneur.personal; remove once assisted intake writes sealed profiles. Synthetic data only.
+ */
+export interface LegacyApplicant {
+  name?: string;
+  phone?: string;
+}
+/**
+ * Fields may be absent on legacy entries; the scope only admits entries whose orgId, partnerType and active=true all match.
+ */
+export interface SubmissionShare {
+  _id?: ObjectId;
+  orgId?: ObjectId;
+  partnerType?: PartnerType;
+  active?: boolean;
+  contactAccepted?: boolean;
 }
 /**
  * Normalised business type (glossary). Dev 2 owns the trade content; HQ edits it through W-32.

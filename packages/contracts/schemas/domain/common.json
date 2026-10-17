@@ -3,57 +3,250 @@
   "title": "Common",
   "description": "Shared value types for the PitchPrism domain contracts (D-03). Referenced as common.json#/definitions/<Name>.",
   "definitions": {
-    "ObjectId": { "title": "ObjectId", "type": "string", "format": "objectid", "pattern": "^[a-f\\d]{24}$" },
-    "DateTime": { "title": "DateTime", "type": "string", "format": "date-time" },
-    "Rupees": { "title": "Rupees", "description": "Whole rupees.", "type": "integer", "minimum": 0 },
-    "Encrypted": { "title": "Encrypted", "description": "AES-256-GCM ciphertext written by the platform crypto helper: v<keyVersion>:<iv>:<tag>:<data>, base64url parts. Never store plaintext personal data in this field.", "type": "string", "pattern": "^v\\d+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]*$" },
-    "Language": { "title": "Language", "description": "ISO 639-1 codes for the six launch languages, plus und when undetermined.", "type": "string", "enum": ["hi", "mr", "te", "or", "bn", "en", "und"] },
-    "FundingMode": { "title": "FundingMode", "type": "string", "enum": ["lender", "csr"] },
-    "PartnerType": { "title": "PartnerType", "type": "string", "enum": ["sector_partner", "funding_partner"] },
-    "Channel": { "title": "Channel", "description": "How a submission arrived (PRD section 6).", "type": "string", "enum": ["app", "assisted", "import", "pwa", "whatsapp", "platform"] },
+    "ObjectId": {
+      "title": "ObjectId",
+      "type": "string",
+      "format": "objectid",
+      "pattern": "^[a-f\\d]{24}$"
+    },
+    "DateTime": {
+      "title": "DateTime",
+      "type": "string",
+      "format": "date-time"
+    },
+    "Rupees": {
+      "title": "Rupees",
+      "description": "Whole rupees.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Language": {
+      "title": "Language",
+      "description": "ISO 639-1 codes for the six launch languages, plus und when undetermined.",
+      "type": "string",
+      "enum": [
+        "hi",
+        "mr",
+        "te",
+        "or",
+        "bn",
+        "en",
+        "und"
+      ]
+    },
+    "FundingMode": {
+      "title": "FundingMode",
+      "type": "string",
+      "enum": [
+        "lender",
+        "csr"
+      ]
+    },
+    "PartnerType": {
+      "title": "PartnerType",
+      "type": "string",
+      "enum": [
+        "sector_partner",
+        "funding_partner"
+      ]
+    },
+    "Channel": {
+      "title": "Channel",
+      "description": "How a submission arrived (PRD section 6).",
+      "type": "string",
+      "enum": [
+        "app",
+        "assisted",
+        "import",
+        "pwa",
+        "whatsapp",
+        "platform"
+      ]
+    },
     "SubmissionStatus": {
       "title": "SubmissionStatus",
-      "description": "Lifecycle in docs/flow.md section 1.2.",
+      "description": "Lifecycle in docs/flow.md section 1.2. MORE_INFO is the assessor's More info decision (Dev 2); NEEDS_INPUT is the pipeline waiting on follow-up answers.",
       "type": "string",
-      "enum": ["DRAFT", "QUEUED", "PROCESSING", "NEEDS_INPUT", "UNASSESSABLE", "READY", "FAILED", "IN_REVIEW", "SHORTLISTED", "NOT_YET", "SHARED"]
+      "enum": [
+        "DRAFT",
+        "QUEUED",
+        "PROCESSING",
+        "NEEDS_INPUT",
+        "UNASSESSABLE",
+        "READY",
+        "FAILED",
+        "IN_REVIEW",
+        "SHORTLISTED",
+        "NOT_YET",
+        "MORE_INFO",
+        "SHARED"
+      ]
     },
     "Stage": {
       "title": "Stage",
       "description": "Pipeline stages in docs/flow.md section 1.3. Dev 1 owns ingest..extract, Dev 2 owns quality..route.",
       "type": "string",
-      "enum": ["ingest", "classify", "read", "structure", "redact", "translate", "extract", "quality", "followup", "normalise", "similar", "local", "score", "narrative", "rank", "feedback", "route"]
+      "enum": [
+        "ingest",
+        "classify",
+        "read",
+        "structure",
+        "redact",
+        "translate",
+        "extract",
+        "quality",
+        "followup",
+        "normalise",
+        "similar",
+        "local",
+        "score",
+        "narrative",
+        "rank",
+        "feedback",
+        "route"
+      ]
     },
-    "StageStatus": { "title": "StageStatus", "type": "string", "enum": ["started", "done", "skipped", "failed"] },
+    "StageStatus": {
+      "title": "StageStatus",
+      "type": "string",
+      "enum": [
+        "started",
+        "done",
+        "skipped",
+        "failed"
+      ]
+    },
     "CanonicalField": {
       "title": "CanonicalField",
       "description": "PRD Appendix B.1: the ten EDP fields, then extended fields. Dev 1 owns the question bank that maps wordings to these keys.",
       "type": "string",
       "enum": [
-        "location", "offering", "customers", "market_research", "raw_materials", "suppliers", "funding", "competition", "unit_price", "monthly_revenue",
-        "business_name", "problem_addressed", "differentiation", "pricing_strategy", "support_network", "infrastructure", "transport", "staffing", "fixed_overheads",
-        "location_rationale", "customer_acquisition", "promotion_plan", "goals", "investment_required", "self_investment", "expected_loan", "market_type",
-        "existing_business", "customer_gender", "customer_age_range", "customer_segment"
+        "location",
+        "offering",
+        "customers",
+        "market_research",
+        "raw_materials",
+        "suppliers",
+        "funding",
+        "competition",
+        "unit_price",
+        "monthly_revenue",
+        "business_name",
+        "problem_addressed",
+        "differentiation",
+        "pricing_strategy",
+        "support_network",
+        "infrastructure",
+        "transport",
+        "staffing",
+        "fixed_overheads",
+        "location_rationale",
+        "customer_acquisition",
+        "promotion_plan",
+        "goals",
+        "investment_required",
+        "self_investment",
+        "expected_loan",
+        "market_type",
+        "existing_business",
+        "customer_gender",
+        "customer_age_range",
+        "customer_segment"
       ]
     },
-    "AnswerState": { "title": "AnswerState", "type": "string", "enum": ["answered", "missing", "not_asked", "irrelevant"] },
-    "Band": { "title": "Band", "type": "string", "enum": ["strong", "promising", "not_yet", "insufficient"] },
-    "Pathway": { "title": "Pathway", "type": "string", "enum": ["deeper_evaluation", "funding_consideration", "mentoring", "skilling", "request_information", "resubmit_with_help"] },
-    "Quadrant": { "title": "Quadrant", "type": "string", "enum": ["high_potential_complete", "high_potential_incomplete", "low_potential_complete", "low_potential_incomplete"] },
+    "AnswerState": {
+      "title": "AnswerState",
+      "type": "string",
+      "enum": [
+        "answered",
+        "missing",
+        "not_asked",
+        "irrelevant"
+      ]
+    },
+    "Band": {
+      "title": "Band",
+      "type": "string",
+      "enum": [
+        "strong",
+        "promising",
+        "not_yet",
+        "insufficient"
+      ]
+    },
+    "Pathway": {
+      "title": "Pathway",
+      "type": "string",
+      "enum": [
+        "deeper_evaluation",
+        "funding_consideration",
+        "mentoring",
+        "skilling",
+        "request_information",
+        "resubmit_with_help"
+      ]
+    },
+    "Quadrant": {
+      "title": "Quadrant",
+      "type": "string",
+      "enum": [
+        "high_potential_complete",
+        "high_potential_incomplete",
+        "low_potential_complete",
+        "low_potential_incomplete"
+      ]
+    },
     "Anchor": {
       "title": "Anchor",
       "description": "Where a segment lives in its original document.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "documentId"],
+      "required": [
+        "type",
+        "documentId"
+      ],
       "properties": {
-        "type": { "type": "string", "enum": ["audio", "pdf", "image", "text"] },
-        "documentId": { "$ref": "#/definitions/ObjectId" },
-        "page": { "type": "integer", "minimum": 1 },
-        "bbox": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
-        "start": { "type": "number", "minimum": 0, "description": "Seconds from the start of audio." },
-        "end": { "type": "number", "minimum": 0 },
-        "charStart": { "type": "integer", "minimum": 0 },
-        "charEnd": { "type": "integer", "minimum": 0 }
+        "type": {
+          "type": "string",
+          "enum": [
+            "audio",
+            "pdf",
+            "image",
+            "text"
+          ]
+        },
+        "documentId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bbox": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "start": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Seconds from the start of audio."
+        },
+        "end": {
+          "type": "number",
+          "minimum": 0
+        },
+        "charStart": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "charEnd": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "GeoPoint": {
@@ -61,10 +254,25 @@
       "description": "GeoJSON point: [longitude, latitude].",
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "coordinates"],
+      "required": [
+        "type",
+        "coordinates"
+      ],
       "properties": {
-        "type": { "type": "string", "enum": ["Point"] },
-        "coordinates": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+        "type": {
+          "type": "string",
+          "enum": [
+            "Point"
+          ]
+        },
+        "coordinates": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
       }
     },
     "Location": {
@@ -72,15 +280,87 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "raw": { "type": "string", "description": "As written or spoken; may contain the applicant's address, so it is never sent to models or map services." },
-        "village": { "type": "string" },
-        "block": { "type": "string", "description": "Block, mandal or taluka." },
-        "district": { "type": "string" },
-        "state": { "type": "string" },
-        "pincode": { "type": "string", "pattern": "^\\d{6}$" },
-        "lgdCodes": { "type": "object", "additionalProperties": false, "properties": { "state": { "type": "string" }, "district": { "type": "string" }, "subDistrict": { "type": "string" }, "village": { "type": "string" } } },
-        "geo": { "$ref": "#/definitions/GeoPoint" },
-        "precision": { "type": "string", "enum": ["pin", "village", "block", "district", "none"] }
+        "raw": {
+          "type": "string",
+          "description": "As written or spoken; may contain the applicant's address, so it is never sent to models or map services."
+        },
+        "village": {
+          "type": "string"
+        },
+        "block": {
+          "type": "string",
+          "description": "Block, mandal or taluka."
+        },
+        "district": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "pincode": {
+          "type": "string",
+          "pattern": "^\\d{6}$"
+        },
+        "lgdCodes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "type": "string"
+            },
+            "district": {
+              "type": "string"
+            },
+            "subDistrict": {
+              "type": "string"
+            },
+            "village": {
+              "type": "string"
+            }
+          }
+        },
+        "geo": {
+          "$ref": "#/definitions/GeoPoint"
+        },
+        "precision": {
+          "type": "string",
+          "enum": [
+            "pin",
+            "village",
+            "block",
+            "district",
+            "none"
+          ]
+        }
+      }
+    },
+    "Sealed": {
+      "title": "Sealed",
+      "description": "AES-256-GCM sealed JSON written by the entrepreneur PII vault (backend/src/modules/entrepreneur/pii-vault.ts), bound to its record ID so a copied ciphertext cannot be opened on another record. Base64 parts. Never store plaintext personal data outside a Sealed value.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v",
+        "iv",
+        "tag",
+        "ct"
+      ],
+      "properties": {
+        "v": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        },
+        "iv": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "ct": {
+          "type": "string"
+        }
       }
     }
   }

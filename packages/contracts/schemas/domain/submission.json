@@ -1,54 +1,157 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Submission",
-  "description": "One idea from one entrepreneur (PRD section 19). Holds no personal data: name, phone and address live encrypted on the Entrepreneur. Every staff read is scoped by the tenancy rules in backend/src/auth.",
+  "description": "One idea from one entrepreneur (PRD section 19). Personal data belongs sealed on the Entrepreneur; the deprecated `applicant` field is the only exception (D-30). Every staff read is scoped by the tenancy rules in backend/src/auth.",
   "x-collection": "submissions",
   "type": "object",
   "additionalProperties": false,
-  "required": ["entrepreneurId", "ownerOrgId", "createdByUserId", "channel", "status"],
+  "required": [
+    "entrepreneurId",
+    "ownerOrgId",
+    "createdByUserId",
+    "status",
+    "shares"
+  ],
   "properties": {
-    "entrepreneurId": { "$ref": "common.json#/definitions/ObjectId" },
-    "ownerOrgId": { "$ref": "common.json#/definitions/ObjectId", "description": "The centre that owns and decides." },
-    "sourceOrgId": { "$ref": "common.json#/definitions/ObjectId", "description": "Who collected it, when different from the owner (an implementation partner)." },
-    "programmeId": { "$ref": "common.json#/definitions/ObjectId" },
-    "cohortId": { "$ref": "common.json#/definitions/ObjectId" },
-    "createdByUserId": { "$ref": "common.json#/definitions/ObjectId", "description": "Entrepreneur, facilitator or importing staff account." },
-    "importBatchId": { "$ref": "common.json#/definitions/ObjectId" },
-    "channel": { "$ref": "common.json#/definitions/Channel" },
-    "status": { "$ref": "common.json#/definitions/SubmissionStatus" },
-    "title": { "type": "string", "maxLength": 200, "description": "Short English headline; empty until extraction." },
-    "summaryEn": { "type": "string", "maxLength": 2000 },
-    "templateId": { "type": "string", "maxLength": 60 },
-    "languages": { "type": "array", "items": { "$ref": "common.json#/definitions/Language" } },
-    "tradeKey": { "type": "string", "maxLength": 60 },
-    "sector": { "type": "string", "maxLength": 80 },
-    "documentIds": { "type": "array", "items": { "$ref": "common.json#/definitions/ObjectId" } },
-    "qa": { "type": "array", "items": { "$ref": "qa.json" } },
-    "fields": { "type": "object", "description": "Keyed by CanonicalField.", "additionalProperties": { "$ref": "field-value.json" } },
+    "entrepreneurId": {
+      "$ref": "common.json#/definitions/ObjectId"
+    },
+    "ownerOrgId": {
+      "$ref": "common.json#/definitions/ObjectId",
+      "description": "The centre that owns and decides."
+    },
+    "sourceOrgId": {
+      "$ref": "common.json#/definitions/ObjectId",
+      "description": "Who collected it, when different from the owner (an implementation partner)."
+    },
+    "programmeId": {
+      "$ref": "common.json#/definitions/ObjectId"
+    },
+    "cohortId": {
+      "$ref": "common.json#/definitions/ObjectId"
+    },
+    "createdByUserId": {
+      "$ref": "common.json#/definitions/ObjectId",
+      "description": "Entrepreneur, facilitator or importing staff account."
+    },
+    "importBatchId": {
+      "$ref": "common.json#/definitions/ObjectId"
+    },
+    "channel": {
+      "$ref": "common.json#/definitions/Channel",
+      "description": "How the submission arrived; optional until intake owners set it on every write."
+    },
+    "status": {
+      "$ref": "common.json#/definitions/SubmissionStatus",
+      "default": "DRAFT"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Short English headline; empty until extraction."
+    },
+    "summaryEn": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "templateId": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "$ref": "common.json#/definitions/Language"
+      }
+    },
+    "tradeKey": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "sector": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "documentIds": {
+      "type": "array",
+      "items": {
+        "$ref": "common.json#/definitions/ObjectId"
+      }
+    },
+    "qa": {
+      "type": "array",
+      "items": {
+        "$ref": "qa.json"
+      }
+    },
+    "fields": {
+      "type": "object",
+      "description": "Keyed by CanonicalField.",
+      "additionalProperties": {
+        "$ref": "field-value.json"
+      }
+    },
     "profile": {
       "title": "SubmissionProfile",
       "type": "object",
       "additionalProperties": false,
       "description": "Non-personal profile facts used for assessment.",
       "properties": {
-        "education": { "type": "string", "maxLength": 120 },
-        "marketType": { "type": "string", "enum": ["urban", "rural", "semi_urban"] },
-        "existingBusiness": { "type": "boolean" },
-        "investmentRequired": { "$ref": "common.json#/definitions/Rupees" },
-        "selfInvestment": { "$ref": "common.json#/definitions/Rupees" },
-        "expectedLoan": { "$ref": "common.json#/definitions/Rupees" }
+        "education": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "marketType": {
+          "type": "string",
+          "enum": [
+            "urban",
+            "rural",
+            "semi_urban"
+          ]
+        },
+        "existingBusiness": {
+          "type": "boolean"
+        },
+        "investmentRequired": {
+          "$ref": "common.json#/definitions/Rupees"
+        },
+        "selfInvestment": {
+          "$ref": "common.json#/definitions/Rupees"
+        },
+        "expectedLoan": {
+          "$ref": "common.json#/definitions/Rupees"
+        }
       }
     },
-    "location": { "$ref": "common.json#/definitions/Location" },
+    "location": {
+      "$ref": "common.json#/definitions/Location"
+    },
     "quality": {
       "title": "SubmissionQuality",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "completeness": { "type": "number", "minimum": 0, "maximum": 100 },
-        "coverage": { "type": "number", "minimum": 0, "maximum": 100 },
-        "relevanceRatio": { "type": "number", "minimum": 0, "maximum": 1 },
-        "flags": { "type": "array", "items": { "$ref": "flag.json" } }
+        "completeness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "relevanceRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "$ref": "flag.json"
+          }
+        }
       }
     },
     "followUps": {
@@ -57,41 +160,119 @@
         "title": "FollowUp",
         "type": "object",
         "additionalProperties": false,
-        "required": ["qId", "questionEn", "status"],
+        "required": [
+          "qId",
+          "questionEn",
+          "status"
+        ],
         "properties": {
-          "qId": { "type": "string", "pattern": "^f\\d{1,3}$" },
-          "field": { "$ref": "common.json#/definitions/CanonicalField" },
-          "questionEn": { "type": "string", "maxLength": 600 },
-          "questionLocal": { "type": "string", "maxLength": 1200 },
-          "audioDocumentId": { "$ref": "common.json#/definitions/ObjectId" },
-          "status": { "type": "string", "enum": ["pending", "answered", "skipped"] },
-          "answerDocumentId": { "$ref": "common.json#/definitions/ObjectId" }
+          "qId": {
+            "type": "string",
+            "pattern": "^f\\d{1,3}$"
+          },
+          "field": {
+            "$ref": "common.json#/definitions/CanonicalField"
+          },
+          "questionEn": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "questionLocal": {
+            "type": "string",
+            "maxLength": 1200
+          },
+          "audioDocumentId": {
+            "$ref": "common.json#/definitions/ObjectId"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "answered",
+              "skipped"
+            ]
+          },
+          "answerDocumentId": {
+            "$ref": "common.json#/definitions/ObjectId"
+          }
         }
       }
     },
-    "latestEvaluationId": { "$ref": "common.json#/definitions/ObjectId" },
-    "fundingReady": { "type": "boolean", "default": false },
-    "partnerAccess": {
+    "latestEvaluationId": {
+      "$ref": "common.json#/definitions/ObjectId"
+    },
+    "fundingReady": {
+      "type": "boolean",
+      "default": false
+    },
+    "applicant": {
+      "title": "LegacyApplicant",
+      "type": "object",
+      "additionalProperties": false,
+      "deprecated": true,
+      "description": "DEPRECATED, transitional (D-30): plaintext contact copied onto the submission by the starter flows. New code must read the applicant from Entrepreneur.personal; remove once assisted intake writes sealed profiles. Synthetic data only.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 20
+        }
+      }
+    },
+    "shares": {
       "type": "array",
-      "description": "Denormalised access index maintained only by the platform share-sync service from the shares and consents collections. Never written by feature code directly.",
+      "description": "Partner access index read by the shared submission scope: an active entry for the viewer's organisation and partner type grants access, and contactAccepted unlocks the applicant's contact details. Written by consent and share services (Devs 1 and 4); revocation deactivates entries so access ends on the next request.",
       "items": {
-        "title": "PartnerAccess",
+        "title": "SubmissionShare",
         "type": "object",
         "additionalProperties": false,
-        "required": ["orgId", "partnerType", "active", "contactAccepted"],
+        "required": [],
         "properties": {
-          "shareId": { "$ref": "common.json#/definitions/ObjectId" },
-          "orgId": { "$ref": "common.json#/definitions/ObjectId" },
-          "partnerType": { "$ref": "common.json#/definitions/PartnerType" },
-          "active": { "type": "boolean" },
-          "contactAccepted": { "type": "boolean" }
-        }
+          "_id": {
+            "$ref": "common.json#/definitions/ObjectId",
+            "description": "Generated per entry; the Idea Passport exposes it as shareId."
+          },
+          "orgId": {
+            "$ref": "common.json#/definitions/ObjectId"
+          },
+          "partnerType": {
+            "$ref": "common.json#/definitions/PartnerType"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "contactAccepted": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "description": "Fields may be absent on legacy entries; the scope only admits entries whose orgId, partnerType and active=true all match."
+      },
+      "default": []
+    },
+    "duplicateOf": {
+      "$ref": "common.json#/definitions/ObjectId"
+    },
+    "linkedSubmissionIds": {
+      "type": "array",
+      "items": {
+        "$ref": "common.json#/definitions/ObjectId"
       }
     },
-    "duplicateOf": { "$ref": "common.json#/definitions/ObjectId" },
-    "linkedSubmissionIds": { "type": "array", "items": { "$ref": "common.json#/definitions/ObjectId" } },
-    "inputVersion": { "type": "integer", "minimum": 1, "default": 1, "description": "Bumped when inputs change (follow-up answer, transcript edit); part of the job idempotency key." },
-    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
-    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+    "inputVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Bumped when inputs change (follow-up answer, transcript edit); part of the job idempotency key."
+    },
+    "createdAt": {
+      "$ref": "common.json#/definitions/DateTime"
+    },
+    "updatedAt": {
+      "$ref": "common.json#/definitions/DateTime"
+    }
   }
 }

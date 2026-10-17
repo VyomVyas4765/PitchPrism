@@ -9,12 +9,12 @@ import { sessionService } from '../src/auth/session.js';
 import { configSchema } from '../src/config.js';
 import { connectDatabase } from '../src/database.js';
 import { Entrepreneur, Org, Session, Submission, User } from '../src/models.js';
-import { dataCrypto } from '../src/crypto.js';
+import { piiVault } from '../src/modules/entrepreneur/pii-vault.js';
 import { ROLES, type Role, type OrgType } from '@pitchprism/contracts';
 
 const config = configSchema.parse({ NODE_ENV: 'test', JWT_SECRET: 'test-only-secret-with-more-than-thirty-two-characters',
-  DATA_ENCRYPTION_KEY: 'test-only-data-key-with-more-than-thirty-two-characters' });
-const crypto = dataCrypto(config.DATA_ENCRYPTION_KEY);
+  PII_ENCRYPTION_KEY: 'ab'.repeat(32) });
+const vault = piiVault(config.PII_ENCRYPTION_KEY)!;
 const password = 'SyntheticTestPassword!42';
 let mongo: MongoMemoryServer;
 let hash: string;
@@ -47,12 +47,11 @@ beforeEach(async () => {
   ]) as [typeof centre, typeof sibling, typeof sector, typeof funding];
   applicant = await User.create({ displayName: 'Synthetic applicant', role: 'entrepreneur', firebaseUid: 'synthetic-uid' });
   assessor = await staff('centre_assessor');
-  applicantProfile = await Entrepreneur.create({ userId: applicant._id, homeOrgId: centre._id, createdVia: 'app',
-    nameEnc: crypto.encrypt('Synthetic applicant', 'entrepreneur.name'), phoneEnc: crypto.encrypt('+910000000000', 'entrepreneur.phone'),
-    contactHashes: [crypto.contactHash('+910000000000', 'phone')] });
+  applicantProfile = await Entrepreneur.create({ _id: applicant._id, userId: applicant._id, homeOrgId: centre._id, createdVia: 'self',
+    personal: vault.seal({ name: 'Synthetic applicant', phone: '+910000000000' }, String(applicant._id)) });
   submission = await Submission.create({ title: 'Synthetic tailoring plan', ownerOrgId: centre._id, entrepreneurId: applicantProfile._id,
     createdByUserId: applicant._id, channel: 'app', status: 'SHORTLISTED', fundingReady: true,
-    partnerAccess: [{ orgId: sector._id, partnerType: 'sector_partner', active: true, contactAccepted: false },
+    shares: [{ orgId: sector._id, partnerType: 'sector_partner', active: true, contactAccepted: false },
       { orgId: funding._id, partnerType: 'funding_partner', active: true, contactAccepted: false }],
   });
   app = createApp(config);
@@ -200,10 +199,10 @@ describe('authorization', () => {
     const token = await tokenFor(partner);
     const response = await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(200);
     expect(response.body).toEqual({ id: String(submission._id), title: submission.title, status: 'SHORTLISTED' });
-    await Submission.updateOne({ _id: submission._id, 'partnerAccess.orgId': sector._id }, { $set: { 'partnerAccess.$.contactAccepted': true } });
+    await Submission.updateOne({ _id: submission._id, 'shares.orgId': sector._id }, { $set: { 'shares.$.contactAccepted': true } });
     const accepted = await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(200);
     expect(accepted.body.applicant).toEqual({ name: 'Synthetic applicant', phone: '+910000000000' });
-    await Submission.updateOne({ _id: submission._id, 'partnerAccess.orgId': sector._id }, { $set: { 'partnerAccess.$.active': false } });
+    await Submission.updateOne({ _id: submission._id, 'shares.orgId': sector._id }, { $set: { 'shares.$.active': false } });
     await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(404);
   });
   it('requires funding consent, a shortlist, and funding readiness; CSR gets no individual record', async () => {
@@ -216,7 +215,7 @@ describe('authorization', () => {
     await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(404);
     await Submission.updateOne({ _id: submission._id }, { status: 'SHARED', fundingReady: true });
     await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(200);
-    await Submission.updateOne({ _id: submission._id, 'partnerAccess.orgId': funding._id }, { $set: { 'partnerAccess.$.active': false } });
+    await Submission.updateOne({ _id: submission._id, 'shares.orgId': funding._id }, { $set: { 'shares.$.active': false } });
     await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(404);
     await Org.updateOne({ _id: funding._id }, { fundingMode: 'csr' });
     await request(app).get(`/api/v1/submissions/${submission._id}`).set('Authorization', `Bearer ${token}`).expect(403);

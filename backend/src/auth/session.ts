@@ -2,14 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
 import type { Request, Response, NextFunction } from 'express';
 import type { OrgType, Role, SessionUser } from '@pitchprism/contracts';
-import { Entrepreneur, Org, Session, User } from '../models.js';
+import { Org, Session, User } from '../models.js';
 import { HttpError } from '../errors.js';
 import type { Config } from '../config.js';
 
 export const SESSION_COOKIE = 'pp_session';
 export const SESSION_SECONDS = 8 * 60 * 60;
-/** entrepreneurId is the applicant profile linked to an entrepreneur sign-in (absent until a profile exists). */
-export interface AuthContext { user: SessionUser; sessionId: string; fundingMode?: string; entrepreneurId?: string }
+export interface AuthContext { user: SessionUser; sessionId: string; fundingMode?: string }
 declare global { namespace Express { interface Request { auth?: AuthContext } } }
 
 const roleOrgs: Record<Role, readonly OrgType[]> = {
@@ -25,11 +24,9 @@ export async function userContext(id: string): Promise<Omit<AuthContext, 'sessio
   if (role === 'entrepreneur' ? !!user.orgId : !org || !org.active || !roleOrgs[role].includes(org.type as OrgType)) {
     throw new HttpError(403, 'Your account organisation is unavailable or does not match your role.');
   }
-  const profile = role === 'entrepreneur' ? await Entrepreneur.findOne({ userId: user._id }).select('_id').lean() : null;
   return {
     user: { id: String(user._id), displayName: user.displayName, email: user.email ?? null, role, orgId: org ? String(org._id) : null, orgType: org ? org.type as OrgType : null },
     fundingMode: org?.fundingMode ?? undefined,
-    entrepreneurId: profile ? String(profile._id) : undefined,
   };
 }
 export function sessionService(config: Config) {

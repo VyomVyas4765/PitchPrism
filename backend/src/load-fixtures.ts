@@ -4,18 +4,21 @@ import { z } from 'zod';
 import { COLLECTIONS } from '@pitchprism/contracts';
 import { readConfig } from './config.js';
 import { connectDatabase } from './database.js';
-import { dataCrypto } from './crypto.js';
+import { contactHasher } from './crypto.js';
+import { piiVault } from './modules/entrepreneur/pii-vault.js';
 import { hashPassword } from './auth/password.js';
 import { ALL_MODELS } from './models.js';
 
 // Development only: loads packages/contracts/fixtures/synthetic.json so every role has realistic records to
 // work against (pnpm fixtures:load). Upserts by _id, so reruns refresh the fixtures without touching other data.
-// Fixture staff sign in with SEED_PASSWORD. The applicant's personal fields are re-encrypted with this
-// environment's DATA_ENCRYPTION_KEY, because the fixture file carries placeholder ciphertext only.
+// Fixture staff sign in with SEED_PASSWORD. The applicant's personal fields are re-sealed with this
+// environment's PII_ENCRYPTION_KEY, because the fixture file carries placeholder ciphertext only.
 const config = readConfig();
 if (config.NODE_ENV === 'production') throw new Error('Fixture loading is forbidden in production');
 const password = z.string().min(12).max(128).parse(process.env.SEED_PASSWORD);
-const crypto = dataCrypto(config.DATA_ENCRYPTION_KEY);
+const vault = piiVault(config.PII_ENCRYPTION_KEY);
+const hashContact = contactHasher(config.PII_ENCRYPTION_KEY);
+if (!vault || !hashContact) throw new Error('Set PII_ENCRYPTION_KEY in .env (pnpm setup:env adds it) before loading fixtures');
 const fixtures: Record<string, Record<string, unknown>[]> = JSON.parse(
   await readFile(new URL('../../packages/contracts/fixtures/synthetic.json', import.meta.url), 'utf8'));
 const entityFor = Object.fromEntries(Object.entries(COLLECTIONS).map(([entity, collection]) => [collection, entity]));
@@ -40,9 +43,8 @@ try {
       const doc: Record<string, unknown> = { ...fixture };
       if (collection === COLLECTIONS.User && doc.email) doc.passwordHash = passwordHash;
       if (collection === COLLECTIONS.Entrepreneur) {
-        doc.nameEnc = crypto.encrypt(SYNTHETIC_PERSON.name, 'entrepreneur.name');
-        doc.phoneEnc = crypto.encrypt(SYNTHETIC_PERSON.phone, 'entrepreneur.phone');
-        doc.contactHashes = [crypto.contactHash(SYNTHETIC_PERSON.phone, 'phone')];
+        doc.personal = vault.seal(SYNTHETIC_PERSON, String(doc._id));
+        doc.contactHashes = [hashContact(SYNTHETIC_PERSON.phone, 'phone')];
       }
       const hydrated = new model(doc);
       await hydrated.validate();

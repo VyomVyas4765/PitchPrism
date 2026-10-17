@@ -24,10 +24,20 @@ export const Invitation = define<S.Invitation>('Invitation', {
   indexes: [[{ orgId: 1, createdAt: -1 }]],
 });
 export const Entrepreneur = define<S.Entrepreneur>('Entrepreneur', {
-  overrides: { userId: { unique: true, sparse: true } },
+  overrides: {
+    userId: { unique: true, sparse: true },
+    personal: { select: false }, // sealed; read only with .select('+personal')
+    district: { trim: true }, pincode: { trim: true }, trade: { trim: true },
+  },
   indexes: [[{ contactHashes: 1 }], [{ homeOrgId: 1 }]],
 });
-export const Consent = define<S.Consent>('Consent', { indexes: [[{ entrepreneurId: 1, purpose: 1, status: 1 }]] });
+export const Consent = define<S.Consent>('Consent', {
+  indexes: [
+    [{ entrepreneurId: 1, purpose: 1, status: 1 }],
+    // At most one active consent per purpose and scope; grantConsent relies on this for idempotency.
+    [{ entrepreneurId: 1, purpose: 1, scope: 1 }, { unique: true, partialFilterExpression: { status: 'active' } }],
+  ],
+});
 export const Programme = define<S.Programme>('Programme', { indexes: [[{ orgId: 1, status: 1 }]] });
 export const Cohort = define<S.Cohort>('Cohort', { indexes: [[{ programmeId: 1 }], [{ orgId: 1, status: 1 }]] });
 export const Trade = define<S.Trade>('Trade', { overrides: { key: { unique: true } } });

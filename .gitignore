@@ -5,6 +5,8 @@
 # Only the catalogue is shared; get the files from the team drive.
 /datasets/*
 !/datasets/manifest.json
+/datasets.zip
+/datasets 2/
 
 # Environment and secrets
 .env

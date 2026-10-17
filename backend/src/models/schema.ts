@@ -50,7 +50,8 @@ function path(raw: Json, required: boolean, where: string): any {
       return { type: [path(node.items ?? {}, false, `${where}[]`)], ...rest };
     }
     case 'object': {
-      if (node.properties) return { type: new Schema(paths(node, where), { _id: false, strict: 'throw' }), ...extra };
+      // Embedded objects get no _id unless the contract declares one (for example Submission.shares entries).
+      if (node.properties) return { type: new Schema(paths(node, where), { _id: '_id' in node.properties, strict: 'throw' }), ...extra };
       if (node.additionalProperties && typeof node.additionalProperties === 'object') return { type: Map, of: path(node.additionalProperties, false, `${where}{}`), ...extra };
       return { type: Schema.Types.Mixed, ...extra };
     }
@@ -64,6 +65,7 @@ function paths(node: Json, where: string): Json {
   const out: Json = {};
   for (const [name, child] of Object.entries(node.properties as Json)) {
     if (name === 'createdAt' || name === 'updatedAt') continue; // Mongoose timestamps own these.
+    if (name === '_id') continue; // Mongoose generates declared sub-document IDs.
     out[name] = path(child, required.has(name), `${where}.${name}`);
   }
   return out;

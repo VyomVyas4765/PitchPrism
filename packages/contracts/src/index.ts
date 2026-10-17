@@ -1,4 +1,5 @@
 export type { SessionUser, Role, OrgType } from './generated.js';
+export type { CentreExtractedInput } from './centre-generated.js';
 export { ROLES, ORG_TYPES } from './roles.js';
 // Domain contracts (D-03): generated from schemas/domain/*.json by `pnpm contracts:generate`.
 export type * from './domain.generated.js';

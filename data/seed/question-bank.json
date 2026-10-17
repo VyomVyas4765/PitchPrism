@@ -1,0 +1,88 @@
+{
+  "version": "question-bank.v0",
+  "status": "draft",
+  "owner": "dev-1-entrepreneur-facilitator",
+  "notes": [
+    "Field wordings feed A-09 question matching. English wordings come from PRD Appendix B.1 and the dataset manifest. Wordings found in the organiser templates (hi, mr, te and others) must be added from the private files on the worker host; none are invented here.",
+    "Guided steps drive the M-06 prompt cards and the follow-up mapping. Non-English prompt text is an unreviewed draft: it must be checked by a qualified speaker (PRD Q-05) before any language-quality claim or demo use."
+  ],
+  "fields": {
+    "location": { "core": true, "domains": ["feasibility"], "wordings": { "en": ["Where do you intend to set up your business? (village, block, district, PIN)", "Where will you set up the business? (village, block, district, PIN)"] } },
+    "offering": { "core": true, "domains": ["clarity", "differentiation"], "wordings": { "en": ["What products or services will you provide? List all.", "Which products or services will you provide?"] } },
+    "customers": { "core": true, "domains": ["customer_need", "clarity"], "wordings": { "en": ["Who are your target customers? (age range, gender, segment)", "Who are your target customers? (age, gender, segment)"] } },
+    "market_research": { "core": true, "domains": ["market_potential"], "wordings": { "en": ["Have you done any market research in your target market? Details.", "Have you done market research in your target market? Details."] } },
+    "raw_materials": { "core": true, "domains": ["feasibility"], "wordings": { "en": ["What raw materials will you need?"] } },
+    "suppliers": { "core": true, "domains": ["feasibility"], "wordings": { "en": ["Who will be your suppliers?", "Who will supply them?"] } },
+    "funding": { "core": true, "domains": ["revenue_logic", "feasibility"], "wordings": { "en": ["Which avenues will you use to raise funds, and why would they lend to you?"] } },
+    "competition": { "core": true, "domains": ["competition_awareness"], "wordings": { "en": ["Is there any competition for your business? Details.", "Is there competition for your business? Details."] } },
+    "unit_price": { "core": true, "domains": ["revenue_logic"], "wordings": { "en": ["What is the price per unit of your main product or service?"] } },
+    "monthly_revenue": { "core": true, "domains": ["revenue_logic"], "wordings": { "en": ["How much do you expect to earn every month?"] } },
+    "business_name": { "core": false, "domains": [], "wordings": { "en": ["What is the name of your business?"] } },
+    "problem_addressed": { "core": false, "domains": ["customer_need"], "wordings": { "en": ["What problem does your business solve?"] } },
+    "differentiation": { "core": false, "domains": ["differentiation"], "wordings": { "en": ["Why is your business better than others?"] } },
+    "pricing_strategy": { "core": false, "domains": ["revenue_logic", "competition_awareness"], "wordings": { "en": ["How will your prices compare with your competitors?"] } },
+    "support_network": { "core": false, "domains": ["readiness"], "wordings": { "en": ["Who is helping you start this business?"] } },
+    "investment_required": { "core": false, "domains": ["feasibility", "revenue_logic"], "wordings": { "en": ["How much investment is required?"] } },
+    "self_investment": { "core": false, "domains": ["revenue_logic"], "wordings": { "en": ["How much will you invest yourself?"] } },
+    "expected_loan": { "core": false, "domains": ["revenue_logic"], "wordings": { "en": ["How much loan do you expect to need?"] } },
+    "existing_business": { "core": false, "domains": ["readiness"], "wordings": { "en": ["Do you already run a business or have experience in this work?"] } }
+  },
+  "guidedSteps": [
+    {
+      "key": "sell", "maxSeconds": 120, "fields": ["offering", "raw_materials", "suppliers", "business_name", "differentiation"],
+      "prompt": {
+        "en": "What will you sell? Tell us your products or services, the raw materials you need, and who will supply them.",
+        "hi": "आप क्या बेचेंगे? अपने उत्पाद या सेवाएँ बताइए, कौन-सा कच्चा माल चाहिए, और वह कौन देगा।",
+        "mr": "तुम्ही काय विकणार? तुमची उत्पादने किंवा सेवा, लागणारा कच्चा माल आणि तो कोण पुरवेल ते सांगा.",
+        "te": "మీరు ఏమి అమ్ముతారు? మీ ఉత్పత్తులు లేదా సేవలు, అవసరమైన ముడి సరుకులు, వాటిని ఎవరు సరఫరా చేస్తారో చెప్పండి.",
+        "or": "ଆପଣ କ'ଣ ବିକିବେ? ଆପଣଙ୍କ ଉତ୍ପାଦ ବା ସେବା, ଦରକାରୀ କଞ୍ଚାମାଲ, ଏବଂ ତାହା କିଏ ଯୋଗାଇବେ କୁହନ୍ତୁ।",
+        "bn": "আপনি কী বিক্রি করবেন? আপনার পণ্য বা পরিষেবা, কী কাঁচামাল লাগবে, আর কে তা সরবরাহ করবে বলুন।"
+      }
+    },
+    {
+      "key": "buyers", "maxSeconds": 120, "fields": ["customers", "market_research", "competition", "problem_addressed", "pricing_strategy"],
+      "prompt": {
+        "en": "Who will buy from you? Describe your customers, what you learned from talking to them, and who else sells something similar nearby.",
+        "hi": "आपसे कौन खरीदेगा? अपने ग्राहकों के बारे में बताइए, उनसे बात करके क्या पता चला, और आस-पास और कौन ऐसा ही बेचता है।",
+        "mr": "तुमच्याकडून कोण खरेदी करेल? तुमचे ग्राहक कोण, त्यांच्याशी बोलून काय समजले, आणि जवळपास असेच कोण विकते ते सांगा.",
+        "te": "మీ దగ్గర ఎవరు కొంటారు? మీ కస్టమర్లు ఎవరు, వారితో మాట్లాడి ఏమి తెలుసుకున్నారు, దగ్గరలో ఇలాంటివి ఇంకా ఎవరు అమ్ముతున్నారో చెప్పండి.",
+        "or": "ଆପଣଙ୍କଠାରୁ କିଏ କିଣିବେ? ଆପଣଙ୍କ ଗ୍ରାହକ କିଏ, ସେମାନଙ୍କ ସହ କଥା ହୋଇ କ'ଣ ଜାଣିଲେ, ଏବଂ ପାଖରେ ଆଉ କିଏ ଏମିତି ବିକୁଛନ୍ତି କୁହନ୍ତୁ।",
+        "bn": "আপনার কাছ থেকে কে কিনবে? আপনার ক্রেতা কারা, তাদের সঙ্গে কথা বলে কী জেনেছেন, আর কাছাকাছি আর কে এমন জিনিস বিক্রি করে বলুন।"
+      }
+    },
+    {
+      "key": "where", "maxSeconds": 120, "fields": ["location"],
+      "prompt": {
+        "en": "Where will you set up your business? Say the village or town, block, district and PIN code.",
+        "hi": "आप अपना व्यवसाय कहाँ शुरू करेंगे? गाँव या शहर, ब्लॉक, ज़िला और पिन कोड बताइए।",
+        "mr": "तुम्ही व्यवसाय कुठे सुरू करणार? गाव किंवा शहर, तालुका, जिल्हा आणि पिन कोड सांगा.",
+        "te": "మీ వ్యాపారాన్ని ఎక్కడ ప్రారంభిస్తారు? గ్రామం లేదా పట్టణం, మండలం, జిల్లా, పిన్ కోడ్ చెప్పండి.",
+        "or": "ଆପଣ ବ୍ୟବସାୟ କେଉଁଠି ଆରମ୍ଭ କରିବେ? ଗାଁ ବା ସହର, ବ୍ଲକ୍, ଜିଲ୍ଲା ଏବଂ ପିନ୍ କୋଡ୍ କୁହନ୍ତୁ।",
+        "bn": "আপনি কোথায় ব্যবসা শুরু করবেন? গ্রাম বা শহর, ব্লক, জেলা আর পিন কোড বলুন।"
+      }
+    },
+    {
+      "key": "money", "maxSeconds": 120, "fields": ["funding", "investment_required", "self_investment", "expected_loan", "unit_price", "monthly_revenue"],
+      "prompt": {
+        "en": "How much money do you need to start? How much will you put in yourself, where will the rest come from, what will you charge, and how much do you expect to earn each month?",
+        "hi": "शुरू करने के लिए कितने पैसे चाहिए? आप खुद कितना लगाएँगे, बाकी कहाँ से आएगा, आप कितना दाम लेंगे, और हर महीने कितनी कमाई की उम्मीद है?",
+        "mr": "सुरू करण्यासाठी किती पैसे लागतील? तुम्ही स्वतः किती गुंतवणार, बाकी कुठून येणार, तुम्ही किती किंमत घेणार, आणि दर महिन्याला किती कमाई अपेक्षित आहे?",
+        "te": "ప్రారంభించడానికి ఎంత డబ్బు కావాలి? మీరు స్వయంగా ఎంత పెడతారు, మిగతాది ఎక్కడి నుండి వస్తుంది, మీరు ఎంత ధర తీసుకుంటారు, నెలకు ఎంత సంపాదన ఆశిస్తున్నారు?",
+        "or": "ଆରମ୍ଭ କରିବାକୁ କେତେ ଟଙ୍କା ଦରକାର? ଆପଣ ନିଜେ କେତେ ଲଗାଇବେ, ବାକି କେଉଁଠୁ ଆସିବ, ଆପଣ କେତେ ଦାମ ନେବେ, ଏବଂ ପ୍ରତି ମାସରେ କେତେ ରୋଜଗାର ଆଶା କରୁଛନ୍ତି?",
+        "bn": "শুরু করতে কত টাকা লাগবে? আপনি নিজে কত দেবেন, বাকিটা কোথা থেকে আসবে, কত দাম নেবেন, আর প্রতি মাসে কত আয় আশা করছেন?"
+      }
+    },
+    {
+      "key": "skills", "maxSeconds": 120, "fields": ["existing_business", "support_network"],
+      "prompt": {
+        "en": "Tell us about yourself and this work: your skills or training, and anything you have already tried, made or sold.",
+        "hi": "अपने और इस काम के बारे में बताइए: आपका हुनर या प्रशिक्षण, और अब तक आपने क्या आज़माया, बनाया या बेचा है।",
+        "mr": "स्वतःबद्दल आणि या कामाबद्दल सांगा: तुमचे कौशल्य किंवा प्रशिक्षण, आणि आतापर्यंत काय करून पाहिले, बनवले किंवा विकले आहे.",
+        "te": "మీ గురించి, ఈ పని గురించి చెప్పండి: మీ నైపుణ్యాలు లేదా శిక్షణ, ఇప్పటివరకు మీరు ప్రయత్నించినది, తయారు చేసినది లేదా అమ్మినది.",
+        "or": "ନିଜ ବିଷୟରେ ଏବଂ ଏହି କାମ ବିଷୟରେ କୁହନ୍ତୁ: ଆପଣଙ୍କ ଦକ୍ଷତା ବା ତାଲିମ, ଏବଂ ଏପର୍ଯ୍ୟନ୍ତ ଆପଣ କ'ଣ ଚେଷ୍ଟା କରିଛନ୍ତି, ତିଆରି କରିଛନ୍ତି ବା ବିକିଛନ୍ତି।",
+        "bn": "নিজের আর এই কাজের কথা বলুন: আপনার দক্ষতা বা প্রশিক্ষণ, আর এখন পর্যন্ত কী চেষ্টা করেছেন, বানিয়েছেন বা বিক্রি করেছেন।"
+      }
+    }
+  ],
+  "review": { "en": "source_wording", "hi": "unreviewed", "mr": "unreviewed", "te": "unreviewed", "or": "unreviewed", "bn": "unreviewed" }
+}

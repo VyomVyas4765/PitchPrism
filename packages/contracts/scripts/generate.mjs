@@ -11,6 +11,10 @@ const session = await read('schemas/session-user.json');
 await write('src/generated.ts', await compile(session, 'SessionUser'));
 await write('src/roles.ts', `// Generated from schemas/session-user.json. Do not edit.\nexport const ROLES = ${JSON.stringify(session.definitions.Role.enum)} as const;\nexport const ORG_TYPES = ${JSON.stringify(session.definitions.OrgType.enum)} as const;\n`);
 
+// Dev 2 centre input contract (CentreExtractedInput).
+const centre = await read('schemas/centre-extracted-input.json');
+await write('src/centre-generated.ts', await compile(centre, 'CentreExtractedInput'));
+
 // ---- Domain bundle: one schema, all refs internal (#/definitions/Name) ----
 const files = (await readdir(new URL('schemas/domain/', root))).filter(name => name.endsWith('.json')).sort();
 const loaded = await Promise.all(files.map(async file => [file, await read(`schemas/domain/${file}`)]));

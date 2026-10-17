@@ -7,12 +7,11 @@ OrgType = Literal["hq", "centre", "implementation_partner", "sector_partner", "f
 ObjectId = str
 DateTime = str
 Rupees = int
-Encrypted = str
 Language = Literal["hi", "mr", "te", "or", "bn", "en", "und"]
 FundingMode = Literal["lender", "csr"]
 PartnerType = Literal["sector_partner", "funding_partner"]
 Channel = Literal["app", "assisted", "import", "pwa", "whatsapp", "platform"]
-SubmissionStatus = Literal["DRAFT", "QUEUED", "PROCESSING", "NEEDS_INPUT", "UNASSESSABLE", "READY", "FAILED", "IN_REVIEW", "SHORTLISTED", "NOT_YET", "SHARED"]
+SubmissionStatus = Literal["DRAFT", "QUEUED", "PROCESSING", "NEEDS_INPUT", "UNASSESSABLE", "READY", "FAILED", "IN_REVIEW", "SHORTLISTED", "NOT_YET", "MORE_INFO", "SHARED"]
 Stage = Literal["ingest", "classify", "read", "structure", "redact", "translate", "extract", "quality", "followup", "normalise", "similar", "local", "score", "narrative", "rank", "feedback", "route"]
 StageStatus = Literal["started", "done", "skipped", "failed"]
 CanonicalField = Literal["location", "offering", "customers", "market_research", "raw_materials", "suppliers", "funding", "competition", "unit_price", "monthly_revenue", "business_name", "problem_addressed", "differentiation", "pricing_strategy", "support_network", "infrastructure", "transport", "staffing", "fixed_overheads", "location_rationale", "customer_acquisition", "promotion_plan", "goals", "investment_required", "self_investment", "expected_loan", "market_type", "existing_business", "customer_gender", "customer_age_range", "customer_segment"]
@@ -81,20 +80,26 @@ Location = TypedDict("Location", {
     "precision": Literal["pin", "village", "block", "district", "none"],
 }, total=False)
 
+Sealed = TypedDict("Sealed", {
+    "v": Required[Literal[1]],
+    "iv": Required[str],
+    "tag": Required[str],
+    "ct": Required[str],
+}, total=False)
+
 Consent = TypedDict("Consent", {
     "entrepreneurId": Required[ObjectId],
     "purpose": Required[Literal["processing", "partner_sharing"]],
-    "scopePartnerType": PartnerType,
-    "scopeOrgId": ObjectId,
-    "status": Required[Literal["granted", "revoked"]],
-    "grantedAt": DateTime,
-    "revokedAt": DateTime,
-    "method": Required[Literal["app_tap", "app_voice", "assisted_recording", "paper"]],
+    "scope": Required[Literal["all", "sector_partner", "funding_partner"]],
+    "status": Required[Literal["active", "revoked"]],
+    "method": Required[Literal["app_tap", "app_voice", "assisted_recorded"]],
+    "language": Required[Language],
     "noticeVersion": Required[str],
+    "grantedAt": Required[DateTime],
+    "grantedByUserId": Required[ObjectId],
+    "revokedAt": DateTime,
+    "revokedByUserId": ObjectId,
     "evidenceDocumentId": ObjectId,
-    "recordedByUserId": ObjectId,
-    "createdAt": DateTime,
-    "updatedAt": DateTime,
 }, total=False)
 
 Decision = TypedDict("Decision", {
@@ -141,22 +146,17 @@ Document = TypedDict("Document", {
 
 Entrepreneur = TypedDict("Entrepreneur", {
     "userId": ObjectId,
-    "nameEnc": Encrypted,
-    "phoneEnc": Encrypted,
-    "emailEnc": Encrypted,
-    "addressEnc": Encrypted,
-    "socialCategoryEnc": Encrypted,
+    "personal": "Sealed",
     "contactHashes": list[str],
     "placeholderContact": bool,
     "language": Language,
     "district": str,
     "pincode": str,
-    "tradeKey": str,
+    "trade": str,
     "education": str,
-    "gender": Literal["female", "male", "other", "undisclosed"],
-    "homeOrgId": Required[ObjectId],
-    "createdVia": Required[Channel],
-    "facilitatorUserId": ObjectId,
+    "createdVia": Required[Literal["self", "assisted", "import"]],
+    "facilitatorId": ObjectId,
+    "homeOrgId": ObjectId,
     "createdAt": DateTime,
     "updatedAt": DateTime,
 }, total=False)
@@ -479,12 +479,17 @@ FollowUp = TypedDict("FollowUp", {
     "answerDocumentId": ObjectId,
 }, total=False)
 
-PartnerAccess = TypedDict("PartnerAccess", {
-    "shareId": ObjectId,
-    "orgId": Required[ObjectId],
-    "partnerType": Required[PartnerType],
-    "active": Required[bool],
-    "contactAccepted": Required[bool],
+LegacyApplicant = TypedDict("LegacyApplicant", {
+    "name": str,
+    "phone": str,
+}, total=False)
+
+SubmissionShare = TypedDict("SubmissionShare", {
+    "_id": ObjectId,
+    "orgId": ObjectId,
+    "partnerType": PartnerType,
+    "active": bool,
+    "contactAccepted": bool,
 }, total=False)
 
 Submission = TypedDict("Submission", {
@@ -495,7 +500,7 @@ Submission = TypedDict("Submission", {
     "cohortId": ObjectId,
     "createdByUserId": Required[ObjectId],
     "importBatchId": ObjectId,
-    "channel": Required[Channel],
+    "channel": Channel,
     "status": Required[SubmissionStatus],
     "title": str,
     "summaryEn": str,
@@ -512,7 +517,8 @@ Submission = TypedDict("Submission", {
     "followUps": list["FollowUp"],
     "latestEvaluationId": ObjectId,
     "fundingReady": bool,
-    "partnerAccess": list["PartnerAccess"],
+    "applicant": "LegacyApplicant",
+    "shares": Required[list["SubmissionShare"]],
     "duplicateOf": ObjectId,
     "linkedSubmissionIds": list[ObjectId],
     "inputVersion": int,

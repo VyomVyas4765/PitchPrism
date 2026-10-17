@@ -6,7 +6,7 @@ import { Ajv } from 'ajv';
 import addFormatsModule from 'ajv-formats';
 import { COLLECTIONS, domainSchema, type EntityName } from '@pitchprism/contracts';
 import { ALL_MODELS } from '../src/models.js';
-import { dataCrypto, isPlaceholderContact, normaliseContact, sameDigest } from '../src/crypto.js';
+import { contactHasher, isPlaceholderContact, normaliseContact, sameDigest } from '../src/crypto.js';
 
 // The contract bundle, the generated Mongoose models and the published fixtures must agree (D-03).
 const addFormats = addFormatsModule as unknown as (ajv: Ajv) => Ajv;
@@ -61,8 +61,8 @@ describe('domain contracts', () => {
   it('rejects fields outside the contract on both sides', async () => {
     expect(check('StageEvent', { ...withoutId(fixtures.stageEvents![0]!), prompt: 'leaked' })).not.toEqual([]);
     await expect(mongoose.model('StageEvent').create({ ...fixtures.stageEvents![0]!, prompt: 'leaked' })).rejects.toThrow();
-    expect(check('Submission', { ...withoutId(fixtures.submissions![0]!), applicant: { name: 'x' } })).not.toEqual([]);
-    await expect(mongoose.model('Submission').create({ ...withoutId(fixtures.submissions![0]!), applicant: { name: 'x' } })).rejects.toThrow();
+    expect(check('Submission', { ...withoutId(fixtures.submissions![0]!), unknownField: { name: 'x' } })).not.toEqual([]);
+    await expect(mongoose.model('Submission').create({ ...withoutId(fixtures.submissions![0]!), unknownField: { name: 'x' } })).rejects.toThrow();
   });
   it('enforces contract enums and identifiers in the database models', async () => {
     const event = withoutId(fixtures.stageEvents![0]!);
@@ -74,28 +74,18 @@ describe('domain contracts', () => {
   });
 });
 
-describe('personal-data protection', () => {
-  const crypto = dataCrypto('test-only-data-key-with-more-than-thirty-two-characters');
-  it('round-trips encrypted values and never stores plaintext', () => {
-    const token = crypto.encrypt('Synthetic Person', 'entrepreneur.name');
-    expect(token).toMatch(/^v1:/);
-    expect(token).not.toContain('Synthetic');
-    expect(crypto.decrypt(token, 'entrepreneur.name')).toBe('Synthetic Person');
-    expect(crypto.encrypt('Synthetic Person', 'entrepreneur.name')).not.toBe(token);
-  });
-  it('binds ciphertext to its field and detects tampering', () => {
-    const token = crypto.encrypt('+919999999999', 'entrepreneur.phone');
-    expect(() => crypto.decrypt(token, 'entrepreneur.name')).toThrow();
-    const parts = token.split(':');
-    parts[3] = `${parts[3]!.slice(0, -2)}AA`;
-    expect(() => crypto.decrypt(parts.join(':'), 'entrepreneur.phone')).toThrow();
-    expect(() => dataCrypto('different-key-with-more-than-thirty-two-characters!!').decrypt(token, 'entrepreneur.phone')).toThrow();
+describe('contact matching', () => {
+  const hash = contactHasher('ab'.repeat(32))!;
+  it('needs a valid PII_ENCRYPTION_KEY', () => {
+    expect(contactHasher('')).toBeNull();
+    expect(contactHasher('not-hex')).toBeNull();
   });
   it('hashes contacts after normalisation so formatting does not hide duplicates', () => {
     expect(normaliseContact('+91 98765-43210', 'phone')).toBe('9876543210');
-    expect(crypto.contactHash('+91 98765 43210', 'phone')).toBe(crypto.contactHash('9876543210', 'phone'));
-    expect(crypto.contactHash(' Person@Example.COM ', 'email')).toBe(crypto.contactHash('person@example.com', 'email'));
-    expect(crypto.contactHash('9876543210', 'phone')).not.toBe(crypto.contactHash('9876543210', 'email'));
+    expect(hash('+91 98765 43210', 'phone')).toBe(hash('9876543210', 'phone'));
+    expect(hash(' Person@Example.COM ', 'email')).toBe(hash('person@example.com', 'email'));
+    expect(hash('9876543210', 'phone')).not.toBe(hash('9876543210', 'email'));
+    expect(hash('9876543210', 'phone')).not.toBe(contactHasher('cd'.repeat(32))!('9876543210', 'phone'));
   });
   it('recognises placeholder contacts so they never link people as duplicates', () => {
     expect(isPlaceholderContact('9000000080', 'phone')).toBe(true);

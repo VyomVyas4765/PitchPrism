@@ -4,7 +4,7 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 
 **Status key:** ✅ Decided · 🟡 Default (holds until someone objects with a reason) · ❓ Open
 
-**Current implementation:** D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. D-26 replaces Redis/BullMQ with a MongoDB-only queue and event transport. Product requirements/permissions remain in the PRD.
+**Current implementation:** D-26 now removes Redis and includes iOS development builds; earlier queue/platform entries are historical.  D-23 supersedes the earlier folder names and technical-specialty split; D-24 supersedes hosted AI defaults with the local-only baseline. D-25 reconciles the question register with current evidence. Product requirements/permissions remain in the PRD. D-27 sets staff invitations; D-28 and D-30 define the shared domain contracts and how they absorbed the first role modules; D-29 details the MongoDB job and stage-event design.
 
 ## Index
 
@@ -35,9 +35,11 @@ Every decision the team has made, why, and what it costs us. When you want to ch
 | D-23 | Auth-first foundation; role-based duties and requested folder names | ✅ | All |
 | D-24 | Full scope, local-only AI; lean Android; explicit cost/capability evidence | ✅ | All |
 | D-25 | Reconcile answered, superseded and still-open PRD questions | ✅ | All |
-| D-26 | MongoDB-only job queue and stage events (supersedes D-05) | ✅ | Dev 3 |
+| D-26 | Remove Redis; persistent local MongoDB; add iOS development target | ✅ | Dev 1, Dev 3 |
 | D-27 | Staff invitations by one-time copyable link | ✅ | Dev 3 |
 | D-28 | Contracts v1: one bundle drives TypeScript, Python, models and fixtures | ✅ | Dev 3 |
+| D-29 | MongoDB job queue and stage-event design (details D-26) | ✅ | Dev 3 |
+| D-30 | Contracts absorb the first role modules' tested conventions | ✅ | Dev 3 |
 
 ---
 
@@ -182,7 +184,7 @@ Current register after D-25. The complete answered/partial/open classification i
 | Q-08 | Confirm simultaneous application and centre-assignment policy | Before domain-contract freeze | Team, with organiser input if needed; one active submission/programme is provisional |
 | Q-12 | Verify applicable data-protection rules and consent timelines | Before pitch/pilot compliance claims | Team obtains authoritative review; no new legal conclusion recorded |
 | Q-13 | Confirm production hosts, actual regions, resources and operating budget | Before deployment/residency claims | Dev 3 / team; local development exists, India production target unverified |
-| Q-14 | Prove the MongoDB job handoff (D-26): enqueue, claim, lease expiry, retry, failure and SSE reconnect | H4 | Dev 3 with Dev 1 (Python consumer); transport chosen, behavior not yet tested |
+| Q-14 | Implement and validate MongoDB job leasing, retries, progress and recovery | Before worker integration; historical H4 gate | Dev 3 with Devs 1/2; D-26 removes Redis; MongoDB consumer/event flow remains pending |
 | Q-15 | Confirm required Tata STRIVE system integrations | Before integration scope is locked | Organisers / Tata STRIVE; link out is only the default |
 | Q-16 | Confirm judging criteria and weights | Before final pitch priorities | Organisers; equal weights are provisional |
 | Q-19 | Confirm application-platform export/API availability | Before promising automated integration | Organisers; manual/bulk upload baseline |
@@ -231,17 +233,19 @@ Current register after D-25. The complete answered/partial/open classification i
 **Consequences.** PRD §23 now describes the current role split with named assignments explicitly unfilled. PRD §24 separates the confirmed five-minute mentor review from the assumed eight-minute final script. PRD §26 contains seven settled/superseded items and 16 genuinely pending questions, mirrored in the current register above. Original question IDs and earlier decision entries remain intact for traceability.
 
 
-### D-26 · MongoDB-only job queue and stage events ✅
+### D-26 · Redis removed, persistent local database and iOS development builds ✅
 
-**Context.** D-05 chose BullMQ on Redis, but its Python consumer was never validated (Q-14). D-24 runs one local worker job at a time, and Redis has no other use in the system. Local development runs MongoDB as a single server, so change streams (which need a replica set) are not available there.
+**Context.** The team requested a working database despite the college-network/Atlas issue, removal of Redis, a wireless build on the paired iPhone and deferral of Firebase project setup.
 
-**Decision.** This supersedes D-05 and settles Q-14's transport choice.
+**Decision.** Remove Redis from Compose and environment configuration. No Redis/BullMQ client was implemented. Future pipeline work uses a MongoDB-backed job collection with atomic leasing, retry/recovery and durable stage events relayed through authorised SSE; these behaviors still require implementation and Q-14 validation. This supersedes D-05 and its Redis Streams fallback, not the requirement for reliable background processing.
 
-- **Jobs.** A `jobs` collection holds each `JobPayload` with `status` (queued, leased, done, failed, cancelled), `attempts`, `maxAttempts`, `availableAt`, `leaseUntil`, `workerId` and `error`. The API enqueues with an idempotency key (submission, from-stage, reason, input version), so a double click cannot create two jobs.
-- **Claiming.** The worker claims one job with an atomic `findOneAndUpdate` (queued, or leased with an expired lease, and `availableAt` reached → leased, `attempts + 1`). It extends the lease while working, then marks the job done or failed. A crashed worker's job returns to the queue when its lease expires. After `maxAttempts` the job is failed and stays visible; nothing is retried silently forever.
-- **Events.** The worker writes each `StageEvent` to a capped `stageEvents` collection and records timing and model use in the uncapped `pipelineRuns` collection (A-29). The API follows `stageEvents` with a tailable cursor and streams them over SSE, filtered by the viewer's organisation scope. A reconnecting client sends `Last-Event-ID`, and the API replays what it missed from persisted events, so reconnects neither lose nor invent completed stages (A-28 acceptance). Tailable cursors work on both the local single server and Atlas.
+**Database.** `pnpm dev:local` starts an actual MongoDB 7.0.24 process with WiredTiger data in ignored `local/mongodb/`, then seeds synthetic staff and starts the API/dashboard. It uses the existing development launcher dependency and cached/downloaded binary, with a fixed loopback port and exclusive launcher lock. Restart persistence is verified. Local mode overrides the child-process URI explicitly and preserves the private Atlas URI; local and Atlas data are separate. Mongo-only Docker remains an alternative. The current Atlas hostname remains unresolved and is not claimed fixed by starting local MongoDB.
 
-**Consequences.** The `JobPayload` and `StageEvent` contracts keep their fields; only the transport changes. Redis leaves `docker-compose.yml`, `.env.example` and the README when the queue lands; until then Compose still starts it, unused. Q-14 becomes a test obligation: prove enqueue, claim, lease expiry, retry, terminal failure and SSE reconnect, with Dev 1 owning the Python consumer. Polling at about one second is enough for pilot volume and a single worker; revisit if several workers or much higher volume arrive.
+**iOS.** Add an iOS development target to the existing Flutter app and use the paired wireless iPhone for installation/testing. This supersedes D-20's Android-only build restriction. Android 8+/2 GB remains the primary performance target; an iPhone auth build does not establish full iOS parity. Configure automatic signing, Keychain session storage and Debug-only local HTTP/Bonjour permissions. Wireless pairing does not publish the development API: the phone must reach the Mac over LAN, or use a separately deployed HTTPS API.
+
+**Firebase.** Keep the existing integration lazy until the team supplies Firebase configuration. Without it, open facilitator password sign-in and show phone sign-in as unavailable; do not introduce a fake OTP or role bypass. Native Firebase libraries may still be needed to build the integrated app.
+
+**Build networking.** The Mac's global Git HTTPS→SSH rewrite can hang public Swift-package downloads on a restricted network. `GIT_CONFIG_GLOBAL=/dev/null` is scoped to the Flutter build process; global Git settings are not modified.
 
 ### D-27 · Staff invitations by one-time copyable link ✅
 
@@ -256,9 +260,34 @@ Current register after D-25. The complete answered/partial/open classification i
 **Decision.** This refines D-03. `packages/contracts/schemas/domain/` holds one JSON Schema per domain type (22 stored collections plus embedded types). `pnpm contracts:generate` bundles them into one schema and writes TypeScript types, storage types for the backend, and a Python module of TypedDicts with `validate()` over the same bundle, so the worker needs no new dependency. The backend builds every Mongoose model from the bundle at startup (`backend/src/models/schema.ts`), adding only storage concerns such as indexes and hidden fields. Unknown fields are rejected (`strict: 'throw'`). `fixtures/synthetic.json` holds a valid example per collection; backend and Python tests check those fixtures against the schemas and the models, so the three cannot disagree silently.
 
 **Modelling choices.**
-- **The applicant is an `Entrepreneur` record, separate from sign-in `User`s.** Imported and facilitator-assisted applicants never sign in. Personal fields are AES-256-GCM encrypted and bound to their field, with keyed contact hashes for duplicate matching and placeholder detection. Submissions hold no personal data.
-- **Partner access uses a denormalised `Submission.partnerAccess` index**, written only by the platform share-sync service from `shares` and `consents`. Scope stays a single query filter.
+- **The applicant is an `Entrepreneur` record, separate from sign-in `User`s** (for phone sign-in its _id equals the User _id). Personal details are sealed in `personal` by the entrepreneur PII vault, bound to the record ID, with keyed contact hashes for duplicate matching and placeholder detection.
+- **Partner access reads active entries in `Submission.shares`**, so scope stays a single query filter; consent and share services keep it in step with `consents` and `shares`.
 - **Scope is combined with route filters via `scoped()` (`$and`), never by object spread.** A spread let a route's `_id` override the "match nothing" scope during development; the access tests now guard it.
 - **The status lifecycle follows `docs/flow.md` §1.2.** Funding lenders see SHORTLISTED or SHARED ideas.
 
-**Consequences.** Contracts v1 is published for review by Devs 1, 2 and 4; changes go through Dev 3 and regenerate all outputs. A new secret, `DATA_ENCRYPTION_KEY`, is required; `pnpm setup:env` adds it to an existing `.env`. Q-08 (several programmes per entrepreneur) is still open, so no uniqueness rule ties an entrepreneur to one programme yet.
+**Consequences.** Contracts v1 is published for review by Devs 1, 2 and 4; changes go through Dev 3 and regenerate all outputs. One secret, `PII_ENCRYPTION_KEY`, seals personal data and keys contact hashes; `pnpm setup:env` adds missing secrets to an existing `.env`. Q-08 (several programmes per entrepreneur) is still open, so no uniqueness rule ties an entrepreneur to one programme yet.
+
+### D-29 · MongoDB job queue and stage-event design ✅
+
+**Context.** D-05 chose BullMQ on Redis, but its Python consumer was never validated (Q-14). D-24 runs one local worker job at a time, and Redis has no other use in the system. Local development runs MongoDB as a single server, so change streams (which need a replica set) are not available there.
+
+**Decision.** This supersedes D-05 and details the MongoDB jobs and events that D-26 selected.
+
+- **Jobs.** A `jobs` collection holds each `JobPayload` with `status` (queued, leased, done, failed, cancelled), `attempts`, `maxAttempts`, `availableAt`, `leaseUntil`, `workerId` and `error`. The API enqueues with an idempotency key (submission, from-stage, reason, input version), so a double click cannot create two jobs.
+- **Claiming.** The worker claims one job with an atomic `findOneAndUpdate` (queued, or leased with an expired lease, and `availableAt` reached → leased, `attempts + 1`). It extends the lease while working, then marks the job done or failed. A crashed worker's job returns to the queue when its lease expires. After `maxAttempts` the job is failed and stays visible; nothing is retried silently forever.
+- **Events.** The worker writes each `StageEvent` to a capped `stageEvents` collection and records timing and model use in the uncapped `pipelineRuns` collection (A-29). The API follows `stageEvents` with a tailable cursor and streams them over SSE, filtered by the viewer's organisation scope. A reconnecting client sends `Last-Event-ID`, and the API replays what it missed from persisted events, so reconnects neither lose nor invent completed stages (A-28 acceptance). Tailable cursors work on both the local single server and Atlas.
+
+**Consequences.** The `JobPayload` and `StageEvent` contracts keep their fields; only the transport changes. Q-14 becomes a test obligation: prove enqueue, claim, lease expiry, retry, terminal failure and SSE reconnect, with Dev 1 owning the Python consumer. Polling at about one second is enough for pilot volume and a single worker; revisit if several workers or much higher volume arrive.
+
+### D-30 · Contracts absorb the first role modules' tested conventions ✅
+
+**Context.** Devs 1, 2 and 4 built their first slices in parallel with contracts v1, against the starter models: Dev 1 defined its own `Entrepreneur` and `Consent` models with a sealed `personal` field and `PII_ENCRYPTION_KEY`; Dev 2 added decision statuses; Dev 4 and Dev 1 read and write `Submission.shares` and a plaintext `applicant`. Two models with one name crash the API, and forcing three tested modules onto different shapes mid-build would cost more than it gains.
+
+**Decision.** The shared contracts adopt the conventions those modules already test, and every model is defined once in `backend/src/models/` from the contracts (role modules re-export them).
+- `Entrepreneur` and `Consent` follow Dev 1's design: sealed `personal` bound to the record ID, append-only consents with one active consent per purpose and scope, and Entrepreneur _id equal to the User _id for phone sign-in, so entrepreneur scope is `entrepreneurId: user.id`.
+- One secret: `PII_ENCRYPTION_KEY` (64 hex). The contact-hash key derives from it; `DATA_ENCRYPTION_KEY` from contracts v1 is dropped.
+- `Submission.shares` keeps its name, with a generated `_id` per entry (the Idea Passport's shareId); missing fields on an entry simply never grant access. Status gains `MORE_INFO`.
+- `Submission.applicant` (plaintext name and phone) stays as a **deprecated, transitional** field so the starter flows and their tests keep working. Reads prefer the sealed profile. Remove it when assisted intake writes sealed profiles; until then it holds synthetic data only.
+- Dev 4's partner router is mounted at `/api/v1/partners` behind the shared session middleware, as its handoff requested.
+
+**Consequences.** All 104 backend tests (all four roles) and 49 worker tests pass on the shared models. Role routes still compose scope by object spread in places; that is safe while no scope uses `_id`, but new code should use `scoped()`. Follow-ups: remove `applicant` (Dev 1, Dev 3), and route partner and consent writes through one share service when partner actions land (Devs 1, 4).

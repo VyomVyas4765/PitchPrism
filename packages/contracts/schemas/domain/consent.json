@@ -1,24 +1,23 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Consent",
-  "description": "A consent the entrepreneur gave or withdrew (PRD sections 5 and 21). Processing consent is required; partner sharing is separate and optional. Revocation takes effect on the next request.",
+  "description": "A consent the entrepreneur gave (PRD sections 5 and 21), append-only per purpose: revoking stamps the record and granting again adds a new one. Processing consent is required; partner sharing is separate and optional, scoped by partner type. Revocation takes effect on the next request. Service logic: backend/src/modules/entrepreneur/consent.ts (Dev 1).",
   "x-collection": "consents",
   "type": "object",
   "additionalProperties": false,
-  "required": ["entrepreneurId", "purpose", "status", "method", "noticeVersion"],
+  "required": ["entrepreneurId", "purpose", "scope", "status", "method", "language", "noticeVersion", "grantedAt", "grantedByUserId"],
   "properties": {
     "entrepreneurId": { "$ref": "common.json#/definitions/ObjectId" },
     "purpose": { "type": "string", "enum": ["processing", "partner_sharing"] },
-    "scopePartnerType": { "$ref": "common.json#/definitions/PartnerType", "description": "For partner_sharing: the partner type allowed." },
-    "scopeOrgId": { "$ref": "common.json#/definitions/ObjectId", "description": "For partner_sharing limited to one organisation." },
-    "status": { "type": "string", "enum": ["granted", "revoked"] },
+    "scope": { "type": "string", "enum": ["all", "sector_partner", "funding_partner"], "description": "all for processing; the partner type for partner_sharing." },
+    "status": { "type": "string", "enum": ["active", "revoked"], "default": "active" },
+    "method": { "type": "string", "enum": ["app_tap", "app_voice", "assisted_recorded"] },
+    "language": { "$ref": "common.json#/definitions/Language", "description": "Language the notice was shown in." },
+    "noticeVersion": { "type": "string", "maxLength": 60 },
     "grantedAt": { "$ref": "common.json#/definitions/DateTime" },
+    "grantedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
     "revokedAt": { "$ref": "common.json#/definitions/DateTime" },
-    "method": { "type": "string", "enum": ["app_tap", "app_voice", "assisted_recording", "paper"] },
-    "noticeVersion": { "type": "string", "maxLength": 40 },
-    "evidenceDocumentId": { "$ref": "common.json#/definitions/ObjectId", "description": "Recorded spoken consent in assisted mode." },
-    "recordedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
-    "createdAt": { "$ref": "common.json#/definitions/DateTime" },
-    "updatedAt": { "$ref": "common.json#/definitions/DateTime" }
+    "revokedByUserId": { "$ref": "common.json#/definitions/ObjectId" },
+    "evidenceDocumentId": { "$ref": "common.json#/definitions/ObjectId", "description": "Assisted mode: the recording of the applicant's spoken consent (M-17)." }
   }
 }

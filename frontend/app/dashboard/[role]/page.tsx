@@ -3,6 +3,7 @@ import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ROLE_LABELS, type AuthResponse, type SessionUser, type Workspace } from '@pitchprism/contracts';
 import { api, ApiError } from '../../../lib/api';
+import CentreWorkspace from '../../../features/centre/CentreWorkspace';
 
 export default function Dashboard({ params }: { params: Promise<{ role: string }> }) {
   const { role } = use(params);
@@ -45,5 +46,6 @@ export default function Dashboard({ params }: { params: Promise<{ role: string }
       <dl><dt>Organisation</dt><dd>{user.orgType ? user.orgType.replaceAll('_', ' ') : 'Personal account'}</dd><dt>Access</dt><dd>{workspace.permissions.map(permission => permission.replaceAll('_', ' ')).join(' · ')}</dd></dl>
       {error && <p className="error" role="alert">{error}</p>}
     </section>
+    {(user.role === 'centre_assessor' || user.role === 'cohort_lead') && <CentreWorkspace />}
   </main>;
 }

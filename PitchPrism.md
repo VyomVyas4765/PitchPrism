@@ -125,7 +125,7 @@ PitchPrism succeeds if an assessor can understand and fairly judge any submissio
 - Replacing EDP's group activity or personal interview. PitchPrism prepares the interviewer instead (W-31).
 - Loan disbursal, payments or billing between orgs.
 - Delivering skilling courses inside the app. It links out to them.
-- iOS polish. Android comes first, since most target users are likely on low-cost Android phones.
+- Full iOS feature/performance parity. Android remains the low-cost-device target; an iOS development build on the paired iPhone is included by the latest team request (D-26).
 - Scraping private or paid data sources. Location insights use open, official or properly licensed APIs only.
 
 **Success metrics**
@@ -621,7 +621,7 @@ flowchart LR
     WEB["Next.js dashboard"] --> API
     API["Node.js API<br/>Express · Zod · scope plugin"] --> DB[("MongoDB Atlas<br/>+ Vector Search")]
     API --> S3[("Object storage<br/>India region")]
-    API -->|"enqueue jobs"| Q[["MongoDB jobs<br/>(atomic leases)"]]
+    API -->|"enqueue jobs"| Q[["MongoDB jobs (planned)"]]
     Q --> W["Python AI worker"]
     W --> DB
     W --> S3
@@ -633,7 +633,7 @@ flowchart LR
     API -->|"FCM push"| APP
 ```
 
-The worker writes results back to MongoDB and appends stage progress to a capped `stageEvents` collection that the API follows with a tailable cursor (D-26); the API pushes status to the phone through Firebase and streams the live card to the dashboard through server-sent events.
+The worker will write results and durable stage events to MongoDB; the API will relay authorised progress over server-sent events. MongoDB-backed job leasing/retries and event delivery are planned, not implemented. Redis/BullMQ/Redis Streams are removed (D-26). Firebase push remains future integration after configuration.
 
 | Layer | Choice | Why |
 | --- | --- | --- |
@@ -641,7 +641,7 @@ The worker writes results back to MongoDB and appends stage progress to a capped
 | Web | Next.js (App Router, TypeScript), Tailwind CSS, TanStack Query, Recharts, Leaflet with OpenStreetMap tiles, PDF.js for the page viewer | Fast to build role-based dashboards with maps and charts |
 | API | Node.js LTS, Express, TypeScript, Zod validation, Mongoose | Team's chosen stack for the API |
 | AI worker | Python 3.11+, pydantic, httpx, PyMuPDF, ffmpeg, Silero VAD, sentence-transformers, scikit-learn (HDBSCAN), umap-learn, rapidfuzz; FastAPI for health and admin endpoints | The document, audio and ML libraries PitchPrism needs are Python-first |
-| Queue | MongoDB `jobs` collection with atomic leases, retries and terminal failure; capped `stageEvents` collection for progress (D-26, Q-14) | No extra service; works the same from Node and Python; fits one local worker job at a time |
+| Queue | Planned MongoDB job collection with atomic leases, retries and persisted stage events; implementation/validation remains Q-14 | One shared database; no Redis dependency; no worker consumer is claimed yet |
 | Database | MongoDB Atlas in an India region, with Atlas Vector Search and 2dsphere geo indexes | Flexible documents, vectors and geo in one store |
 | File storage | S3-compatible bucket in an India region | Private files behind signed URLs |
 | Voice and language | Sarvam AI: Saaras v3, translation, transliteration, Bulbul v3, Document AI | Built for Indian languages |
@@ -651,7 +651,7 @@ The worker writes results back to MongoDB and appends stage progress to a capped
 | Auth | Firebase phone OTP for entrepreneurs; JWT in an httpOnly cookie for staff | Simple OTP on Flutter; staff roles stay in our API |
 | Notifications | Firebase Cloud Messaging; SMS later (M-16) | Free push; SMS for feature-phone reach |
 | Hosting | Vercel for Next.js; API and worker on a container host; India region for the pilot (Q-13) | Quick to deploy during the hackathon |
-| Monitoring | Sentry, structured logs, job and stage views on the HQ dashboard, per-stage cost and timing (A-29) | See pipeline failures and cost quickly |
+| Monitoring | Structured logs, future MongoDB job-status view, per-stage cost and timing (A-29) | See pipeline failures and cost quickly |
 
 ## 19. Data model (MongoDB)
 
@@ -850,7 +850,7 @@ Updated 17 October 2026 against D-23/D-24, the authentication foundation and the
 
 | ID | Settled item | Current answer | Basis |
 | --- | --- | --- | --- |
-| Q-06 | Android only | Android is the chosen mobile target; iOS is outside the current build. Android 8+/2 GB performance is still an acceptance target, not a verified result. | D-20, D-23; Flutter Android scaffold |
+| Q-06 | Android primary; iOS development build included | Android remains the product performance target; the paired iPhone is now included for development builds. Full iOS parity and Android 8+/2 GB performance are not established by an auth build. | D-26 supersedes the Android-only build restriction |
 | Q-07 | Assessors use the web dashboard | Centre, cohort and HQ assessment workflows belong on the web; entrepreneur/facilitator workflows use mobile. | D-20, D-23; current role briefs |
 | Q-09 | Centre owns partner-collected submissions | The centre owns the submission; the collecting implementation partner is its source, with scoped access. | §5; shared ownership/access foundation |
 | Q-10 | Funding scope is retained at P2 | W-18 belongs to Dev 4 at P2. Funding auth/access foundations exist; the full shortlist and CSR reports are pending. The old binary MVP question is replaced by explicit P2 scheduling, with no change to its priority. | D-01, D-23; W-18 and its duty brief |
@@ -866,7 +866,7 @@ Updated 17 October 2026 against D-23/D-24, the authentication foundation and the
 | Q-02 | How long is the final demo, and is there a screening round? | 30-hour build; mentor review is 5 minutes. | Organiser-confirmed final slot and screening format. The §24 final script still assumes 8 minutes; use a shortened 5-minute mentor version. |
 | Q-03 | What are the official EDP rubric and real application volumes? | Real form templates and 55 sample files are available. | Official scoring rubric and actual scale. §13 rubric and §22 pilot volumes remain provisional. |
 | Q-04 | Which local LLM and vision models pass the required evaluation? | ₹0 hosted AI API policy; heavy compute stays on the local Python worker. M2/8 GiB host and Ollama adapter exist; llama3.2 passed only a synthetic JSON smoke test. API credits are no longer relevant. | Licence, peak RAM, latency and six-language/format results; approved reasoning and vision models. Benchmark early; retain H14 as the original first-eval selection gate. Production processing location is Q-13. |
-| Q-13 | Where will the production API, worker, database and private files run? | Development runs locally; MongoDB/Redis have local Compose configuration. India-region deployment remains the intended production target. | Actual hosts, regions, access, resource capacity and operating budget. Do not claim deployed India-only processing or permanently free hosting before verification. |
+| Q-13 | Where will the production API, worker, database and private files run? | Development runs locally; Persistent local MongoDB and optional Mongo-only Compose are available; Redis is removed. India-region deployment remains the intended production target. | Actual hosts, regions, access, resource capacity and operating budget. Do not claim deployed India-only processing or permanently free hosting before verification. |
 
 ### 26.3 Team decisions or technical validation still open
 
@@ -874,7 +874,7 @@ Updated 17 October 2026 against D-23/D-24, the authentication foundation and the
 | --- | --- | --- | --- |
 | Q-05 | Which languages are live, and who validates Odia/Bengali transcripts? | Hindi, Telugu and Marathi live; Odia/Bengali organiser samples. All six launch languages remain required. | Dev 1 + Dev 2 with the team: confirm live choices and named qualified validators before language-quality claims. |
 | Q-08 | Are multiple simultaneous programme/centre applications allowed? | One active submission per programme; centre assigned by district. This is an unconfirmed policy, not a completed constraint. | Team, confirmed with organisers if needed: settle before freezing submission uniqueness and ownership contracts. |
-| Q-14 | Does the MongoDB job handoff satisfy the worker contract? | Transport chosen in D-26: a MongoDB `jobs` collection with atomic leases and a capped `stageEvents` collection streamed over SSE. Redis/BullMQ is superseded. No consumer or cross-runtime integration has been validated. | Dev 3 with Dev 1 (Python consumer): prove enqueue, claim, lease expiry, retry, terminal failure and SSE reconnect by H4. |
+| Q-14 | Does the MongoDB-backed job/event implementation satisfy the worker contract? | D-26 removes Redis and selects MongoDB jobs/events as the planned replacement. Atomic leasing, retries, worker consumption and event delivery are not implemented or validated. | Dev 3 with Devs 1/2: implement and prove lease/retry/progress/recovery before pipeline integration; H4 remains a historical build-plan checkpoint. |
 
 ### 26.4 Organiser or Tata STRIVE answers still needed
 

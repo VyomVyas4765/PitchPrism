@@ -179,12 +179,6 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
       "type": "integer",
       "minimum": 0
     },
-    "Encrypted": {
-      "title": "Encrypted",
-      "description": "AES-256-GCM ciphertext written by the platform crypto helper: v<keyVersion>:<iv>:<tag>:<data>, base64url parts. Never store plaintext personal data in this field.",
-      "type": "string",
-      "pattern": "^v\\d+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]*$"
-    },
     "Language": {
       "title": "Language",
       "description": "ISO 639-1 codes for the six launch languages, plus und when undetermined.",
@@ -230,7 +224,7 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
     },
     "SubmissionStatus": {
       "title": "SubmissionStatus",
-      "description": "Lifecycle in docs/flow.md section 1.2.",
+      "description": "Lifecycle in docs/flow.md section 1.2. MORE_INFO is the assessor's More info decision (Dev 2); NEEDS_INPUT is the pipeline waiting on follow-up answers.",
       "type": "string",
       "enum": [
         "DRAFT",
@@ -243,6 +237,7 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         "IN_REVIEW",
         "SHORTLISTED",
         "NOT_YET",
+        "MORE_INFO",
         "SHARED"
       ]
     },
@@ -498,18 +493,51 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         }
       }
     },
+    "Sealed": {
+      "title": "Sealed",
+      "description": "AES-256-GCM sealed JSON written by the entrepreneur PII vault (backend/src/modules/entrepreneur/pii-vault.ts), bound to its record ID so a copied ciphertext cannot be opened on another record. Base64 parts. Never store plaintext personal data outside a Sealed value.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v",
+        "iv",
+        "tag",
+        "ct"
+      ],
+      "properties": {
+        "v": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        },
+        "iv": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "ct": {
+          "type": "string"
+        }
+      }
+    },
     "Consent": {
       "title": "Consent",
-      "description": "A consent the entrepreneur gave or withdrew (PRD sections 5 and 21). Processing consent is required; partner sharing is separate and optional. Revocation takes effect on the next request.",
+      "description": "A consent the entrepreneur gave (PRD sections 5 and 21), append-only per purpose: revoking stamps the record and granting again adds a new one. Processing consent is required; partner sharing is separate and optional, scoped by partner type. Revocation takes effect on the next request. Service logic: backend/src/modules/entrepreneur/consent.ts (Dev 1).",
       "x-collection": "consents",
       "type": "object",
       "additionalProperties": false,
       "required": [
         "entrepreneurId",
         "purpose",
+        "scope",
         "status",
         "method",
-        "noticeVersion"
+        "language",
+        "noticeVersion",
+        "grantedAt",
+        "grantedByUserId"
       ],
       "properties": {
         "entrepreneurId": {
@@ -522,52 +550,54 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
             "partner_sharing"
           ]
         },
-        "scopePartnerType": {
-          "$ref": "#/definitions/PartnerType",
-          "description": "For partner_sharing: the partner type allowed."
-        },
-        "scopeOrgId": {
-          "$ref": "#/definitions/ObjectId",
-          "description": "For partner_sharing limited to one organisation."
+        "scope": {
+          "type": "string",
+          "enum": [
+            "all",
+            "sector_partner",
+            "funding_partner"
+          ],
+          "description": "all for processing; the partner type for partner_sharing."
         },
         "status": {
           "type": "string",
           "enum": [
-            "granted",
+            "active",
             "revoked"
-          ]
-        },
-        "grantedAt": {
-          "$ref": "#/definitions/DateTime"
-        },
-        "revokedAt": {
-          "$ref": "#/definitions/DateTime"
+          ],
+          "default": "active"
         },
         "method": {
           "type": "string",
           "enum": [
             "app_tap",
             "app_voice",
-            "assisted_recording",
-            "paper"
+            "assisted_recorded"
           ]
+        },
+        "language": {
+          "$ref": "#/definitions/Language",
+          "description": "Language the notice was shown in."
         },
         "noticeVersion": {
           "type": "string",
-          "maxLength": 40
+          "maxLength": 60
+        },
+        "grantedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "grantedByUserId": {
+          "$ref": "#/definitions/ObjectId"
+        },
+        "revokedAt": {
+          "$ref": "#/definitions/DateTime"
+        },
+        "revokedByUserId": {
+          "$ref": "#/definitions/ObjectId"
         },
         "evidenceDocumentId": {
           "$ref": "#/definitions/ObjectId",
-          "description": "Recorded spoken consent in assisted mode."
-        },
-        "recordedByUserId": {
-          "$ref": "#/definitions/ObjectId"
-        },
-        "createdAt": {
-          "$ref": "#/definitions/DateTime"
-        },
-        "updatedAt": {
-          "$ref": "#/definitions/DateTime"
+          "description": "Assisted mode: the recording of the applicant's spoken consent (M-17)."
         }
       }
     },
@@ -763,38 +793,25 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
     },
     "Entrepreneur": {
       "title": "Entrepreneur",
-      "description": "The applicant as a person, separate from any sign-in account: imported and facilitator-assisted applicants may never sign in. Personal fields are encrypted; contactHash is a keyed hash for duplicate matching (D-14). Nothing here is sent to models or map services (D-13).",
+      "description": "The applicant as a person (PRD section 19). For phone sign-in the _id equals the entrepreneur's User _id, so submission scope can use the signed-in user ID; assisted and imported applicants get their own _id. Personal details are sealed in `personal` (never selected by default) and contactHashes allow duplicate matching without decrypting. Nothing here is sent to models or map services (D-13).",
       "x-collection": "entrepreneurs",
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "homeOrgId",
         "createdVia"
       ],
       "properties": {
         "userId": {
           "$ref": "#/definitions/ObjectId",
-          "description": "Linked entrepreneur sign-in account, once the person signs in with their phone."
+          "description": "Linked entrepreneur sign-in account."
         },
-        "nameEnc": {
-          "$ref": "#/definitions/Encrypted"
-        },
-        "phoneEnc": {
-          "$ref": "#/definitions/Encrypted"
-        },
-        "emailEnc": {
-          "$ref": "#/definitions/Encrypted"
-        },
-        "addressEnc": {
-          "$ref": "#/definitions/Encrypted"
-        },
-        "socialCategoryEnc": {
-          "$ref": "#/definitions/Encrypted",
-          "description": "Optional; scheme eligibility and aggregate monitoring only (Q-23)."
+        "personal": {
+          "$ref": "#/definitions/Sealed",
+          "description": "Sealed JSON: name, and when collected phone, email, gender and social category (Q-23)."
         },
         "contactHashes": {
           "type": "array",
-          "description": "HMAC-SHA256 of each normalised phone/email, hex. Lets duplicate matching work without decrypting.",
+          "description": "Keyed HMAC-SHA256 of each normalised phone/email (backend/src/crypto.ts), hex.",
           "items": {
             "type": "string",
             "pattern": "^[a-f\\d]{64}$"
@@ -813,35 +830,31 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         },
         "pincode": {
           "type": "string",
-          "pattern": "^\\d{6}$"
+          "maxLength": 12
         },
-        "tradeKey": {
+        "trade": {
           "type": "string",
-          "maxLength": 60
+          "maxLength": 120,
+          "description": "Trade or skill as given; the normalised trade key lives on the submission."
         },
         "education": {
           "type": "string",
           "maxLength": 120
         },
-        "gender": {
+        "createdVia": {
           "type": "string",
           "enum": [
-            "female",
-            "male",
-            "other",
-            "undisclosed"
-          ],
-          "description": "Optional; aggregate fairness monitoring only."
+            "self",
+            "assisted",
+            "import"
+          ]
+        },
+        "facilitatorId": {
+          "$ref": "#/definitions/ObjectId"
         },
         "homeOrgId": {
           "$ref": "#/definitions/ObjectId",
-          "description": "Centre that owns the relationship."
-        },
-        "createdVia": {
-          "$ref": "#/definitions/Channel"
-        },
-        "facilitatorUserId": {
-          "$ref": "#/definitions/ObjectId"
+          "description": "Centre that owns the relationship, once assigned."
         },
         "createdAt": {
           "$ref": "#/definitions/DateTime"
@@ -2170,7 +2183,7 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
     },
     "Submission": {
       "title": "Submission",
-      "description": "One idea from one entrepreneur (PRD section 19). Holds no personal data: name, phone and address live encrypted on the Entrepreneur. Every staff read is scoped by the tenancy rules in backend/src/auth.",
+      "description": "One idea from one entrepreneur (PRD section 19). Personal data belongs sealed on the Entrepreneur; the deprecated `applicant` field is the only exception (D-30). Every staff read is scoped by the tenancy rules in backend/src/auth.",
       "x-collection": "submissions",
       "type": "object",
       "additionalProperties": false,
@@ -2178,8 +2191,8 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
         "entrepreneurId",
         "ownerOrgId",
         "createdByUserId",
-        "channel",
-        "status"
+        "status",
+        "shares"
       ],
       "properties": {
         "entrepreneurId": {
@@ -2207,10 +2220,12 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
           "$ref": "#/definitions/ObjectId"
         },
         "channel": {
-          "$ref": "#/definitions/Channel"
+          "$ref": "#/definitions/Channel",
+          "description": "How the submission arrived; optional until intake owners set it on every write."
         },
         "status": {
-          "$ref": "#/definitions/SubmissionStatus"
+          "$ref": "#/definitions/SubmissionStatus",
+          "default": "DRAFT"
         },
         "title": {
           "type": "string",
@@ -2372,22 +2387,35 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
           "type": "boolean",
           "default": false
         },
-        "partnerAccess": {
+        "applicant": {
+          "title": "LegacyApplicant",
+          "type": "object",
+          "additionalProperties": false,
+          "deprecated": true,
+          "description": "DEPRECATED, transitional (D-30): plaintext contact copied onto the submission by the starter flows. New code must read the applicant from Entrepreneur.personal; remove once assisted intake writes sealed profiles. Synthetic data only.",
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "phone": {
+              "type": "string",
+              "maxLength": 20
+            }
+          }
+        },
+        "shares": {
           "type": "array",
-          "description": "Denormalised access index maintained only by the platform share-sync service from the shares and consents collections. Never written by feature code directly.",
+          "description": "Partner access index read by the shared submission scope: an active entry for the viewer's organisation and partner type grants access, and contactAccepted unlocks the applicant's contact details. Written by consent and share services (Devs 1 and 4); revocation deactivates entries so access ends on the next request.",
           "items": {
-            "title": "PartnerAccess",
+            "title": "SubmissionShare",
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "orgId",
-              "partnerType",
-              "active",
-              "contactAccepted"
-            ],
+            "required": [],
             "properties": {
-              "shareId": {
-                "$ref": "#/definitions/ObjectId"
+              "_id": {
+                "$ref": "#/definitions/ObjectId",
+                "description": "Generated per entry; the Idea Passport exposes it as shareId."
               },
               "orgId": {
                 "$ref": "#/definitions/ObjectId"
@@ -2399,10 +2427,13 @@ export const domainSchema: { $schema: string; $id: string; title: string; defini
                 "type": "boolean"
               },
               "contactAccepted": {
-                "type": "boolean"
+                "type": "boolean",
+                "default": false
               }
-            }
-          }
+            },
+            "description": "Fields may be absent on legacy entries; the scope only admits entries whose orgId, partnerType and active=true all match."
+          },
+          "default": []
         },
         "duplicateOf": {
           "$ref": "#/definitions/ObjectId"

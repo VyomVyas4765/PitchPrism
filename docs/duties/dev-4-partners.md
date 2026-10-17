@@ -48,8 +48,10 @@ A feature is done when UI, API, persistence, permissions, loading/error states, 
 
 ## In progress
 
-None claimed. Before work, add: task · requirement IDs · touched modules/files · dependencies · handoff/status.
+None claimed. The isolated read slice below is ready for review; full W-16/W-17/W-18 workflows remain pending the documented integration dependencies.
 
 ## Done
+
+- 2026-10-17 · Isolated partner read slice (not full requirement completion): implementation own-source queue/status totals, sector active-share opportunities and P2 lender shortlist, server-derived workspace/funding mode and explicit CSR report placeholder. Added scoped read router, partner UI with loading/error/empty/filter/pagination/detail states and 34 new integration tests. All 71 backend tests, contracts/backend/web builds, backend/web typechecks, matrix generation, duty coverage and diff checks passed. The synthetic preview bundle compiled; visual browser QA remains pending because no browser is connected. Live db:check stops at missing JWT_SECRET before connecting; no DNS/port diagnosis is claimed. Shared mounts, dashboard, models, auth, contracts, manifests and other owners' files remain untouched. See [the handoff](../../backend/src/modules/partners/HANDOFF.md) for provisional interfaces, exact integration snippets and every unavailable workflow/dependency. W-16/W-17/W-18 remain unchecked and tracked as `feature_partial_unmounted` (read UI/API prepared, production integration and full workflows pending).
 
 - 2026-10-17 · First milestone foundation: Separate partner accounts/workspaces and consent-scoped reads are implemented. Sector/lender PII is hidden before contact acceptance; revoked shares disappear on the next read. CSR is denied individual submissions. Full partner workflows remain pending.

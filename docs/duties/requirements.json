@@ -4,24 +4,28 @@
     "priority": "P0",
     "requirement": "First screen is a language picker with an audio prompt per language (Hindi, Marathi, Telugu, Odia, Bengali, English)",
     "implementation": "Locale picker and spoken prompts",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Android system TTS; inspect installed locale/voice and offline capability; worker fallback",
     "dependencies": [
       "Auth/consent contracts",
       "Private submission API",
-      "Local worker capabilities where required"
+      "Local worker capabilities where required",
+      "Flutter picker with per-locale TTS check (pending)"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "All six locale choices are usable; unavailable voices are explicit",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-02": {
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Phone number login with OTP",
     "implementation": "Phone OTP and API session exchange",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Firebase Auth is identity, separate from the hosted AI budget",
     "dependencies": [
       "Auth/consent contracts",
@@ -41,7 +45,7 @@
     "priority": "P0",
     "requirement": "Consent screen read aloud in the chosen language. Processing consent is required; partner sharing is separate and optional",
     "implementation": "Processing and optional sharing consent",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "System TTS/local speech; server consent records",
     "dependencies": [
       "Auth/consent contracts",
@@ -50,15 +54,18 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Consent is recorded per purpose and can be withdrawn",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-04": {
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Short profile by voice or tap: name, district or pincode, trade or skill, optional gender",
     "implementation": "Profile by voice or tap",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Local speech adapter when validated; form fallback",
     "dependencies": [
       "Auth/consent contracts",
@@ -67,15 +74,18 @@
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Profile edit persists without leaking sensitive attributes to models",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-05": {
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Home has three large options: Speak, Type, Upload (PDF, or a photo of a filled paper form or handwritten plan)",
     "implementation": "Speak, Type, Upload intake",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Flutter recording/file picker and private API uploads",
     "dependencies": [
       "Auth/consent contracts",
@@ -85,14 +95,16 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Each source format reaches the same submission pipeline",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "docs/duties/dev-1-intake-proposal.md"
+    ]
   },
   "M-06": {
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Guided voice mode: spoken prompt cards for the EDP questions (Appendix B), grouped into 5 short steps (what you will sell, who buys, where, money needed, your skills), up to 2 minutes each, pause and re-record",
     "implementation": "Guided prompt cards and recording",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Flutter recorder; system TTS/local worker voice",
     "dependencies": [
       "Auth/consent contracts",
@@ -102,14 +114,17 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Pause/re-record works and evidence retains timestamps",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "data/seed/question-bank.json",
+      "ai/tests/test_question_bank.py"
+    ]
   },
   "M-07": {
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P1",
     "requirement": "Free-talk mode: one recording of up to 5 minutes for people who prefer to just talk",
     "implementation": "Free-talk recording",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Flutter recorder, worker transcription",
     "dependencies": [
       "Auth/consent contracts",
@@ -126,7 +141,7 @@
     "priority": "P0",
     "requirement": "Transcript review in the user's script, with tap-to-edit and audio playback",
     "implementation": "Transcript playback and correction",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Local STT output, immutable transcript revisions",
     "dependencies": [
       "Auth/consent contracts",
@@ -143,7 +158,7 @@
     "priority": "P0",
     "requirement": "AI follow-up questions: 3 to 5 questions about missing or unclear fields, asked in text and audio, answered by voice",
     "implementation": "Follow-up questions and voice answers",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Local structured generator + translation + TTS",
     "dependencies": [
       "Auth/consent contracts",
@@ -160,7 +175,7 @@
     "priority": "P0",
     "requirement": "Plan read-back: the generated plan in the user's language, played aloud, with Confirm or Fix something. The plan follows the EDP Business Plan structure, with its financial section computed correctly (A-24)",
     "implementation": "Plan read-back and confirmation",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Worker local plan generation; code-computed finance; system TTS",
     "dependencies": [
       "Auth/consent contracts",
@@ -177,7 +192,7 @@
     "priority": "P0",
     "requirement": "Recordings saved on the device and uploaded when online; resumes after the app closes",
     "implementation": "Durable drafts and resumable upload queue",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Local SQLite/Drift candidate; retry-safe upload protocol",
     "dependencies": [
       "Auth/consent contracts",
@@ -187,14 +202,16 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Airplane-mode recording survives restart and uploads once",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "docs/duties/dev-1-intake-proposal.md"
+    ]
   },
   "M-12": {
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Status timeline: Submitted, Under review, Decision, with push notification on change",
     "implementation": "Status timeline and push",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "API status + Firebase messaging; no AI model",
     "dependencies": [
       "Auth/consent contracts",
@@ -204,14 +221,16 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Lifecycle updates remain scoped and refresh after reconnection",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-13": {
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Feedback in the user's language as text and audio: strengths, gaps, and one clear next step",
     "implementation": "Local-language feedback text and audio",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Local translation + Android system/local worker TTS",
     "dependencies": [
       "Auth/consent contracts",
@@ -228,7 +247,7 @@
     "priority": "P1",
     "requirement": "Not-yet path: an improvement checklist, suggested skilling courses and a Resubmit button",
     "implementation": "Improve and resubmit",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Rule-based checklist and linked skilling resources",
     "dependencies": [
       "Auth/consent contracts",
@@ -245,24 +264,28 @@
     "priority": "P0",
     "requirement": "See which organisations can see the idea; grant or revoke sharing per partner type; accept or decline a partner's contact request",
     "implementation": "Idea Passport and partner consent",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "API consent/share service; no AI model",
     "dependencies": [
       "Auth/consent contracts",
       "Private submission API",
-      "Local worker capabilities where required"
+      "Local worker capabilities where required",
+      "Share contact-request state (W-17, Dev 4) for accept/decline"
     ],
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Revoke and contact decline remove partner access immediately",
-    "status": "planned",
-    "evidence": []
+    "status": "api_partial",
+    "evidence": [
+      "backend/src/modules/entrepreneur/README.md",
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-16": {
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P1",
     "requirement": "SMS fallback when push fails",
     "implementation": "SMS delivery fallback",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Messaging integration separately costed; no assumed free tier",
     "dependencies": [
       "Auth/consent contracts",
@@ -279,7 +302,7 @@
     "priority": "P0",
     "requirement": "Facilitator login with org role; New applicant flow on a shared device; recorded spoken consent plus a checkbox",
     "implementation": "Assisted intake and recorded consent",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Facilitator auth + local recording + scoped API",
     "dependencies": [
       "Auth/consent contracts",
@@ -299,7 +322,7 @@
     "priority": "P0",
     "requirement": "Queue of many applicants offline with per-item sync status; facilitator sees only their own submissions",
     "implementation": "Multi-applicant offline queue",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Local database with per-item durable sync state",
     "dependencies": [
       "Auth/consent contracts",
@@ -309,14 +332,16 @@
     "cost_exposure": "No hosted AI calls. Identity, SMS/WhatsApp, hosting and storage costs remain separate; no perpetual free-tier assumption.",
     "acceptance_test": "Restart/reconnect does not lose or mix applicants",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "backend/tests/entrepreneur.test.ts"
+    ]
   },
   "M-19": {
     "owner": "dev-1-entrepreneur-facilitator",
     "priority": "P0",
     "requirement": "Large touch targets, icons with audio labels, Android 8 and above, small download size",
     "implementation": "Accessible lightweight Android UI",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Flutter UI; optional models outside APK; no bundled LLM",
     "dependencies": [
       "Auth/consent contracts",
@@ -350,7 +375,7 @@
     "priority": "P2",
     "requirement": "Accept a voice note or form photo sent to a WhatsApp number; reply with status and feedback audio",
     "implementation": "WhatsApp intake and reply integration",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Messaging integration separately costed; worker processing",
     "dependencies": [
       "Auth/consent contracts",
@@ -367,7 +392,7 @@
     "priority": "P1",
     "requirement": "After a resubmit, show \"what improved\" in plain language and audio",
     "implementation": "Revision comparison in plain language/audio",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Deterministic field diff + local generator/TTS",
     "dependencies": [
       "Auth/consent contracts",
@@ -384,7 +409,7 @@
     "priority": "P1",
     "requirement": "Hear the government schemes the idea may qualify for, in the user's language, with where to apply",
     "implementation": "Eligible schemes in selected language",
-    "execution": "Android + API",
+    "execution": "Flutter mobile + API; Android primary, iOS development build",
     "local_strategy": "Curated source-backed schemes + local translation/TTS",
     "dependencies": [
       "Auth/consent contracts",
@@ -540,8 +565,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate centre review queue/lanes with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["backend/src/modules/centre/router.ts", "frontend/features/centre/CentreWorkspace.tsx", "backend/tests/centre.test.ts"]
   },
   "W-10": {
     "owner": "dev-2-centre-cohort",
@@ -556,8 +581,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate evidence-linked consolidated idea card with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["frontend/features/centre/CentreWorkspace.tsx", "packages/contracts/schemas/centre-extracted-input.json"]
   },
   "W-11": {
     "owner": "dev-2-centre-cohort",
@@ -572,8 +597,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate human decisions with override reasons with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["backend/src/modules/centre/router.ts", "backend/tests/centre.test.ts"]
   },
   "W-12": {
     "owner": "dev-2-centre-cohort",
@@ -588,8 +613,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
     "acceptance_test": "Demonstrate editable feedback and delivery with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["backend/src/modules/centre/router.ts", "frontend/features/centre/CentreWorkspace.tsx"]
   },
   "W-13": {
     "owner": "dev-2-centre-cohort",
@@ -643,57 +668,69 @@
     "owner": "dev-4-partners",
     "priority": "P0",
     "requirement": "Own submissions, first-level review, forward to the linked centre",
-    "implementation": "Implementation-partner own-org review",
+    "implementation": "Isolated own-org read queue/status totals and partner UI prepared; intake, first-level review and forwarding pending integration",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Shared intake/review services with sourceOrg scope; no browser-side hosted AI key or duplicate pipeline",
+    "local_strategy": "Read-only sourceOrg scope through shared session/permission/query guards; unmounted router/UI; reuse shared intake/review services when agreed; no duplicate AI pipeline",
     "dependencies": [
-      "Shared intake/review services with sourceOrg scope",
-      "Role/org/consent guards; shared contracts"
+      "Dev 1 intake and Dev 2 review/evidence services with sourceOrg scope",
+      "Dev 3 API mount, linked-centre relationship, generated read/domain contracts and audited transitions; separate dashboard integration"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate implementation-partner own-org review with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "foundation_partial",
+    "acceptance_test": "Read harness tests source-org items/totals, sibling denial, role/session changes, safe projection, filters and pagination; typecheck/build pass. Still verify mounted UI/loading/error/empty states, real intake, review persistence and linked-centre forwarding end to end; visual browser QA pending.",
+    "status": "feature_partial_unmounted",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/tests/partners.test.ts",
+      "backend/src/modules/partners/router.ts",
+      "frontend/features/partners/partner-workspace.tsx",
+      "backend/src/modules/partners/HANDOFF.md"
     ]
   },
   "W-17": {
     "owner": "dev-4-partners",
     "priority": "P0 (one partner type in demo)",
     "requirement": "Consented ideas in its sector; Express interest sends a contact request to the entrepreneur",
-    "implementation": "Sector-partner consented ideas/contact requests",
+    "implementation": "Isolated active-share opportunities list and partner UI prepared; sector eligibility, contact requests and mentoring integration pending",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Active shares and entrepreneur contact responses; no browser-side hosted AI key or duplicate pipeline",
+    "local_strategy": "Recheck active sector shares per read; list has no applicant fields; reuse protected detail projection and shared entrepreneur contact responses; no duplicate AI pipeline",
     "dependencies": [
-      "Active shares and entrepreneur contact responses",
-      "Role/org/consent guards; shared contracts"
+      "Dev 1 authoritative consent/contact request and entrepreneur response lifecycle",
+      "Dev 2 sector eligibility/routing and mentoring visibility; Dev 3 generated contracts, audit/notification transport and API mount; separate dashboard integration"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate sector-partner consented ideas/contact requests with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "foundation_partial",
+    "acceptance_test": "Read harness tests active-share org/type matching, immediate revocation on next read, role isolation and no applicant list fields. Still verify sector matching, mounted visual/loading/error/empty states, real contact acceptance before PII, request deduplication and mentoring visibility end to end.",
+    "status": "feature_partial_unmounted",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/tests/partners.test.ts",
+      "backend/src/modules/partners/router.ts",
+      "frontend/features/partners/partner-workspace.tsx",
+      "backend/src/modules/partners/HANDOFF.md"
     ]
   },
   "W-18": {
     "owner": "dev-4-partners",
     "priority": "P2",
     "requirement": "Consented loan-ready shortlist; CSR impact report with totals only, no personal data",
-    "implementation": "Funding shortlist and CSR aggregate report",
+    "implementation": "Isolated lender shortlist read UI/API prepared at P2; CSR individual access denied and aggregate report explicitly pending",
     "execution": "Next.js + API/database; local worker outputs where required",
-    "local_strategy": "Funding-ready scoped shares; CSR aggregation only; no browser-side hosted AI key or duplicate pipeline",
+    "local_strategy": "Shared funding-ready/shortlisted/active-share scope and server-derived lender/CSR mode; no fabricated CSR totals or browser-side AI",
     "dependencies": [
-      "Funding-ready scoped shares; CSR aggregation only",
-      "Role/org/consent guards; shared contracts"
+      "Dev 2 funding-readiness evidence and approved aggregate impact metrics",
+      "Dev 3 programme/org scope, CSR privacy/aggregation contracts and API mount; Dev 1 active consent/contact lifecycle; separate dashboard integration"
     ],
     "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate funding shortlist and csr aggregate report with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "foundation_partial",
+    "acceptance_test": "Read harness tests lender readiness/shortlist/consent together, status-filter bypass denial, server-derived funding mode and CSR list denial. Still verify mounted UI/visual states, authoritative readiness/consent and aggregate-only CSR scope/privacy end to end; no report is claimed.",
+    "status": "feature_partial_unmounted",
     "evidence": [
       "backend/tests/auth.test.ts",
-      "docs/auth.md"
+      "docs/auth.md",
+      "backend/tests/partners.test.ts",
+      "backend/src/modules/partners/router.ts",
+      "frontend/features/partners/partner-workspace.tsx",
+      "backend/src/modules/partners/HANDOFF.md"
     ]
   },
   "W-19": {
@@ -981,7 +1018,9 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Saved original hashes match; no overwrite on retry",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "docs/duties/dev-1-intake-proposal.md"
+    ]
   },
   "A-02": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -995,8 +1034,11 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "All organiser formats classified or explicitly unknown",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/classify.py",
+      "ai/tests/test_ingest_classify.py"
+    ]
   },
   "A-03": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1004,14 +1046,17 @@
     "requirement": "Convert to 16 kHz mono with ffmpeg; split at silences with a voice-activity detector into chunks under 30 s, each with its start time; reject near-silent or clipped audio with a re-record prompt",
     "implementation": "Audio normalization and pause-based chunks",
     "execution": "worker",
-    "local_strategy": "Installed ffmpeg; local VAD candidate not yet validated",
+    "local_strategy": "Installed ffmpeg; silencedetect pause baseline; Silero-class VAD comparison and threshold tuning not yet validated",
     "dependencies": [
       "Original audio; timestamps"
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "16 kHz mono chunks under 30 s preserve time anchors",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/audio.py",
+      "ai/tests/test_ingest_audio.py"
+    ]
   },
   "A-04": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1101,7 +1146,9 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Custom/changed forms distinguish missing, not asked and unknown Q&A",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "data/seed/question-bank.json"
+    ]
   },
   "A-10": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1115,8 +1162,12 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Phone/email/name never reach model/map payloads or partner images",
-    "status": "planned",
-    "evidence": []
+    "status": "worker_partial",
+    "evidence": [
+      "ai/ingest/pii.py",
+      "ai/tests/test_ingest_pii.py",
+      "backend/src/modules/entrepreneur/pii-vault.ts"
+    ]
   },
   "A-11": {
     "owner": "dev-1-entrepreneur-facilitator",
@@ -1146,7 +1197,10 @@
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "At least 90% canonical field accuracy; drop uncited claims",
     "status": "planned",
-    "evidence": []
+    "evidence": [
+      "packages/contracts/schemas/drafts/ingest-output.v0.json",
+      "packages/contracts/fixtures/ingest/README.md"
+    ]
   },
   "A-13": {
     "owner": "dev-2-centre-cohort",
@@ -1160,8 +1214,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Missing recall ≥95%, precision ≥90%; fully irrelevant submissions unassessable",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["ai/intel/scoring.py", "ai/tests/test_centre_scoring.py"]
   },
   "A-14": {
     "owner": "dev-2-centre-cohort",
@@ -1175,8 +1229,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "All seeded financial errors detected with written/expected/formula evidence",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["ai/intel/finance.py", "ai/tests/test_centre_scoring.py"]
   },
   "A-15": {
     "owner": "dev-2-centre-cohort",
@@ -1205,8 +1259,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "3–5 useful questions, original language, answers rerun correct stages",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["ai/intel/narrative.py"]
   },
   "A-17": {
     "owner": "dev-2-centre-cohort",
@@ -1295,8 +1349,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Null for unassessed, correct potential/completeness/pathway; parity gap ≤5",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["ai/intel/scoring.py", "ai/tests/test_centre_scoring.py"]
   },
   "A-23": {
     "owner": "dev-2-centre-cohort",
@@ -1325,8 +1379,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Summary/full plan cites facts and read-back uses correct computed figures",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["ai/intel/narrative.py"]
   },
   "A-25": {
     "owner": "dev-2-centre-cohort",
@@ -1340,8 +1394,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Ranks compare only the same rubric version and scoped population",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["ai/intel/ranking.py", "ai/tests/test_centre_ranking_routing.py"]
   },
   "A-26": {
     "owner": "dev-2-centre-cohort",
@@ -1355,8 +1409,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "No verdict on applicant; selected language has one clear next step",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["ai/intel/narrative.py", "backend/src/modules/centre/router.ts"]
   },
   "A-27": {
     "owner": "dev-2-centre-cohort",
@@ -1370,8 +1424,8 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Only eligible consented partners returned with reasons",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["ai/intel/routing.py", "ai/tests/test_centre_ranking_routing.py"]
   },
   "A-28": {
     "owner": "dev-3-hq-platform",
@@ -1379,7 +1433,7 @@
     "requirement": "Publish each stage's result as it finishes, so the dashboard card fills in progressively over server-sent events",
     "implementation": "Live incremental card and stage events",
     "execution": "worker + API + web",
-    "local_strategy": "MongoDB job queue and capped stageEvents collection streamed over SSE (D-26); no model",
+    "local_strategy": "Planned MongoDB job leases and durable stage events + scoped SSE; no Redis or hosted AI",
     "dependencies": [
       "StageEvent contract; tenancy; persisted results"
     ],
@@ -1418,7 +1472,7 @@
     ],
     "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
     "acceptance_test": "Report canonical ≥90%, missing recall ≥95%, parity gap ≤5, latency/RAM/licence",
-    "status": "planned",
-    "evidence": []
+    "status": "partial",
+    "evidence": ["ai/eval/harness.py", "ai/tests/test_centre_harness.py"]
   }
 }

@@ -4,26 +4,25 @@ AI idea screening for Tata STRIVE, built for Code Odyssey 5.0. Entrepreneurs pit
 
 ## First milestone: authentication and access
 
-The repository now has a Flutter Android app, Next.js dashboard, Express API, shared auth contracts and a Python worker scaffold. Staff can sign in/out and open protected role workspaces. Entrepreneurs exchange a verified Firebase phone token for an API session. Role, organisation and consent checks run on the server.
+The repository now has a Flutter mobile app (Android + iOS development), Next.js dashboard, Express API, shared auth contracts and a Python worker scaffold. Staff can sign in/out and open protected role workspaces. Entrepreneurs exchange a verified Firebase phone token for an API session. Role, organisation and consent checks run on the server.
 
-Domain contracts v1 are published in [packages/contracts](packages/contracts/README.md): JSON Schemas for all 22 collections, generated TypeScript and Python types, contract-built Mongoose models and synthetic fixtures. Business workflows, AI stages, queue consumers and SSE are still assigned work. The starter submission endpoint is read-only and exists to exercise access boundaries; no applicant submissions are seeded. Real OTP needs Firebase project configuration. The revised AI direction is local-only with no hosted API fallback; see [local AI setup](ai/README.md) and the [88-requirement implementation matrix](docs/implementation-matrix.md).
+Domain contracts v1 are published in [packages/contracts](packages/contracts/README.md): JSON Schemas for all 22 collections, generated TypeScript and Python types, contract-built Mongoose models and synthetic fixtures.
+
+The centre assessment slice now accepts redacted, extracted EDP Idea Brief evidence, runs deterministic checks and local-only scoring, and serves a scoped review card, queue, decisions and feedback draft. App PDF extraction, the durable queue, original-file viewer and the rest of the centre workflow remain integration work; see [centre evaluation](docs/centre-evaluation.md). The starter submission endpoint remains read-only for applicant data; no applicant submissions are seeded. Real OTP needs Firebase project configuration. See [local AI setup](ai/README.md) and the [88-requirement implementation matrix](docs/implementation-matrix.md).
 
 ## Quick start
 
-Requirements: Node 22 (see `.nvmrc`), pnpm 10.17.1, and Docker Compose. Flutter 3.47+/Dart 3.13+ for Android; Python 3.11+ for the worker scaffold.
+Requirements: Node 22 (see `.nvmrc`) and pnpm 10.17.1. The local development launcher starts a real persistent MongoDB without Docker. Flutter 3.47+/Dart 3.13+ for mobile; Xcode/signing for a physical iPhone; Python 3.11+ for the worker foundation. Docker Compose is an alternative MongoDB runner.
 
 ```bash
 git config core.hooksPath .githooks   # once per clone: enables the repo's commit hooks
 pnpm install
 pnpm setup:env          # Creates ignored .env with random secrets; preserves an existing file
-# Start Docker Desktop / your Docker daemon first.
-docker compose up -d --wait
-pnpm seed               # Synthetic organisations + one staff account for each role below
-pnpm fixtures:load      # Optional: contract fixtures (a submission, evaluation, events…) with fixture.* staff logins
-pnpm dev                # Dashboard :3000, API :4000
+pnpm dev:local          # Persistent local MongoDB + synthetic staff seed + API/dashboard
+pnpm fixtures:load      # Optional: contract fixtures (a submission, evaluation, events...) with fixture.* staff logins
 ```
 
-Open http://localhost:3000. Use a seeded email below and the `SEED_PASSWORD` value in your local `.env`. There are no committed credentials or public staff-registration endpoint. Re-running the seed preserves existing credentials/roles and never resets accounts. If `.env` already exists, compare it with `.env.example` and supply missing values yourself.
+Open http://localhost:3000. The API is at http://localhost:4000/api/v1. `pnpm dev:local` overrides the database URI for its child processes only; the private Atlas URI in `.env` is preserved. Local files live in ignored `local/mongodb/` and survive restarts. Ctrl+C stops the launcher without deleting data. Redis is removed. For a separately managed/Atlas database, use `pnpm seed` and `pnpm dev` after configuring a resolvable URI. Use a seeded email below and the `SEED_PASSWORD` value in your local `.env`. There are no committed credentials or public staff-registration endpoint. Re-running the seed preserves existing credentials/roles and never resets accounts. If `.env` already exists, compare it with `.env.example` and supply missing values yourself.
 
 | Staff role | Seeded email | Developer |
 | --- | --- | --- |
@@ -44,16 +43,16 @@ flutter pub get
 flutter run
 ```
 
-From the repository root, `make worker-setup && make worker` runs the Python capability report. `make worker-check` inspects the local runtime and installed models; `make worker-test` checks local-only policies and structured output. No model is selected/downloaded automatically, and no queue consumer or full AI stages are claimed. MongoDB and Redis persist in named local Docker volumes. Local containers bind to loopback and are development services.
+From the repository root, `make worker-setup && make worker` runs the Python capability report. `make worker-check` inspects the local runtime and installed models; `make worker-test` checks local-only policies and structured output. No model is selected/downloaded automatically, and no queue consumer or full AI stages are claimed. The optional Docker MongoDB service persists in its named local volume. Local containers bind to loopback and are development services.
 
 ## MongoDB on restricted networks
 
-Put the current Atlas driver URI in the ignored **root `.env`**, then run `pnpm db:check`. The API does not read credentials from `.env.example`. The diagnostic distinguishes missing DNS records, network reachability, TLS and authentication without printing your URI. API startup and seed share IPv4/timeouts and an optional process-only DNS override; TLS remains verified and databases are never switched automatically. See [MongoDB troubleshooting](docs/mongodb.md) for Atlas/network and explicit local-development options.
+Put the current Atlas driver URI in the ignored **root `.env`**, then run `pnpm db:check`. The API does not read credentials from `.env.example`. Use `pnpm dev:local` to work now if the Atlas hostname/college network is unavailable; the local database is independent from Atlas. The diagnostic distinguishes missing DNS records, network reachability, TLS and authentication without printing your URI. API startup and seed share IPv4/timeouts and an optional process-only DNS override; TLS remains verified and databases are never switched automatically. See [MongoDB troubleshooting](docs/mongodb.md) for Atlas/network and explicit local-development options.
 
 ## Repository layout and ownership
 
 ```text
-app/                   Flutter entrepreneur / facilitator entry point       Dev 1
+app/                   Flutter Android/iOS entrepreneur / facilitator entry point       Dev 1
 frontend/              Next.js role features                                Role owners; shell Dev 4
 backend/               Express role modules                                 Role owners; auth/platform Dev 3
 ai/ingest/             Reading, redaction, language and extraction            Dev 1
@@ -75,7 +74,7 @@ pnpm typecheck
 pnpm test               # Access tests use a temporary real MongoDB; no Docker/Firebase credentials
 pnpm duties:check
 pnpm matrix:generate    # After updating implementation/cost/acceptance records
-pnpm contracts:generate # After changing the auth schema; commit generated source
+pnpm contracts:generate # After changing shared schemas; commit generated source
 pnpm build
 # In app/: flutter analyze
 # From root: make worker-test && make worker-check
@@ -83,7 +82,7 @@ pnpm build
 
 `pnpm build` produces the contracts, API and web build. Start the API with `pnpm --filter @pitchprism/backend start`, and the dashboard with `pnpm --filter @pitchprism/frontend start`. Configure `NODE_ENV=production`, a random `JWT_SECRET`, HTTPS `WEB_ORIGIN`, and the real database. Set `API_PROXY_TARGET` in `frontend/.env.local` (see its example) when the API is not at the default address. Configure the actual proxy chain explicitly before deployment; the API does not blindly trust forwarded client IPs.
 
-Auth roles come from `packages/contracts/schemas/session-user.json` and domain types from `packages/contracts/schemas/domain/`; `pnpm contracts:generate` writes the TypeScript types, the backend storage types and the worker's `ai/contracts` module, all committed. The Python AI worker does not handle authentication.
+Auth roles come from `packages/contracts/schemas/session-user.json` and domain types from `packages/contracts/schemas/domain/` (plus Dev 2's `centre-extracted-input.json`); `pnpm contracts:generate` writes the TypeScript types, the backend storage types and the worker's `ai/contracts` module, all committed. The Python AI worker does not handle authentication.
 
 ## Read these first
 

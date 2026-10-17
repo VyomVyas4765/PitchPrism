@@ -8,6 +8,7 @@ from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_ope
 from jsonschema import Draft202012Validator, ValidationError
 
 from ai.config import PolicyViolation, Settings
+from ai.ingest.pii import ensure_redacted
 from ai.providers import CapabilityUnavailable
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,8 @@ class LocalJsonAdapter:
         Draft202012Validator.check_schema(schema)
         if not 0 <= temperature <= 1:
             raise ValueError("Temperature must be between zero and one.")
+        # D-13: refuse before any network call; image redaction remains the caller's duty.
+        ensure_redacted(prompt)
         self._check_model()
         body = {"model": self.settings.model, "prompt": prompt, "format": schema, "stream": False,
                 "keep_alive": 0, "options": {"temperature": temperature, "num_ctx": 2048, "num_predict": 512}}

@@ -17,6 +17,8 @@ class PitchPrismApi {
     defaultValue: 'http://10.0.2.2:4000/api/v1',
   );
   final _storage = const FlutterSecureStorage();
+  Future<bool> hasSession() async =>
+      (await _storage.read(key: 'session')) != null;
   Future<void> saveToken(String token) =>
       _storage.write(key: 'session', value: token);
   Future<void> clearToken() => _storage.delete(key: 'session');

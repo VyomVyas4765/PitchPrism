@@ -6,7 +6,7 @@ const template = await readFile(new URL('../.env.example', import.meta.url), 'ut
 const secrets = {
   JWT_SECRET: () => randomBytes(48).toString('hex'),
   SEED_PASSWORD: () => randomBytes(24).toString('base64url'),
-  DATA_ENCRYPTION_KEY: () => randomBytes(48).toString('base64url'),
+  PII_ENCRYPTION_KEY: () => randomBytes(32).toString('hex'),
 };
 let existing;
 try { existing = await readFile(target, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }

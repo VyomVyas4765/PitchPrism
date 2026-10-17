@@ -3,22 +3,22 @@
 import { useState, type ReactNode } from 'react';
 import { ROLE_LABELS, type Permission, type SessionUser, type Workspace } from '@pitchprism/contracts';
 
-type NavigationItem = { label: string; permission?: Permission; hash: string };
+type NavigationItem = { label: string; permission?: Permission; section: string };
 
 const NAVIGATION: NavigationItem[] = [
-  { label: 'Overview', hash: 'overview' },
-  { label: 'Review queue', permission: 'review_centre', hash: 'review-queue' },
-  { label: 'Cohorts', permission: 'manage_cohorts', hash: 'cohorts' },
-  { label: 'My submissions', permission: 'submit_own', hash: 'submissions' },
-  { label: 'Applicants', permission: 'submit_assisted', hash: 'applicants' },
-  { label: 'Organisation work', permission: 'review_own_org', hash: 'organisation' },
-  { label: 'Opportunities', permission: 'view_consented', hash: 'opportunities' },
-  { label: 'Funding shortlist', permission: 'view_funding', hash: 'funding' },
-  { label: 'People and access', permission: 'manage_org_users', hash: 'access' },
-  { label: 'Platform reports', permission: 'manage_platform', hash: 'reports' },
-  { label: 'Configuration', permission: 'manage_platform', hash: 'configuration' },
-  { label: 'Audit history', permission: 'manage_platform', hash: 'audit' },
-  { label: 'Idea map', permission: 'manage_platform', hash: 'clusters' },
+  { label: 'Overview', section: 'overview' },
+  { label: 'Review queue', permission: 'review_centre', section: 'review-queue' },
+  { label: 'Cohorts', permission: 'manage_cohorts', section: 'cohorts' },
+  { label: 'My submissions', permission: 'submit_own', section: 'submissions' },
+  { label: 'Applicants', permission: 'submit_assisted', section: 'applicants' },
+  { label: 'Organisation work', permission: 'review_own_org', section: 'organisation' },
+  { label: 'Opportunities', permission: 'view_consented', section: 'opportunities' },
+  { label: 'Funding shortlist', permission: 'view_funding', section: 'funding' },
+  { label: 'People and access', permission: 'manage_org_users', section: 'access' },
+  { label: 'Platform reports', permission: 'manage_platform', section: 'reports' },
+  { label: 'Configuration', permission: 'manage_platform', section: 'configuration' },
+  { label: 'Audit history', permission: 'manage_platform', section: 'audit' },
+  { label: 'Idea map', permission: 'manage_platform', section: 'clusters' },
 ];
 
 function initials(name: string) {
@@ -52,7 +52,7 @@ export default function DashboardShell({
       </div>
       <nav aria-label="Dashboard navigation">
         <span className="sidebar-label">Workspace</span>
-        {items.map(item => <a key={item.hash} href={`${basePath}#${item.hash}`} onClick={() => setSidebarOpen(false)}>{item.label}</a>)}
+        {items.map(item => <a key={item.section} href={`${basePath}/${item.section}`} onClick={() => setSidebarOpen(false)}>{item.label}</a>)}
       </nav>
       <div className="sidebar-account">
         <div className="avatar" aria-hidden="true">{initials(user.displayName)}</div>

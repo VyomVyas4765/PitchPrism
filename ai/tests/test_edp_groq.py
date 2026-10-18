@@ -217,7 +217,8 @@ class GroqAdapterTests(unittest.TestCase):
     def test_strict_schema_and_local_output_validation(self):
         answer = {'domains': [{'key': 'clarity', 'score': 3, 'reason': 'Specific synthetic service and customer',
                                'evidence': ['s1'], 'confidence': 'medium'}]}
-        http = _Http({'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}],
+        wire_answer = {'domains': [{**answer['domains'][0], 'evidence': {'primary': 's1', 'secondary': None, 'tertiary': None}}]}
+        http = _Http({'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(wire_answer)}}],
                       'usage': {'prompt_tokens': 12, 'completion_tokens': 15}})
         adapter = GroqEdpAdapter(key='gsk_' + 'x' * 30, model='openai/gpt-oss-120b')
         adapter._post = http
@@ -228,9 +229,19 @@ class GroqAdapterTests(unittest.TestCase):
         self.assertTrue(http.payload['response_format']['json_schema']['strict'])
         domains_schema = http.payload['response_format']['json_schema']['schema']['properties']['domains']
         self.assertNotIn('minItems', domains_schema)
-        self.assertEqual(domains_schema['items']['properties']['evidence']['maxItems'], 6)  # the model may over-cite; evaluate() keeps the first three
+        evidence_schema = domains_schema['items']['properties']['evidence']
+        self.assertEqual(evidence_schema['type'], 'object')
+        self.assertEqual(evidence_schema['required'], ['primary', 'secondary', 'tertiary'])
+        self.assertFalse(evidence_schema['additionalProperties'])
         self.assertEqual(adapter.last_metrics['inputTokens'], 12)
         self.assertEqual(adapter.last_metrics['calls'], 1)
+
+        for evidence in ({'primary': 's1', 'secondary': None, 'tertiary': None, 'extra': 's4'},
+                         {'primary': None, 'secondary': 's1', 'tertiary': None},
+                         {'primary': 's1', 'secondary': 's1', 'tertiary': None}):
+            http.content['choices'][0]['message']['content'] = json.dumps({'domains': [{**answer['domains'][0], 'evidence': evidence}]})
+            with self.assertRaises(ModelOutputError):
+                adapter.complete_json('Synthetic answer s1.', _score_schema(['clarity']))
 
         http.content['choices'][0]['message']['content'] = json.dumps({**answer, 'domains': []})
         with self.assertRaises(ModelOutputError):

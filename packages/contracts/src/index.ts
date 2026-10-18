@@ -39,3 +39,5 @@ export const ROLE_ORG_TYPES: Record<Role, readonly OrgTypeName[]> = {
 type OrgTypeName = import('./generated.js').OrgType;
 export interface AuthResponse { user: import('./generated.js').SessionUser; accessToken?: string }
 export interface Workspace { role: Role; permissions: readonly Permission[]; message: string }
+
+export { buildPortfolio, quantile, PORTFOLIO_DOMAIN_KEYS, type PortfolioFilters } from './portfolio.js';

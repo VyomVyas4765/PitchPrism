@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/widgets.dart' show Rect;
+import 'package:share_plus/share_plus.dart';
 
 import '../core/api.dart';
 import 'device.dart';
@@ -8,6 +10,13 @@ import 'outbox.dart';
 
 /// A file the person picked, before it is copied into app storage.
 typedef PickedFile = ({String path, String name});
+
+/// Hands a saved file to the phone's share sheet (Save to Files, Print, AirDrop, a messaging app).
+typedef ShareFile = Future<void> Function(String path, String mime, Rect? origin);
+
+Future<void> shareFileSheet(String path, String mime, Rect? origin) async {
+  await SharePlus.instance.share(ShareParams(files: [XFile(path, mimeType: mime)], sharePositionOrigin: origin));
+}
 
 /// Device services for intake, passed explicitly so widget tests can fake them.
 class IntakeServices {
@@ -20,6 +29,7 @@ class IntakeServices {
     this.pickAudio = pickAudioFile,
     this.pickPdf = pickPdfFile,
     this.pickPhoto = pickPhotoFile,
+    this.shareFile = shareFileSheet,
   }) : sync = OutboxSync(api, store);
   final ApiClient api;
   final OutboxStore store;
@@ -33,6 +43,8 @@ class IntakeServices {
   final Future<PickedFile?> Function() pickPdf;
   /// A photo of the filled form from the phone's library (the chat's "Send photo").
   final Future<PickedFile?> Function() pickPhoto;
+  /// Opens the share sheet for a file the app saved (the chat's "Download plan (PDF)").
+  final ShareFile shareFile;
 
   /// The phone's real microphone, file picker and private storage for one account.
   factory IntakeServices.device(ApiClient api, String account) => IntakeServices(

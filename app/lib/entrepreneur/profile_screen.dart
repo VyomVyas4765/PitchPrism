@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -27,6 +29,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _gender;
   bool _saving = false;
   String? _error;
+  final _search = TextEditingController();
+  Timer? _searchTimer;
+  List<Map<String, dynamic>> _suggestions = const [];
+  String? _searchNote;
+  bool _searching = false;
+  int _searchSerial = 0;
 
   @override
   void initState() {
@@ -35,12 +43,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _gender = widget.profile['gender'] as String?;
     _fields = {for (final key in _labels)
       key: TextEditingController(text: widget.profile[key] as String? ?? '')};
+    _fields['pincode']!.addListener(_pincodeTyped);
   }
 
   @override
   void dispose() {
+    _searchTimer?.cancel();
+    _search.dispose();
     for (final controller in _fields.values) { controller.dispose(); }
     super.dispose();
+  }
+
+  // ---- area suggestions (the server looks places up; nothing else about the person is sent)
+  Future<List<Map<String, dynamic>>> _lookup(String query) async {
+    final data = await widget.ctx.api.request('/geo/suggest?q=${Uri.encodeQueryComponent(query)}');
+    _searchNote = data['unavailable'] == true ? 'searchAreaOffline' : null;
+    return ((data['suggestions'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  void _searchChanged(String value) {
+    _searchTimer?.cancel();
+    final query = value.trim();
+    if (query.length < 3) {
+      setState(() { _suggestions = const []; _searchNote = null; _searching = false; });
+      return;
+    }
+    // Wait for a pause in typing: the free place service allows about one request a second.
+    _searchTimer = Timer(const Duration(milliseconds: 700), () async {
+      final serial = ++_searchSerial;
+      if (mounted) setState(() => _searching = true);
+      List<Map<String, dynamic>> found = const [];
+      try {
+        found = await _lookup(query);
+      } catch (_) {
+        _searchNote = 'searchAreaOffline';
+      }
+      if (!mounted || serial != _searchSerial) return;
+      setState(() { _suggestions = found; _searching = false; if (found.isEmpty && _searchNote == null) _searchNote = 'searchAreaNone'; });
+    });
+  }
+
+  String? _stateFrom(String? name) {
+    if (name == null || name.trim().isEmpty) return null;
+    String norm(String value) => value.toLowerCase().replaceAll('&', 'and').replaceAll(RegExp(r'[^a-z ]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
+    const aliases = {'orissa': 'odisha', 'nct of delhi': 'delhi', 'pondicherry': 'puducherry', 'uttaranchal': 'uttarakhand'};
+    final wanted = aliases[norm(name)] ?? norm(name);
+    for (final state in indianStates) {
+      if (norm(state) == wanted) return state;
+    }
+    return null;
+  }
+
+  void _apply(Map<String, dynamic> place) {
+    String text(String key) => (place[key] as String?)?.trim() ?? '';
+    void put(String key, String value) { if (value.isNotEmpty) _fields[key]!.text = value; }
+    _fields['pincode']!.removeListener(_pincodeTyped);
+    put('village', text('village'));
+    put('block', text('block'));
+    put('district', text('district'));
+    put('pincode', text('pincode'));
+    _fields['pincode']!.addListener(_pincodeTyped);
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _state = _stateFrom(text('state')) ?? _state;
+      _suggestions = const [];
+      _searchNote = null;
+      _search.clear();
+    });
+  }
+
+  // A full pincode fills the rest of the area by itself, unless the person already filled the district.
+  void _pincodeTyped() {
+    final pin = _fields['pincode']!.text.trim();
+    if (!RegExp(r'^[1-9]\d{5}$').hasMatch(pin) || _fields['district']!.text.trim().isNotEmpty) return;
+    () async {
+      try {
+        final found = await _lookup(pin);
+        if (!mounted || found.isEmpty || _fields['district']!.text.trim().isNotEmpty) return;
+        _apply(found.first);
+      } catch (_) {/* typing the fields by hand still works */}
+    }();
+  }
+
+  Widget _areaSearch(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = widget.ctx.t;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(padding: const EdgeInsets.only(bottom: 4), child: TextField(
+        key: const Key('profile-area-search'), controller: _search, onChanged: _searchChanged,
+        textInputAction: TextInputAction.search, maxLength: 80,
+        decoration: InputDecoration(labelText: t('searchArea'), hintText: t('searchAreaHint'), counterText: '',
+          prefixIcon: const Icon(Icons.place_outlined),
+          suffixIcon: _searching ? const Padding(padding: EdgeInsets.all(12),
+            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))) : null),
+      )),
+      if (_suggestions.isNotEmpty) Card(key: const Key('profile-area-suggestions'), margin: const EdgeInsets.only(bottom: 12), child: Column(children: [
+        for (final place in _suggestions)
+          ListTile(dense: true, leading: const Icon(Icons.location_on_outlined), title: Text(place['label'] as String? ?? ''),
+            onTap: () => _apply(place)),
+      ])),
+      if (_suggestions.isEmpty && _searchNote != null) Padding(padding: const EdgeInsets.only(bottom: 12),
+        child: Text(t(_searchNote!), style: theme.textTheme.bodySmall)),
+    ]);
   }
 
   Future<void> _save() async {
@@ -131,6 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
           onChanged: _saving ? null : (value) => setState(() => _gender = value),
         ),
+        _areaSearch(context),
         _section(context, c('location'), ['village', 'block', 'district', 'pincode']),
         DropdownButtonFormField<String>(
           key: const Key('profile-state'), initialValue: _state,

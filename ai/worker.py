@@ -37,7 +37,7 @@ from ai.intel.routing import suggest_partners
 from ai.intel.scoring import FIELDS, InvalidEvidence, evaluate, prepare_input, quality
 from ai.jobqueue import Consumer, InvalidInput, connect, now
 from ai.llm.adapter import ModelOutputError
-from ai.llm.factory import make_adapter
+from ai.llm.factory import make_adapter as default_adapter
 from ai.providers import CapabilityUnavailable
 from ai.review import ReviewEngine, extracted_input, pending_questions, summary as review_summary
 from ai.review.localize import localize
@@ -321,7 +321,7 @@ def review_pitch(db, job, run, make_adapter, readers=None):
 
 def handler_for(db, adapter_factory=None, pipeline_factory=None):
     def make_adapter():
-        return (adapter_factory or make_adapter)()
+        return (adapter_factory or default_adapter)()
 
     def handle(job, run):
         case = db["centrecases"].find_one({"submissionId": job["submissionId"]})
@@ -332,6 +332,12 @@ def handler_for(db, adapter_factory=None, pipeline_factory=None):
             idea = review_pitch(db, job, run, make_adapter, Readers(pipeline_factory))
             if idea is None:
                 run.submission_status("NEEDS_INPUT")
+                return
+            pitch = db["pitches"].find_one({"submissionId": job["submissionId"]}, {"mode": 1}) or {}
+            if pitch.get("mode") == "chat":
+                # The plan is built. The person sends it to the evaluator with a button, which queues a job
+                # from the quality stage; nothing is scored before that.
+                run.submission_status("DRAFT")
                 return
             case = db["centrecases"].find_one({"submissionId": job["submissionId"]})
         for stage in INTAKE_STAGES if not reviewed else ():

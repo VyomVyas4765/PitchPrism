@@ -24,6 +24,8 @@ try {
   const hq = await Org.findOne({ type: 'hq' }) ?? await Org.create({ name: 'Tata STRIVE HQ', type: 'hq' });
   await User.updateOne({ email: adminEmail }, { $setOnInsert: { email: adminEmail, displayName: 'HQ administrator', role: 'hq_admin', orgId: hq._id, passwordHash } },
     { upsert: true, runValidators: true });
+  // Entrepreneurs pick a centre to apply to (Q-08), so a fresh database needs at least one active centre.
+  await Org.findOneAndUpdate({ type: 'centre', name: 'Tata STRIVE Demo Centre' }, { $setOnInsert: { type: 'centre', name: 'Tata STRIVE Demo Centre', active: true, parentOrgId: hq._id } }, { upsert: true });
   console.log(`Bootstrap HQ admin: ${adminEmail}. Invite every other staff member from the dashboard.`);
   if (demoStaff) {
     let centreId: mongoose.Types.ObjectId | undefined;

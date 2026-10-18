@@ -11,7 +11,8 @@ import 'common.dart';
 
 /// M-05 chat intake: the AI asks for the idea in the person's language and they reply by typing, a voice note or a
 /// PDF/photo of their filled form (the most reliable to read and translate). The server's pitch review (D-33) keeps
-/// asking until every field is covered, then the idea is evaluated. Every AI message has a speaker button, and new
+/// asking until every field is covered and the plan is built. The person then checks it and presses "Send to
+/// evaluator", which starts the evaluator pipeline. Every AI message has a speaker button, and new
 /// ones are read aloud automatically while "Read aloud" is on.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.ctx, required this.services, this.pitchId,
@@ -34,6 +35,8 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Map<String, dynamic>>? _centres;
   String? _error;
   bool _busy = false;
+  bool _sending = false;
+  bool _downloading = false;
   bool _readAloud = true;
   Recorder? _recorder;
   bool _loadedOnce = false;
@@ -86,7 +89,8 @@ class _ChatScreenState extends State<ChatScreen> {
     for (final message in fresh) {
       _say(message['qId'] as String, message['text'] as String, message['lang'] as String? ?? ctx.language);
     }
-    if (_state == 'complete') _say('done', ctx.t('followUpDone'), ctx.language);
+    if (_state == 'complete') _say('plan-ready', ctx.t('chatPlanReady'), ctx.language);
+    if (_state == 'submitted') _say('submitted', ctx.t('chatSubmitted'), ctx.language);
     if (_state == 'failed') _say('failed-${_view?['round']}', ctx.t('chatFailed'), ctx.language);
   }
 
@@ -116,7 +120,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _speakNew();
     _poll?.cancel();
     // While the AI reads a reply (a voice note or a PDF can take a minute), check back for its next message.
-    if (_state == 'reading') _poll = Timer(widget.pollEvery, _load);
+    if (_state == 'reading' || _state == 'evaluating') _poll = Timer(widget.pollEvery, _load);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
     });
@@ -251,7 +255,44 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _retry() => _send((id) => api.request('/pitches/$id/chat/retry', body: {}));
 
+  /// The Business Idea Brief, the same PDF the evaluator opens: saved in the app's private storage and handed to
+  /// the share sheet, so the person chooses where it goes (it carries their name and mobile number).
+  Future<void> _downloadBrief() async {
+    if (_downloading || _pitchId == null) return;
+    setState(() => _downloading = true);
+    final box = context.findRenderObject() as RenderBox?;
+    final origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+    try {
+      final bytes = await api.download('/pitches/$_pitchId/brief');
+      final directory = await widget.services.directory();
+      final file = File('${directory.path}${Platform.pathSeparator}business-idea-brief-$_pitchId.pdf');
+      await file.writeAsBytes(bytes, flush: true);
+      await widget.services.shareFile(file.path, 'application/pdf', origin);
+    } catch (_) {
+      if (mounted) showMessage(context, ctx.t('chatBriefUnavailable'));
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
+  }
+
+  /// The plan is built: send it to the evaluator, whose pipeline then scores it.
+  Future<void> _submitToEvaluator() async {
+    if (_sending || _pitchId == null) return;
+    setState(() => _sending = true);
+    try {
+      _show(await api.request('/pitches/$_pitchId/chat/submit', body: {}));
+    } on ApiException catch (error) {
+      if (mounted) showMessage(context, error.message);
+    } catch (_) {
+      if (mounted) showMessage(context, ctx.t('offline'));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
   // ---- view
+  bool get _noCentre => _pitchId == null && _centres != null && _centres!.isEmpty;
+
   bool get _canReply => !_busy && (_pitchId == null ? _centreId != null : ['start', 'your_turn', 'failed'].contains(_state));
 
   @override
@@ -260,13 +301,19 @@ class _ChatScreenState extends State<ChatScreen> {
     final items = <Widget>[
       _assistant(ctx.t('chatOpening'), ctx.language, key: const Key('chat-opening')),
       if (_pitchId == null && (_centres?.length ?? 0) > 1) _centreChoice(),
+      if (_noCentre) _bubble(mine: false, key: const Key('chat-no-centre'), child: Text(ctx.t('chatNoCentre'))),
       for (final message in _messages)
         message['role'] == 'assistant'
             ? _assistant(message['text'] as String, message['lang'] as String? ?? ctx.language, key: Key('chat-q-${message['qId']}'))
             : _user(message),
       if (_state == 'reading' || _busy) _reading(),
-      if (_state == 'complete') _assistant(ctx.t('followUpDone'), ctx.language, key: const Key('chat-done')),
-      if (_state == 'complete' && _view?['brief'] is List) _brief((_view!['brief'] as List).cast<Map<String, dynamic>>()),
+      if (_state == 'complete') _assistant(ctx.t('chatPlanReady'), ctx.language, key: const Key('chat-plan-ready')),
+      if (['complete', 'evaluating', 'submitted'].contains(_state) && _view?['brief'] is List)
+        _brief((_view!['brief'] as List).cast<Map<String, dynamic>>()),
+      if (['complete', 'evaluating', 'submitted'].contains(_state)) _downloadCard(),
+      if (_state == 'complete') _submitCard(),
+      if (_state == 'evaluating') _evaluating(),
+      if (_state == 'submitted') _assistant(ctx.t('chatSubmitted'), ctx.language, key: const Key('chat-submitted')),
       if (_state == 'failed' && !_busy) _failed(),
     ];
     return Scaffold(
@@ -290,7 +337,7 @@ class _ChatScreenState extends State<ChatScreen> {
             trailing: TextButton(onPressed: _pitchId == null ? _loadCentres : _load, child: Text(ctx.t('retry'))),
           )),
         Expanded(child: ListView(controller: _scroll, padding: const EdgeInsets.all(12), children: items)),
-        if (_state != 'complete') _composer(theme),
+        if (!['complete', 'evaluating', 'submitted'].contains(_state)) _composer(theme),
       ])),
     );
   }
@@ -388,6 +435,38 @@ class _ChatScreenState extends State<ChatScreen> {
     const SizedBox(width: 12),
     Flexible(child: Semantics(liveRegion: true, child: Text(ctx.t(_busy ? 'chatSending' : 'chatReading')))),
   ]));
+
+  Widget _downloadCard() => Padding(padding: const EdgeInsets.only(top: 8), child: OutlinedButton.icon(
+    key: const Key('chat-download-brief'),
+    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+    onPressed: _downloading ? null : _downloadBrief,
+    icon: _downloading
+        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+        : const Icon(Icons.download),
+    label: Text(ctx.t(_downloading ? 'chatDownloadingBrief' : 'chatDownloadBrief')),
+  ));
+
+  Widget _submitCard() {
+    final ready = _view?['canSubmit'] == true && !_sending;
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: FilledButton.icon(
+      key: const Key('chat-submit'),
+      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+      onPressed: ready ? _submitToEvaluator : null,
+      icon: _sending
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.send_and_archive),
+      label: Text(ctx.t(_sending ? 'chatSendingToEvaluator' : 'chatSubmitToEvaluator')),
+    ));
+  }
+
+  Widget _evaluating() {
+    final stage = (_view?['evaluation'] as Map?)?['stage'] as String?;
+    return _bubble(mine: false, key: const Key('chat-evaluating'), child: Row(mainAxisSize: MainAxisSize.min, children: [
+      const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+      const SizedBox(width: 12),
+      Flexible(child: Semantics(liveRegion: true, child: Text(stage == null ? ctx.t('chatEvaluating') : '${ctx.t('chatEvaluating')} ($stage)'))),
+    ]));
+  }
 
   Widget _failed() => _bubble(mine: false, key: const Key('chat-failed'), child: Column(
     crossAxisAlignment: CrossAxisAlignment.start,

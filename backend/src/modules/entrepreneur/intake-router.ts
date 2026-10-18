@@ -270,13 +270,20 @@ export function intakeRouter(config: Config) {
     const waiting = (review?.inbox ?? []).length > 0;
     // Once complete, the person sees what the brief will say (the PDF adds their name and mobile from the profile).
     const brief = review?.status === 'complete' ? briefRows(review as unknown as ReviewForBrief) : null;
+    // Once the plan is built the person decides when it goes to the evaluator: `complete` waits for that button,
+    // `evaluating` while the evaluator pipeline runs, `submitted` once it has finished.
+    const evaluationJob = review?.status === 'complete' && submission
+      ? await Job.findOne({ submissionId: submission._id, fromStage: 'quality' }).sort({ createdAt: -1 }).setOptions({ tenant: 'system' }).lean() : null;
     const state = !submission ? 'start'
       : submission.status === 'FAILED' ? 'failed'
+      : review?.status === 'complete' && evaluationJob ? (['QUEUED', 'PROCESSING'].includes(submission.status) ? 'evaluating' : 'submitted')
       : review?.status === 'complete' ? 'complete'
       : submission.status === 'NEEDS_INPUT' && review?.status === 'needs_input' && !waiting ? 'your_turn'
       : 'reading';
     return { pitchId: String(pitch._id), language: pitch.language, centreId: pitch.centreId ? String(pitch.centreId) : null,
-      submissionId: submission ? String(submission._id) : null, state, round: review?.round ?? 0, messages, brief };
+      submissionId: submission ? String(submission._id) : null, state, round: review?.round ?? 0, messages, brief,
+      canSubmit: state === 'complete' && submission?.status === 'DRAFT',
+      evaluation: evaluationJob ? { status: evaluationJob.status, stage: evaluationJob.currentStage ?? null } : null };
   }
 
   const chatPitch = async (req: Request) => {
@@ -392,6 +399,23 @@ export function intakeRouter(config: Config) {
     sendPdf(res, result.pdf);
   });
 
+  // The person sends the finished plan to the evaluator: only now does the scoring pipeline (quality -> score ->
+  // narrative -> feedback -> route) run on the extracted evidence. Repeating the request is harmless.
+  router.post('/pitches/:id/chat/submit', canPitch, async (req, res) => {
+    const pitch = await chatPitch(req);
+    const submission = pitch.submissionId ? await Submission.findOne({ _id: pitch.submissionId }).setOptions({ tenant: submissionScope(req.auth!) }) : null;
+    if (!submission) throw new HttpError(409, 'Finish the chat before sending your plan.');
+    const review = await ReviewSession.findOne({}).setOptions({ tenant: { submissionId: submission._id } }).lean();
+    if (review?.status !== 'complete') throw new HttpError(409, 'Answer every question before sending your plan to the evaluator.');
+    if (!await hasProcessingConsent(pitch.entrepreneurId)) throw new HttpError(403, 'Processing consent is needed before submitting.');
+    if (!['DRAFT', 'FAILED'].includes(submission.status) && !await Job.exists({ submissionId: submission._id, fromStage: 'quality' }).setOptions({ tenant: 'system' }))
+      throw new HttpError(409, 'Wait for the review to finish, then send your plan.');
+    const { created } = await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(submission.ownerOrgId), fromStage: 'quality', reason: 'new',
+      inputVersion: submission.inputVersion ?? 1, requestedByUserId: req.auth!.user.id });
+    if (created) await recordAudit(req.auth!, 'submission.send_to_evaluator', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, {});
+    res.status(202).json(await chatView(req, pitch));
+  });
+
   // Try the last step again after a failure (a local model was missing or busy). Nothing is re-sent by the person.
   router.post('/pitches/:id/chat/retry', canPitch, async (req, res) => {
     const pitch = await chatPitch(req);
@@ -399,7 +423,9 @@ export function intakeRouter(config: Config) {
     if (!submission || submission.status !== 'FAILED') throw new HttpError(409, 'There is nothing to try again.');
     const review = await ReviewSession.findOne({}).setOptions({ tenant: { submissionId: submission._id } }).lean();
     const followup = !!review && (review.inbox ?? []).length > 0;
-    await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(submission.ownerOrgId), fromStage: followup ? 'extract' : 'ingest',
+    // A failure after the plan was sent to the evaluator is retried from scoring, not from reading the pitch again.
+    const evaluating = review?.status === 'complete' && !followup;
+    await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(submission.ownerOrgId), fromStage: evaluating ? 'quality' : followup ? 'extract' : 'ingest',
       reason: followup ? 'followup' : 'new', inputVersion: submission.inputVersion ?? 1, requestedByUserId: req.auth!.user.id });
     res.status(202).json(await chatView(req, pitch));
   });

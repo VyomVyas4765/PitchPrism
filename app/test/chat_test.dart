@@ -20,9 +20,11 @@ class ChatServer implements ApiClient {
   final messages = <Map<String, dynamic>>[];
   String state = 'start';
   int reads = 0;
+  int evaluations = 0;
   bool failNext = false;
 
-  Map<String, dynamic> get view => {'pitchId': 'p1', 'language': 'hi', 'state': state, 'round': messages.length, 'messages': List.of(messages)};
+  Map<String, dynamic> get view => {'pitchId': 'p1', 'language': 'hi', 'state': state, 'round': messages.length, 'messages': List.of(messages),
+      'canSubmit': state == 'complete', 'brief': <Map<String, dynamic>>[]};
 
   @override
   Future<Map<String, dynamic>> request(String path, {Map<String, dynamic>? body, String? method}) async {
@@ -30,6 +32,11 @@ class ChatServer implements ApiClient {
     if (path == '/centres') return {'centres': [{'id': 'c1', 'name': 'Nashik centre'}, {'id': 'c2', 'name': 'Pune centre'}]};
     if (path == '/pitches' && body != null) return {'id': 'p1'};
     if (path == '/pitches/p1/documents') return {'id': 'd1', 'receivedBytes': 0, 'state': 'receiving'};
+    if (path == '/pitches/p1/chat/submit') {
+      state = 'evaluating';
+      evaluations = 0;
+      return view;
+    }
     if (path == '/pitches/p1/chat/retry') {
       state = 'reading';
       return view;
@@ -43,6 +50,7 @@ class ChatServer implements ApiClient {
     }
     if (path == '/pitches/p1/chat') {
       reads++;
+      if (state == 'evaluating' && ++evaluations >= 2) state = 'submitted';
       if (state == 'reading' && reads >= 2) {
         if (failNext) {
           failNext = false;
@@ -69,7 +77,10 @@ class ChatServer implements ApiClient {
   }
 
   @override
-  Future<List<int>> download(String path) => throw UnimplementedError();
+  Future<List<int>> download(String path) async {
+    if (path == '/pitches/p1/brief') return '%PDF-1.7 brief'.codeUnits;
+    throw ApiException('Unexpected $path', 500);
+  }
 }
 
 class RecordingSpeech implements Speech {
@@ -152,7 +163,7 @@ void main() {
     expect(server.posts['/pitches/p1/chat']!.last, {'documentId': 'd1'});
     expect(find.text(tr('hi', 'chatPdf')), findsOneWidget);
     await settle(tester);
-    expect(find.byKey(const Key('chat-done')), findsOneWidget);
+    expect(find.byKey(const Key('chat-plan-ready')), findsOneWidget);
     expect(find.byKey(const Key('chat-input')), findsNothing);
   });
 
@@ -209,5 +220,35 @@ void main() {
     expect(server.posts['/pitches/p1/documents']!.single, containsPair('kind', 'image'));
     expect(server.posts['/pitches/p1/documents']!.single, containsPair('mime', 'image/jpeg'));
     expect(server.chunks, [2500]);
+  });
+
+  testWidgets('a built plan waits for Send to evaluator, then follows the evaluator to its result', (tester) async {
+    server.state = 'complete';
+    final shared = <(String, String)>[];
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(home: ChatScreen(pitchId: 'p1', ctx: EntrepreneurContext(api: server, speech: speech, language: 'hi'),
+        services: IntakeServices(api: server, store: MemoryStore(), directory: () async => dir, recorder: FakeRecorder.new,
+            pickFile: () async => null, pickPdf: () async => null, pickPhoto: () async => null, pickAudio: () async => null,
+            shareFile: (path, mime, origin) async => shared.add((path, mime))),
+        pollEvery: const Duration(milliseconds: 20))));
+    await settle(tester);
+    expect(find.byKey(const Key('chat-plan-ready')), findsOneWidget);
+    // The person can keep the same Business Idea Brief PDF the evaluator receives.
+    await tester.tap(find.byKey(const Key('chat-download-brief')));
+    await settle(tester);
+    expect(shared.single.$2, 'application/pdf');
+    expect(shared.single.$1, endsWith('business-idea-brief-p1.pdf'));
+    expect(File(shared.single.$1).readAsStringSync(), '%PDF-1.7 brief');
+    expect(find.byKey(const Key('chat-input')), findsNothing);
+    expect(server.posts.containsKey('/pitches/p1/chat/submit'), isFalse); // nothing is sent until the button
+    await tester.tap(find.byKey(const Key('chat-submit')));
+    await settle(tester);
+    expect(server.posts['/pitches/p1/chat/submit'], hasLength(1));
+    await settle(tester);
+    expect(find.byKey(const Key('chat-submitted')), findsOneWidget);
+    expect(find.byKey(const Key('chat-submit')), findsNothing);
+    expect(find.byKey(const Key('chat-download-brief')), findsOneWidget); // still downloadable after sending
   });
 }

@@ -72,24 +72,31 @@ class GroqJsonAdapter:
         if self.settings.model.startswith("openai/gpt-oss"):
             body["reasoning_effort"] = self.settings.reasoning_effort
         started = time.monotonic()
-        for attempt in range(3):
+        # One extra try when the model's JSON misses the schema (an extra evidence ID, say): that is ordinary
+        # sampling variance, not a missing capability. Rate limits get their own, separate retries.
+        for output_try in range(2):
+            for attempt in range(3):
+                try:
+                    response = self._post(body)
+                    break
+                except RateLimited as error:
+                    if attempt == 2:
+                        raise
+                    time.sleep(min(20.0, getattr(error, "wait", 2.0 * (attempt + 1))))
             try:
-                response = self._post(body)
+                choice = response["choices"][0]
+                if choice.get("finish_reason") == "length":
+                    raise ModelOutputError("The model ran out of output tokens.")
+                result = json.loads(choice["message"]["content"])
+                if not isinstance(result, dict):
+                    raise ModelOutputError("Expected a JSON object.")
+                Draft202012Validator(schema).validate(result)
                 break
-            except RateLimited as error:
-                if attempt == 2:
-                    raise
-                time.sleep(min(20.0, getattr(error, "wait", 2.0 * (attempt + 1))))
-        try:
-            choice = response["choices"][0]
-            if choice.get("finish_reason") == "length":
-                raise ModelOutputError("The model ran out of output tokens.")
-            result = json.loads(choice["message"]["content"])
-            if not isinstance(result, dict):
-                raise ModelOutputError("Expected a JSON object.")
-            Draft202012Validator(schema).validate(result)
-        except (KeyError, IndexError, TypeError, json.JSONDecodeError, ValidationError) as error:
-            raise ModelOutputError("Groq output failed JSON/schema validation.") from error
+            except (KeyError, IndexError, TypeError, json.JSONDecodeError, ValidationError) as error:
+                if output_try == 0:
+                    logger.warning("groq_output_retry %s", type(error).__name__)
+                    continue
+                raise ModelOutputError("Groq output failed JSON/schema validation.") from error
         usage = response.get("usage") or {}
         self.last_metrics = {"provider": "groq", "model": self.settings.model, "duration_ms": round((time.monotonic() - started) * 1000),
                              "input_tokens": usage.get("prompt_tokens"), "output_tokens": usage.get("completion_tokens")}

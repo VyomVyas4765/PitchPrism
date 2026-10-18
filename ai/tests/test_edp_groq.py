@@ -228,7 +228,7 @@ class GroqAdapterTests(unittest.TestCase):
         self.assertTrue(http.payload['response_format']['json_schema']['strict'])
         domains_schema = http.payload['response_format']['json_schema']['schema']['properties']['domains']
         self.assertNotIn('minItems', domains_schema)
-        self.assertEqual(domains_schema['items']['properties']['evidence']['maxItems'], 3)
+        self.assertEqual(domains_schema['items']['properties']['evidence']['maxItems'], 6)  # the model may over-cite; evaluate() keeps the first three
         self.assertEqual(adapter.last_metrics['inputTokens'], 12)
         self.assertEqual(adapter.last_metrics['calls'], 1)
 

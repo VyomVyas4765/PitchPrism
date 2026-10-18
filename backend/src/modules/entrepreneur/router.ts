@@ -7,6 +7,7 @@ import { requirePermission, submissionScope } from '../../auth/authorization.js'
 import { piiVault, type Sealed } from './pii-vault.js';
 import { CONSENT_NOTICE_VERSION, CONSENT_NOTICE_VERSIONS, Consent, Entrepreneur, GENDERS, INDIAN_STATES, LANGUAGES, SHARING_SCOPES, type SharingScope } from './models.js';import { grantConsent, hasProcessingConsent, revokeConsent } from './consent.js';
 import { intakeRouter } from './intake-router.js';
+import { geoRouter } from './geo.js';
 import { assistedRouter } from './assisted-router.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
@@ -201,6 +202,7 @@ export function entrepreneurRouter(config: Config) {
   });
 
   // Intake and assisted mode live in this module and mount through this router (no extra app.ts edit).
+  router.use(geoRouter());
   router.use(intakeRouter(config));
   router.use(assistedRouter(config));
   return router;

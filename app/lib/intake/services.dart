@@ -17,6 +17,9 @@ class IntakeServices {
     required this.directory,
     required this.recorder,
     required this.pickFile,
+    this.pickAudio = pickAudioFile,
+    this.pickPdf = pickPdfFile,
+    this.pickPhoto = pickPhotoFile,
   }) : sync = OutboxSync(api, store);
   final ApiClient api;
   final OutboxStore store;
@@ -24,6 +27,12 @@ class IntakeServices {
   final Future<Directory> Function() directory;
   final Recorder Function() recorder;
   final Future<PickedFile?> Function() pickFile;
+  /// A saved voice note or other recording on the phone (the chat's "Add voice note").
+  final Future<PickedFile?> Function() pickAudio;
+  /// The filled form as a PDF (the chat's "Send PDF").
+  final Future<PickedFile?> Function() pickPdf;
+  /// A photo of the filled form from the phone's library (the chat's "Send photo").
+  final Future<PickedFile?> Function() pickPhoto;
 
   /// The phone's real microphone, file picker and private storage for one account.
   factory IntakeServices.device(ApiClient api, String account) => IntakeServices(
@@ -61,6 +70,37 @@ class LazyOutboxStore implements OutboxStore {
   @override
   Future<void> save(List<OutboxItem> items) async => (await _inner).save(items);
 }
+
+/// Audio formats the reading pipeline recognises by content (ai/ingest/classify.py): AAC/M4A, MP3, WAV, Ogg/Opus.
+const audioExtensions = ['m4a', 'mp4', 'mp3', 'wav', 'ogg', 'opus'];
+
+Future<PickedFile?> pickAudioFile() async {
+  final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: audioExtensions);
+  final path = file?.path;
+  return path == null ? null : (path: path, name: file!.name);
+}
+
+Future<PickedFile?> pickPdfFile() async {
+  final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ['pdf']);
+  final path = file?.path;
+  return path == null ? null : (path: path, name: file!.name);
+}
+
+/// The photo library; iOS hands HEIC photos over as JPEG while compression is on (the plugin default).
+Future<PickedFile?> pickPhotoFile() async {
+  final file = await FilePicker.pickFile(type: FileType.image);
+  final path = file?.path;
+  return path == null ? null : (path: path, name: file!.name);
+}
+
+/// The MIME type for a picked voice note, or null when its format cannot be read.
+String? classifyAudio(String name) => switch (name.toLowerCase().split('.').last) {
+  'm4a' || 'mp4' => 'audio/mp4',
+  'mp3' => 'audio/mpeg',
+  'wav' => 'audio/wav',
+  'ogg' || 'opus' => 'audio/ogg',
+  _ => null,
+};
 
 /// The document kind and MIME type the server accepts, from a picked file's extension.
 ({String kind, String mime})? classifyPicked(String name) => switch (name.toLowerCase().split('.').last) {

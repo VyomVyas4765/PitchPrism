@@ -186,11 +186,42 @@ class _ChatScreenState extends State<ChatScreen> {
     return api.request('/pitches/$id/chat', body: {'documentId': documentId});
   });
 
-  Future<void> _attach() async {
-    final picked = await widget.services.pickFile();
+  /// "Upload" offers three ways to answer with a file: the filled form as a PDF, a saved voice note, or a photo of the form.
+  Future<void> _upload() async {
+    final choice = await showModalBottomSheet<String>(context: context, builder: (sheet) => SafeArea(child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        FilledButton.icon(key: const Key('chat-upload-pdf'), onPressed: () => Navigator.pop(sheet, 'pdf'),
+          icon: const Icon(Icons.picture_as_pdf), label: Text(ctx.t('chatUploadPdf'))),
+        const SizedBox(height: 12),
+        FilledButton.tonalIcon(key: const Key('chat-upload-voice'), onPressed: () => Navigator.pop(sheet, 'voice'),
+          icon: const Icon(Icons.audio_file), label: Text(ctx.t('chatUploadVoice'))),
+        const SizedBox(height: 12),
+        FilledButton.tonalIcon(key: const Key('chat-upload-photo'), onPressed: () => Navigator.pop(sheet, 'photo'),
+          icon: const Icon(Icons.photo), label: Text(ctx.t('chatUploadPhoto'))),
+      ]),
+    )));
+    if (choice == 'pdf') await _attach(widget.services.pickPdf, 'pdf');
+    if (choice == 'photo') await _attach(widget.services.pickPhoto, 'image');
+    if (choice == 'voice') await _attachVoice();
+  }
+
+  Future<void> _attachVoice() async {
+    final picked = await widget.services.pickAudio();
+    if (picked == null) return;
+    final mime = classifyAudio(picked.name);
+    if (mime == null) {
+      if (mounted) showMessage(context, ctx.t('chatAudioType'));
+      return;
+    }
+    await _sendFile(picked.path, 'audio', mime);
+  }
+
+  Future<void> _attach(Future<PickedFile?> Function() pick, String kind) async {
+    final picked = await pick();
     if (picked == null) return;
     final type = classifyPicked(picked.name);
-    if (type == null) {
+    if (type == null || type.kind != kind) {
       if (mounted) showMessage(context, ctx.t('chatFileType'));
       return;
     }
@@ -377,10 +408,10 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
             Expanded(child: FilledButton.icon(
-              key: const Key('chat-attach'),
-              onPressed: enabled && !recording ? _attach : null,
+              key: const Key('chat-upload'),
+              onPressed: enabled && !recording ? _upload : null,
               icon: const Icon(Icons.upload_file),
-              label: Text(ctx.t('chatAttach'), textAlign: TextAlign.center),
+              label: Text(ctx.t('chatUpload'), textAlign: TextAlign.center),
             )),
             const SizedBox(width: 8),
             Expanded(child: FilledButton.tonalIcon(

@@ -108,7 +108,16 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final services = IntakeServices(api: server, store: MemoryStore(), directory: () async => dir, recorder: FakeRecorder.new,
-        pickFile: () async => (path: form.path, name: 'form.pdf'));
+        pickFile: () async => (path: form.path, name: 'form.pdf'),
+        pickPdf: () async => (path: form.path, name: 'form.pdf'),
+        pickPhoto: () async {
+          final photo = File('${dir.path}${Platform.pathSeparator}form.jpg')..writeAsBytesSync(List.generate(2500, (index) => index % 256));
+          return (path: photo.path, name: 'form.jpg');
+        },
+        pickAudio: () async {
+          final note = File('${dir.path}${Platform.pathSeparator}note.ogg')..writeAsBytesSync(List.generate(2000, (index) => index % 256));
+          return (path: note.path, name: 'note.ogg');
+        });
     await tester.pumpWidget(MaterialApp(home: ChatScreen(ctx: EntrepreneurContext(api: server, speech: speech, language: 'hi'),
         services: services, pollEvery: const Duration(milliseconds: 20))));
     await settle(tester);
@@ -134,7 +143,9 @@ void main() {
     expect(find.text(tr('hi', 'chatShownInEnglish')), findsOneWidget); // the English fallback says so
     expect(speech.spoken, containsAll([('आपसे कौन खरीदेगा?', 'hi'), ('Where will the shop be?', 'en')]));
 
-    await tester.tap(find.byKey(const Key('chat-attach')));
+    await tester.tap(find.byKey(const Key('chat-upload')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('chat-upload-pdf')));
     await settle(tester);
     expect(server.posts['/pitches/p1/documents']!.single, containsPair('kind', 'pdf'));
     expect(server.chunks, [3000]);
@@ -167,5 +178,36 @@ void main() {
     await settle(tester);
     await settle(tester);
     expect(find.text('आपसे कौन खरीदेगा?'), findsOneWidget);
+  });
+
+  testWidgets('Upload offers Send PDF and Add voice note; a saved voice note is sent as audio', (tester) async {
+    await open(tester);
+    await tester.tap(find.byKey(const Key('chat-centre-c1')));
+    await settle(tester);
+    expect(find.text(tr('hi', 'chatUpload')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('chat-upload')));
+    await settle(tester);
+    expect(find.text(tr('hi', 'chatUploadPdf')), findsOneWidget);
+    expect(find.text(tr('hi', 'chatUploadVoice')), findsOneWidget);
+    expect(find.text(tr('hi', 'chatUploadPhoto')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('chat-upload-voice')));
+    await settle(tester);
+    expect(server.posts['/pitches/p1/documents']!.single, containsPair('kind', 'audio'));
+    expect(server.posts['/pitches/p1/documents']!.single, containsPair('mime', 'audio/ogg'));
+    expect(server.chunks, [2000]);
+    expect(find.text(tr('hi', 'chatVoiceNote')), findsOneWidget);
+  });
+
+  testWidgets('Upload → Send photo sends a photo of the form as an image', (tester) async {
+    await open(tester);
+    await tester.tap(find.byKey(const Key('chat-centre-c1')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('chat-upload')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('chat-upload-photo')));
+    await settle(tester);
+    expect(server.posts['/pitches/p1/documents']!.single, containsPair('kind', 'image'));
+    expect(server.posts['/pitches/p1/documents']!.single, containsPair('mime', 'image/jpeg'));
+    expect(server.chunks, [2500]);
   });
 }

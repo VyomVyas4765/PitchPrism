@@ -118,6 +118,8 @@ class ReviewEngine:
                 session["location"] = result["location"]
             if result["businessType"]:
                 session["businessType"] = result["businessType"]
+        if session["location"] is None and session["fields"].get("location", {}).get("state") == "answered":
+            session["location"] = _location_from_answer(session["fields"]["location"], session["segments"])
         session["verdicts"] = judge.judge(session["fields"], session["numbers"], session["location"], session["segments"],
                                           session["declined"], call, recheck, session["verdicts"])
         self._ask(session, call)
@@ -140,6 +142,16 @@ class ReviewEngine:
             session["questions"].append({"qId": f"f{len(session['questions']) + 1}", "field": key, "round": session["round"],
                                          "questionEn": texts[key], "reason": verdicts[key]["reason"], "status": "pending"})
         session["status"] = "needs_input"
+
+
+def _location_from_answer(field: dict, segments: list[dict]) -> dict | None:
+    from ai.ingest.run import Pipeline
+    # Answers read from a form carry their question ("Where do you intend… — Village X, District Y"); parse the answer.
+    answers = [{**segment, "textEn": segment["textEn"].split(" — ", 1)[-1]} for segment in segments if segment["segId"] in field["evidence"]]
+    place = Pipeline._location({"state": "answered", "evidence": field["evidence"]}, answers, {})
+    if not place or not place.get("district"):
+        return None
+    return {key: place[key] for key in ("village", "district", "state") if place.get(key)} | {"segId": field["evidence"][0]}
 
 
 def pending_questions(session: dict) -> list[dict]:

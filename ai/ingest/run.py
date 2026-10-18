@@ -343,6 +343,12 @@ def _page_lines(page, document_id: str) -> list[Line]:
         return min(s.ocr_confidence if s.ocr_confidence is not None else 1.0 for s in spans)
 
     outside = [span for span in page.spans if span.cell is None]
+    in_table = [span for span in page.spans if span.cell is not None]
+    if page.number > 1 and in_table:
+        # A repeated masthead above a continued table ("TATA STRIVE" on page 2) is page furniture, not the end of the
+        # previous page's last answer.
+        table_top = min(span.bbox[1] for span in in_table)
+        outside = [span for span in outside if span.bbox[3] > table_top]
     lines: list[Line] = []
     for row in pdf.lines_of(pdf.Page(page.number, page.width, page.height, page.text_chars, True, outside)):
         # A struck value and its correction on one row stay separate lines (A-08 history).

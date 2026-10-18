@@ -38,8 +38,11 @@ def prompt(keys: list[str], verdicts: dict[str, dict], fields: dict) -> str:
     blocks = []
     for key in keys:
         said = fields.get(key, {}).get("value") or "nothing yet"
-        blocks.append(f"- {key}: topic: {DESCRIBE[key]} | what they said: <<<{said}>>> | still needed: {verdicts[key]['reason'] or 'more detail'}")
-    return ("You help a first-time entrepreneur in India complete their business pitch. Write one question per topic below.\n"
+        blocks.append(f"- {key}: form question: {FORM_QUESTION[key]} | what they gave so far: <<<{said}>>> | "
+                      f"what is missing: {verdicts[key]['reason'] or 'more detail'}")
+    return ("You help a first-time entrepreneur in India complete their Business Idea Brief (the EDP form). Their pitch or "
+            "uploaded form has been read; for each topic below, write one question that asks only for what is missing, "
+            "based on what they already gave.\n"
             "Rules: plain simple English; at most 25 words; exactly one question mark; ask about one thing only; "
             "when they already said something, refer to it so they know what to add; do not suggest the answer; "
             "never ask for their name, phone, address, age, caste, religion, gender or family. "
@@ -48,24 +51,17 @@ def prompt(keys: list[str], verdicts: dict[str, dict], fields: dict) -> str:
 
 def questions(keys: list[str], verdicts: dict[str, dict], fields: dict, attempts: dict[str, int],
               call: Callable[[str, str, dict], dict]) -> dict[str, str]:
-    """Question text per field. A topic the pitch has not touched is first asked with the printed form question; an
-    unclear answer gets a model-written follow-up when it passes the rules, otherwise the bank's fallback wording."""
+    """Question text per field, written by the model from what is missing in the reading so far. Only when its wording
+    breaks the rules (personal details, leading, several questions) is the bank's fallback wording used instead."""
     if not keys:
         return {}
-    first = {key for key in keys if attempts.get(key, 0) == 0 and verdicts[key]["verdict"] == "missing"}
-    written: dict[str, str] = {}
-    follow = [key for key in keys if key not in first]
     try:
-        if follow:
-            raw = call("ask", prompt(follow, verdicts, fields), schema(follow))
-            written = {item["key"]: item["question"].strip() for item in raw.get("questions", []) if item.get("key") in follow}
+        raw = call("ask", prompt(keys, verdicts, fields), schema(keys))
+        written = {item["key"]: item["question"].strip() for item in raw.get("questions", []) if item.get("key") in keys}
     except ValueError:
         written = {}
     result = {}
     for key in keys:
-        if key in first:
-            result[key] = FORM_QUESTION[key]
-            continue
         text = written.get(key, "")
         text = text if acceptable(text) else FALLBACK_QUESTION[key]
         if attempts.get(key, 0) == MAX_ASKS_PER_FIELD - 1:

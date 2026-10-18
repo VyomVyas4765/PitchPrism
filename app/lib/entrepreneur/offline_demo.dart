@@ -6,6 +6,7 @@ import '../core/api.dart';
 import '../intake/device.dart';
 import '../intake/outbox.dart';
 import '../intake/services.dart';
+import '../l10n/strings.dart';
 
 /// A device-only tour. No token is created and this adapter never calls the network.
 /// Answers and uploads are discarded when the tour ends; only synthetic labels are shown.
@@ -67,28 +68,24 @@ class _DemoApi implements ApiClient {
 
   // Chat tour: two scripted questions in the chosen language, then done. No AI runs on the device.
   final _chats = <String, List<Map<String, dynamic>>>{};
+  final _kinds = <String, String>{};
 
   Map<String, dynamic> _chat(String id, Map<String, dynamic>? body) {
+    // Nothing is read or analysed on the phone: the tour says so instead of pretending with scripted questions.
     final replies = _chats.putIfAbsent(id, () => []);
     if (body != null && (body['text'] != null || body['documentId'] != null)) {
-      if (replies.length >= 3) throw const ApiException('This demo chat is complete.', 409);
-      replies.add({'role': 'user', 'round': replies.length, 'kind': body['text'] != null ? 'text' : 'pdf', 'text': body['text']});
+      if (replies.length >= 5) throw const ApiException('This demo chat is full.', 409);
+      replies.add({'role': 'user', 'round': replies.length, 'kind': body['text'] != null ? 'text' : (_kinds[body['documentId']] ?? 'pdf'),
+        'text': body['text']});
     }
-    const asks = [
-      ('location', 'Where do you intend to setup your business? (include village, block, district)'),
-      ('customers', 'Who are your targeted customers? Be specific, include the age range, gender etc.'),
-    ];
     final messages = <Map<String, dynamic>>[];
     for (final reply in replies) {
       messages.add(reply);
-      final round = reply['round'] as int;
-      if (round < asks.length) {
-        messages.add({'role': 'assistant', 'round': round + 1, 'qId': 'f${round + 1}', 'field': asks[round].$1,
-          'text': asks[round].$2, 'lang': 'en'});
+      if (reply['round'] == 0) {
+        messages.add({'role': 'assistant', 'round': 1, 'qId': 'demo', 'field': 'offering', 'text': tr(_language, 'chatDemoNote'), 'lang': _language});
       }
     }
-    return {'pitchId': id, 'language': _language, 'state': replies.isEmpty ? 'start' : replies.length > asks.length ? 'complete' : 'your_turn',
-      'round': replies.length, 'messages': messages};
+    return {'pitchId': id, 'language': _language, 'state': replies.isEmpty ? 'start' : 'your_turn', 'round': replies.length, 'messages': messages};
   }
 
   Map<String, dynamic> _consents() => {
@@ -147,7 +144,9 @@ class _DemoApi implements ApiClient {
     if (path.endsWith('/chat') || path.endsWith('/chat/retry')) return _chat(path.split('/')[2], body);
     if (path.endsWith('/answers')) return {};
     if (path.endsWith('/documents') && body != null) {
-      return {'id': 'demo-document-${++_nextId}', 'receivedBytes': 0, 'state': 'receiving'};
+      final id = 'demo-document-${++_nextId}';
+      _kinds[id] = body['kind'] as String;
+      return {'id': id, 'receivedBytes': 0, 'state': 'receiving'};
     }
     if (path.endsWith('/submit')) {
       final id = 'demo-idea-${++_nextId}';

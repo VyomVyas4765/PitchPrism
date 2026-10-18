@@ -154,6 +154,7 @@ const _strings = <String, Map<String, String>>{
     'chatUploadVoice': 'Add voice note',
     'chatAudioType': 'Send a voice note as M4A, MP3, WAV, OGG or OPUS.',
     'chatUploadPhoto': 'Send photo',
+    'chatDemoNote': 'This is the offline demo: nothing you send is read or analysed here. Sign in with your account and the AI will read your form and ask only about what is missing.',
   },
   'hi': {
     'languageName': 'हिन्दी',
@@ -293,6 +294,7 @@ const _strings = <String, Map<String, String>>{
     'chatUploadVoice': 'आवाज़ संदेश जोड़ें',
     'chatAudioType': 'आवाज़ संदेश M4A, MP3, WAV, OGG या OPUS में भेजें।',
     'chatUploadPhoto': 'फ़ोटो भेजें',
+    'chatDemoNote': 'यह ऑफ़लाइन डेमो है: यहाँ आपका भेजा कुछ भी पढ़ा या जाँचा नहीं जाता। अपने खाते से साइन इन करें, तब AI आपका फ़ॉर्म पढ़ेगा और केवल छूटी हुई बातें पूछेगा।',
   },
   'mr': {
     'languageName': 'मराठी',
@@ -432,6 +434,7 @@ const _strings = <String, Map<String, String>>{
     'chatUploadVoice': 'आवाज संदेश जोडा',
     'chatAudioType': 'आवाज संदेश M4A, MP3, WAV, OGG किंवा OPUS मध्ये पाठवा.',
     'chatUploadPhoto': 'फोटो पाठवा',
+    'chatDemoNote': 'हा ऑफलाइन डेमो आहे: इथे तुम्ही पाठवलेले काहीही वाचले किंवा तपासले जात नाही. तुमच्या खात्याने साइन इन करा, मग AI तुमचा फॉर्म वाचेल आणि फक्त राहिलेल्या गोष्टी विचारेल.',
   },
   'te': {
     'languageName': 'తెలుగు',
@@ -571,6 +574,7 @@ const _strings = <String, Map<String, String>>{
     'chatUploadVoice': 'వాయిస్ సందేశం జోడించండి',
     'chatAudioType': 'వాయిస్ సందేశాన్ని M4A, MP3, WAV, OGG లేదా OPUS లో పంపండి.',
     'chatUploadPhoto': 'ఫోటో పంపండి',
+    'chatDemoNote': 'ఇది ఆఫ్‌లైన్ డెమో: ఇక్కడ మీరు పంపినది ఏదీ చదవబడదు లేదా విశ్లేషించబడదు. మీ ఖాతాతో సైన్ ఇన్ చేయండి, అప్పుడు AI మీ ఫారం చదివి లేని విషయాల గురించి మాత్రమే అడుగుతుంది.',
   },
   'or': {
     'languageName': 'ଓଡ଼ିଆ',
@@ -710,6 +714,7 @@ const _strings = <String, Map<String, String>>{
     'chatUploadVoice': 'ସ୍ୱର ସନ୍ଦେଶ ଯୋଡନ୍ତୁ',
     'chatAudioType': 'ସ୍ୱର ସନ୍ଦେଶ M4A, MP3, WAV, OGG ବା OPUS ରେ ପଠାନ୍ତୁ।',
     'chatUploadPhoto': 'ଫଟୋ ପଠାନ୍ତୁ',
+    'chatDemoNote': 'ଏହା ଅଫଲାଇନ ଡେମୋ: ଏଠାରେ ଆପଣ ପଠାଇଥିବା କିଛି ପଢ଼ାଯାଏ ନାହିଁ କି ଯାଞ୍ଚ ହୁଏ ନାହିଁ। ଆପଣଙ୍କ ଆକାଉଣ୍ଟରେ ସାଇନ ଇନ କରନ୍ତୁ, ତେବେ AI ଆପଣଙ୍କ ଫର୍ମ ପଢ଼ି କେବଳ ବାକି ଥିବା କଥା ପଚାରିବ।',
   },
   'bn': {
     'languageName': 'বাংলা',
@@ -849,6 +854,7 @@ const _strings = <String, Map<String, String>>{
     'chatUploadVoice': 'ভয়েস মেসেজ যোগ করুন',
     'chatAudioType': 'ভয়েস মেসেজ M4A, MP3, WAV, OGG বা OPUS-এ পাঠান।',
     'chatUploadPhoto': 'ছবি পাঠান',
+    'chatDemoNote': 'এটি অফলাইন ডেমো: এখানে আপনার পাঠানো কিছুই পড়া বা যাচাই করা হয় না। আপনার অ্যাকাউন্টে সাইন ইন করুন, তখন AI আপনার ফর্ম পড়ে শুধু যা বাকি আছে তা জিজ্ঞেস করবে।',
   },
 };
 

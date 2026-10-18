@@ -32,18 +32,25 @@ def rule_gaps(fields: dict, numbers: dict, location: dict | None, segments: list
             gaps[key] = {"verdict": "vague", "reason": "The pitch mentions this but does not answer it."}
         elif sum(len(text[seg].split()) for seg in entry["evidence"] if seg in text) < 4:
             gaps[key] = {"verdict": "vague", "reason": "Too brief to understand."}
-    needs_amount = {"unit_price": ("unit_price",), "monthly_revenue": ("monthly_revenue",), "funding": ("investment", "loan", "self")}
+    # The printed form asks for a price and monthly revenue in rupees, but not for the amount of funding.
+    needs_amount = {"unit_price": ("unit_price",), "monthly_revenue": ("monthly_revenue",)}
     for key, amounts in needs_amount.items():
         if key not in gaps and not any(amount in numbers for amount in amounts):
             gaps[key] = {"verdict": "vague", "reason": "No amount in rupees is given."}
-    if "location" not in gaps and not (location and location.get("district") and location.get("state")):
-        gaps["location"] = {"verdict": "vague", "reason": "The district and state are not both named."}
+    if "location" not in gaps and not (location and location.get("district")):
+        gaps["location"] = {"verdict": "vague", "reason": "The district is not named."}
     try:
         findings = check_finances(numbers, set(text))
     except ValueError:
         findings = []
+    # Price x volume can only be checked against revenue when there is one main price; a list of prices
+    # (blouse Rs 400, kurti Rs 500, ...) averages out and is not a contradiction.
+    price_text = " ".join(text[seg] for seg in fields.get("unit_price", {}).get("evidence", []) if seg in text)
+    several_prices = len(re.findall(r"(?:rs\.?|₹|rupees?)\s*[\d,]+", price_text, re.IGNORECASE)) > 1
     for finding in findings:
         key = {"investment": "funding", "monthly_revenue": "monthly_revenue"}.get(finding["field"])
+        if key == "monthly_revenue" and several_prices:
+            continue
         if key:
             gaps[key] = {"verdict": "contradictory",
                          "reason": f"The amounts do not add up: {finding['formula']} gives {finding['expected']}, but the pitch says {finding['written']}."}

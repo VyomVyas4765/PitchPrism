@@ -128,7 +128,8 @@ void main() {
     await tester.enterText(find.byKey(const Key('chat-input')), 'A synthetic tailoring idea.');
     await tester.tap(find.byKey(const Key('chat-send')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('chat-q-f1')), findsOneWidget); // the demo's scripted first question
+    expect(find.byKey(const Key('chat-q-demo')), findsOneWidget); // the demo says it analyses nothing
+    expect(find.text(tr('en', 'chatDemoNote')), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(api.calls, isEmpty);

@@ -11,7 +11,7 @@ KEYWORDS = {
     "offering": ["stitch", "start a", "sell"], "customers": ["customers", "families"], "location": ["district"],
     "market_research": ["asked", "visited the market", "survey"], "raw_materials": ["need cloth", "materials", "machines"],
     "suppliers": ["buy cloth", "wholesale", "supplier"], "competition": ["other tailors", "competitor"],
-    "funding": ["to start", "loan", "savings"], "unit_price": ["charge", "price"], "monthly_revenue": ["monthly sales", "per month"],
+    "funding": ["loan", "savings"], "unit_price": ["charge", "price"], "monthly_revenue": ["monthly sales", "per month"],
     "skills": ["learnt", "training"], "experience": ["worked", "years in"],
 }
 AMOUNTS = {

@@ -1,98 +1,194 @@
 # PitchPrism
 
-AI idea screening for Tata STRIVE, built for Code Odyssey 5.0. Entrepreneurs pitch in their own language; assessors review evidence-linked idea cards. The full product is defined in [PitchPrism.md](PitchPrism.md).
+<div align="center">
 
-## First milestone: authentication and access
+### Evidence-led idea screening for Tata STRIVE
 
-The repository now has a Flutter iPhone app (iOS is the build target; Android kept but not built, D-27), Next.js dashboard, Express API, shared auth contracts and a Python worker scaffold. Staff can sign in/out and open protected role workspaces. Entrepreneurs register with email and password (D-27). Role, organisation and consent checks run on the server.
+Entrepreneurs describe a business idea in their own words. PitchPrism turns that idea into a protected, evidence-linked review card so a centre evaluator can compare opportunities, make a human decision, and guide the entrepreneur to the next step.
 
-The centre assessment slice now accepts redacted, extracted EDP Idea Brief evidence, runs deterministic checks and local-only scoring, and serves a scoped review card, queue, decisions and feedback draft. App PDF extraction, the durable queue, original-file viewer and the rest of the centre workflow remain integration work; see [centre evaluation](docs/centre-evaluation.md). The starter submission endpoint remains read-only for applicant data; no applicant submissions are seeded. See [local AI setup](ai/README.md) and the [88-requirement implementation matrix](docs/implementation-matrix.md).
+<p>
+  <a href="#demo-flow">Demo flow</a> ·
+  <a href="#run-it-locally">Run locally</a> ·
+  <a href="#evaluator-workspace">Evaluator workspace</a> ·
+  <a href="#safety-by-design">Safety</a>
+</p>
 
-## Quick start
+</div>
 
-Requirements: Node 22 (see `.nvmrc`) and pnpm 10.17.1. The local development launcher starts a real persistent MongoDB without Docker. Flutter 3.47+/Dart 3.13+ for mobile; Xcode/signing for a physical iPhone; Python 3.11+ for the worker foundation. Docker Compose is an alternative MongoDB runner.
+> Built for Code Odyssey 5.0. This repository contains the evaluator comparison experience, guarded PDF screening preview, centre decision workflow, and iPhone entrepreneur app foundation.
 
-```bash
-git config core.hooksPath .githooks   # once per clone: enables the repo's commit hooks
-pnpm install
-pnpm setup:env          # Creates ignored .env with random secrets; preserves an existing file
-pnpm dev:local          # Persistent local MongoDB + synthetic staff seed + API/dashboard
-pnpm fixtures:load      # Optional: contract fixtures (a submission, evaluation, events...) with fixture.* staff logins
-pnpm worker             # Pipeline worker (python -m ai.worker): runs queued jobs stage by stage; needs ai/.venv
-pnpm pipeline:replay    # Optional, dev only: replays fixture stage timings for queued jobs (live card, SSE) until the worker runs real stages
+## Why PitchPrism
+
+Business ideas arrive as PDFs, notes, voice, or short answers in a local language. A centre team needs a consistent way to understand them without turning an AI score into an automatic decision.
+
+PitchPrism separates those responsibilities:
+
+- the entrepreneur owns their story and consent;
+- the pipeline extracts and redacts evidence;
+- AI explains a provisional assessment from cited evidence;
+- the evaluator makes the final decision;
+- the entrepreneur receives a clear outcome and next step.
+
+## Demo flow
+
+```text
+Entrepreneur pitch / two-page idea brief
+                    ↓
+        Extraction and PII redaction
+                    ↓
+       Evidence-linked AI assessment
+                    ↓
+       Centre comparison dashboard
+                    ↓
+       Human accept / reject decision
+                    ↓
+  Review, interview, mentoring or funding pathway
 ```
 
-Open http://localhost:3000. The API is at http://localhost:4000/api/v1. `pnpm dev:local` overrides the database URI for its child processes only; the private Atlas URI in `.env` is preserved. Local files live in ignored `local/mongodb/` and survive restarts. Ctrl+C stops the launcher without deleting data. Redis is removed. For a separately managed/Atlas database, use `pnpm seed` and `pnpm dev` after configuring a resolvable URI. Sign in as the bootstrap HQ admin (`SEED_ADMIN_EMAIL`, default `hq_admin@pitchprism.test`) with the `SEED_PASSWORD` value from your local `.env`. Everyone else joins through a one-time invitation link that HQ or their own organisation's staff create (HQ desk → Team, or the Team panel), opened at `/accept-invite#<token>`. Re-running the seed preserves existing credentials/roles and never resets accounts. If `.env` already exists, compare it with `.env.example` and supply missing values yourself.
+## Run it locally
 
-For the evaluator comparison demo, keep `pnpm dev:local` running, then run:
+### Start the evaluator demo
 
-```sh
+```bash
+pnpm install
+pnpm setup:env
+pnpm dev:local
+```
+
+Open [http://localhost:3000](http://localhost:3000). Seed the isolated evaluator workspace in another terminal:
+
+```bash
 pnpm --filter @pitchprism/backend exec tsx src/modules/centre/seed-demo.ts --local
 ```
 
-Sign out of another staff account and sign in at http://localhost:3000 as `evaluator.demo@pitchprism.test`, using the existing `SEED_PASSWORD` from ignored root `.env`. This separate centre contains 18 clearly labeled synthetic ideas, two cohorts and three trades. Its scores are illustrative fixtures with synthetic originals and citations, not model accuracy results. Use **Batch upload & evaluate** to stage your own PDFs and evaluate them sequentially; results and originals stay in the current browser session and disappear on reload. You can pause after a file, retry failures, and compare the resulting ideas without mixing them with the demo. Batch preview accepts the existing supported two-page English forms (30 files, 12 MB each, 120 MB total), and remains disabled in production. Select two to four rows to compare; use **Trade benchmarks** and **Cohorts & trends** for the wider analysis. Real centre accounts show their own saved submissions. No real-person consent is seeded. New PDFs use **Receive a plan**, followed by the existing consent and evaluation actions. Rerunning the demo loader preserves decisions; `--refresh-fixtures` refreshes only untouched illustrative cases in that reserved workspace. Demo cases are excluded from HQ reports.
+Sign in as `evaluator.demo@pitchprism.test` with the existing `SEED_PASSWORD` from the ignored root `.env`, then open `/dashboard/centre_assessor`.
 
-**Staff join by invitation only** (W-01): there is no public staff sign-up and no role chooser. In the HQ desk (**Organisations** and **Team** tabs), HQ creates organisations (centres and sector/funding partners report to HQ; implementation partners to a centre) and invites anyone; centre staff invite assessors, cohort leads and facilitators to their own centre; partners invite their own organisation's users (each from the **Team** panel on their dashboard). The inviter copies the one-time link (it expires after 72 hours) and sends it themselves; the invitee opens it, sees the role and organisation, and sets their own name and password. Admins can change roles within their scope and disable accounts, which takes effect on the next request. For a local demo only, `SEED_DEMO_STAFF=true` also seeds one synthetic account per staff role (`<role>@pitchprism.test`). See [authentication](docs/auth.md).
+The demo workspace contains synthetic ideas, cohorts, trades, original PDFs, and illustrative fixture assessments. It contains no real applicant consent or organiser data.
 
-Entrepreneurs create their own account with email and password in the iPhone app (D-27: no phone/OTP/SMS sign-in); see [mobile setup](app/README.md). Cohort lead has the centre's permissions. Funding CSR mode is aggregate-only; the starter individual-record API denies it.
+## Evaluator workspace
 
-```bash
-# iPhone (D-27: iOS only for now). On the Mac, with the API running:
-pnpm ios               # or from app/: flutter run -d YOUR_IPHONE_ID --dart-define=API_BASE_URL=http://YOUR_MAC_LAN_IP:4000/api/v1
-```
+The centre assessor sees the portfolio in one view and can drill into any idea.
 
-From the repository root, `make worker-setup && make worker` runs the Python capability report. `make worker-check` inspects the local runtime and installed models; `make worker-test` checks local-only policies and structured output. No model is selected/downloaded automatically, and no queue consumer or full AI stages are claimed. The optional Docker MongoDB service persists in its named local volume. Local containers bind to loopback and are development services.
+### Compare ideas
 
-## MongoDB on restricted networks
+- Search and filter by cohort, trade, language, review lane, and rubric version.
+- Compare two to four ideas side by side.
+- View potential distribution, screening quadrant, cohort trends, trade benchmarks, and heatmaps.
+- See completeness, evidence coverage, quality flags, suggested pathway, and current human outcome.
 
-Put the current Atlas driver URI in the ignored **root `.env`**, then run `pnpm db:check`. The API does not read credentials from `.env.example`. Use `pnpm dev:local` to work now if the Atlas hostname/college network is unavailable; the local database is independent from Atlas. The diagnostic distinguishes missing DNS records, network reachability, TLS and authentication without printing your URI. API startup and seed share IPv4/timeouts and an optional process-only DNS override; TLS remains verified and databases are never switched automatically. See [MongoDB troubleshooting](docs/mongodb.md) for Atlas/network and explicit local-development options.
+### Review an idea
 
-## Repository layout and ownership
+Each idea opens a full review drawer with:
+
+- overall potential score;
+- eight scored business domains plus computed completeness;
+- domain reasoning and source citations;
+- original PDF viewer;
+- financial checks and follow-up questions;
+- summary plan draft;
+- evaluator review and decision controls.
+
+### Decide and respond
+
+The evaluator can:
+
+- **Accept and move forward** — shortlist the idea for the next process;
+- **Request more information** — keep the application open for follow-up;
+- **Reject application** — record a written explanation for the entrepreneur.
+
+The dashboard refreshes the outcome immediately. The entrepreneur’s Ideas screen receives the human response and a compact AI screening summary. A selected idea can proceed to a centre interview, mentoring, funding-readiness review, or an approved partner referral. Selection is never presented as an automatic loan or investment approval.
+
+### Batch demo mode
+
+Use **Batch upload & evaluate** to upload several supported PDFs at once. The browser evaluates them sequentially and shows per-file progress, failures, pause/resume, retry, and comparison.
+
+Current preview limits are 30 PDFs, 12 MB per PDF, and 120 MB per batch. Preview results are browser-session data and disappear on reload; saved production assessments use the consent-gated workflow.
+
+## How scoring works
+
+The provisional rubric scores these eight domains from 1–5:
+
+| Domain | What it looks for |
+| --- | --- |
+| Clarity | Offering, customer, and delivery idea |
+| Customer need | Who buys, why, and the stated problem |
+| Market potential | Evidence of local demand and research |
+| Feasibility | Resources, premises, suppliers, and funding plan |
+| Competition | Specific alternatives and awareness of them |
+| Differentiation | Why customers would choose this idea |
+| Revenue logic | Prices, costs, volume, and funding reasoning |
+| Readiness | Skills, experience, training, or action already taken |
+
+Completeness is calculated separately. Potential is a weighted average of domains with valid evidence. Missing evidence is shown as **Not assessed**, not silently treated as zero.
+
+## Safety by design
+
+The evaluator pipeline is guarded at every boundary:
+
+- personal identifiers are redacted before inference;
+- applicant text is treated as untrusted evidence, never as instructions;
+- every score must cite real extracted segments;
+- strict structured output validation rejects malformed model responses;
+- unsupported citations, duplicate domains, invalid scores, and personal data in reasons fail closed;
+- missing evidence does not produce an invented score;
+- the model runs twice and disagreement is surfaced for human review;
+- AI suggests evidence and pathways, but a human owns the final decision;
+- failed extraction or model capability is shown as pending/unassessable rather than fabricated.
+
+The current centre PDF preview supports the known English digital two-page idea brief families. Scans, arbitrary layouts, and multilingual extraction remain separate integration work.
+
+## Repository map
 
 ```text
-app/                   Flutter Android/iOS entrepreneur / facilitator entry point       Dev 1
-frontend/              Next.js role features                                Role owners; shell Dev 4
-backend/               Express role modules                                 Role owners; auth/platform Dev 3
-ai/ingest/             Reading, redaction, language and extraction            Dev 1
-ai/intel/              Quality, finance, scoring and context                  Dev 2
-ai/eval/               Organiser-dataset evaluation                           Dev 2
-ai/llm/                Shared provider adapter                                Dev 1; Dev 2 reviews
-packages/contracts/    Auth schema, generated TS types and permission keys    Dev 3
-data/seed/            Synthetic seed notes and future seed data              Assigned owners
-datasets/              Private raw files (ignored) and existing catalogue
-docs/                 Decisions, flows, design, role duties
+app/                    Flutter entrepreneur and facilitator app
+frontend/               Next.js staff dashboards and evaluator workspace
+backend/                Express API, sessions, tenancy, centre workflows
+ai/                     Extraction, redaction, scoring, review, and worker code
+packages/contracts/     Shared JSON schemas and generated TypeScript/Python types
+data/seed/              Synthetic seed data and question bank
+docs/                   Product decisions, flows, duties, and implementation matrix
 ```
 
-See [role duties](docs/duties/README.md) for the four assignments and all 88 PRD requirement owners. Each owner delivers their complete role workflows across UI, API, data, AI integration and tests. Shared services are implemented once and reused.
+Main evaluator surfaces:
 
-## Checks and production build
+- `frontend/features/centre/CentreWorkspace.tsx`
+- `frontend/features/centre/ComparisonDashboard.tsx`
+- `frontend/features/centre/BatchWorkspace.tsx`
+- `backend/src/modules/centre/`
+- `ai/intel/scoring.py`
+
+## Requirements
+
+- Node 22 and pnpm 10.17.1
+- Python 3.11+ for the AI worker foundation
+- Flutter 3.47+ and Dart 3.13+ for the mobile app
+- Xcode and Apple signing for a physical iPhone
+- MongoDB, started automatically by `pnpm dev:local`
+
+The local launcher uses a persistent MongoDB under ignored `local/mongodb/`. It does not replace or print the private Atlas URI in `.env`.
+
+## Useful commands
 
 ```bash
-pnpm typecheck
-pnpm test               # Access tests use a temporary real MongoDB; no Docker or external credentials
-pnpm duties:check
-pnpm matrix:generate    # After updating implementation/cost/acceptance records
-pnpm contracts:generate # After changing shared schemas; commit generated source
-pnpm build
-# In app/: flutter analyze
-# From root: make worker-test && make worker-check
+pnpm dev:local              # local MongoDB, seed, API, and Next dashboard
+pnpm build                  # contracts, backend, and frontend production build
+pnpm typecheck              # TypeScript checks
+pnpm test                   # backend tests
+pnpm duties:check           # requirement and ownership checks
+pnpm matrix:generate        # regenerate implementation matrix
+pnpm contracts:generate     # regenerate shared contract outputs after schema changes
 ```
 
-`pnpm build` produces the contracts, API and web build. Start the API with `pnpm --filter @pitchprism/backend start`, and the dashboard with `pnpm --filter @pitchprism/frontend start`. Configure `NODE_ENV=production`, a random `JWT_SECRET`, HTTPS `WEB_ORIGIN`, and the real database. Set `API_PROXY_TARGET` in `frontend/.env.local` (see its example) when the API is not at the default address. Configure the actual proxy chain explicitly before deployment; the API does not blindly trust forwarded client IPs.
+For iPhone development, keep the API running and use:
 
-Auth roles come from `packages/contracts/schemas/session-user.json` and domain types from `packages/contracts/schemas/domain/` (plus Dev 2's `centre-extracted-input.json`); `pnpm contracts:generate` writes the TypeScript types, the backend storage types and the worker's `ai/contracts` module, all committed. The Python AI worker does not handle authentication.
+```bash
+pnpm ios
+```
 
-## Read these first
+See [app/README.md](app/README.md) for device setup and [docs/centre-evaluation.md](docs/centre-evaluation.md) for evaluator pipeline and supported input details.
 
-- [PRD](PitchPrism.md): product roles, permissions and all requirement details.
-- [Decisions](docs/decision.md): D-23 records the current layout and developer split.
-- [Flow](docs/flow.md): submission lifecycle, stage handoffs and integration flow.
-- [Design](docs/design.md): the Broadsheet dashboard / Radio mobile direction.
-- [Authentication](docs/auth.md): routes, session and access rules, configuration and limitations.
-- [Agent instructions](AGENTS.md): check other agents' work before adding logic.
+## Privacy and collaboration
 
-## Working agreements and privacy
+Keep the repository and organiser data private. Real applicant files stay in ignored paths and must never be copied into fixtures, prompts, screenshots, logs, or documentation. Authentication, organisation scope, consent, and permission checks are enforced by the backend.
 
-Other AI agents may be working concurrently. Before logic changes, inspect Git status/diffs, search for existing code, and read owner progress notes. Record tasks in your own duty brief. Coordinate shared-interface changes with their owner. Use scoped branches/commits and preserve others' edits.
-
-Keep this repository private. Organiser data contains real applicants' personal details and stays in ignored `datasets/raw/`; put private scratch work in ignored `local/`. Never copy personal details into code, fixtures, prompts, logs, screenshots or issues. The catalogue is at `datasets/manifest.json`; raw files come from the team drive. The original PRD remains at [PitchPrism.v1.md](PitchPrism.v1.md).
+Read [AGENTS.md](AGENTS.md), [the PRD](PitchPrism.md), and [the implementation matrix](docs/implementation-matrix.md) before changing shared contracts, models, or route mounts.

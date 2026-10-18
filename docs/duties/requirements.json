@@ -646,21 +646,25 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Review queue for the centre, sortable by score, completeness, date and language, with lanes: Ready, Needs attention, Unassessable, Possible duplicate",
-    "implementation": "Scoped centre queue with search, lanes, summary metrics and pending/scored states",
+    "implementation": "Centre-scoped portfolio table with search, cohort/trade/language/lane/rubric filters and sorting; pending ideas are visible without invented scores. Possible-duplicate lane and stage streaming remain pending.",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Scoped queries and quality flags; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
       "Scoped queries and quality flags",
       "Role/org/consent guards; shared contracts"
     ],
-    "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate centre review queue/lanes with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
+    "cost_exposure": "No new hosted AI calls for comparisons; deterministic API/database calculations. Existing centre PDF scoring retains the user-approved metered Groq exception (D-31).",
+    "acceptance_test": "Test centre isolation, unauthorized roles, filtered totals independent of pagination, pending scores and error/empty states.",
     "status": "partial",
     "evidence": [
       "backend/src/modules/centre/router.ts",
       "frontend/features/centre/CentreWorkspace.tsx",
       "backend/tests/centre.test.ts",
-      "frontend/features/centre/centre-workspace.module.css"
+      "frontend/features/centre/centre-workspace.module.css",
+      "backend/src/modules/centre/portfolio.ts",
+      "backend/tests/centre-portfolio.test.ts",
+      "frontend/features/centre/ComparisonDashboard.tsx",
+      "packages/contracts/schemas/domain/centre-portfolio.json"
     ]
   },
   "W-10": {
@@ -849,20 +853,24 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Bulk import: drag in files or a ZIP, choose the cohort, see per-file progress, detected language and format, and errors",
-    "implementation": "Single two-page centre PDF intake with encrypted applicant details, private original and recorded processing consent; separate non-production unsaved PDF preview; bulk/ZIP, cohort and processing progress pending",
+    "implementation": "Multi-PDF unsaved batch preview: drag/drop and multi-select, per-file progress/errors, pause-after-current/resume, retries, PDF/evidence drill-down and shared dynamic comparison. Browser-session only, up to 30 PDFs/120 MB; saved durable batch intake, ZIP and multilingual support remain pending.",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Private import service + A-01–A-12 + stage events; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
       "Private import service + A-01–A-12 + stage events",
       "Role/org/consent guards; shared contracts"
     ],
-    "cost_exposure": "Stored intake has no inference call; non-production preview invokes metered Groq twice per successful assessment (D-31). Hosting/storage and messaging costs remain separate.",
-    "acceptance_test": "Demonstrate bulk files/zip import with progress with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "api_ui_partial",
+    "cost_exposure": "Batch comparison arithmetic adds no hosted calls. Each evaluated PDF uses the existing metered, redacted Groq centre preview exception (D-31); sequential execution avoids concurrent per-account calls.",
+    "acceptance_test": "Browser-test selection, sequential processing, pause/resume, partial failures, retry, mode preservation and cited comparison; live synthetic two-PDF scoring smoke test. Existing endpoint tests deny unauthorized roles and production preview.",
+    "status": "partial",
     "evidence": [
       "backend/src/modules/centre/plan-intake.ts",
       "backend/tests/centre.test.ts",
-      "frontend/features/centre/CentreWorkspace.tsx"
+      "frontend/features/centre/CentreWorkspace.tsx",
+      "frontend/features/centre/BatchWorkspace.tsx",
+      "frontend/features/centre/ComparisonDashboard.tsx",
+      "packages/contracts/src/portfolio.ts",
+      "backend/tests/centre-portfolio.test.ts"
     ]
   },
   "W-20": {
@@ -937,49 +945,64 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Trade view: all ideas in one trade, domain benchmarks (median and spread), each idea's percentile, investment against the trade norm",
-    "implementation": "Trade benchmark comparison",
+    "implementation": "Same-rubric trade ranks, percentiles for n>=5, median and interquartile domain benchmarks; small trade/cohort groups fall back to the centre trade. Investment norms and HQ aggregate fallback remain pending.",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Same-rubric scoped aggregates; shared centre/HQ view; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
       "Same-rubric scoped aggregates; shared centre/HQ view",
       "Role/org/consent guards; shared contracts"
     ],
-    "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate trade benchmark comparison with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "cost_exposure": "No new hosted AI calls for comparisons; deterministic API/database calculations. Existing centre PDF scoring retains the user-approved metered Groq exception (D-31).",
+    "acceptance_test": "Test ties, scoped full-population ranks, small sample disclosure, rubric separation, and trade drill-down.",
+    "status": "partial",
+    "evidence": [
+      "backend/src/modules/centre/portfolio.ts",
+      "backend/tests/centre-portfolio.test.ts",
+      "frontend/features/centre/ComparisonDashboard.tsx",
+      "packages/contracts/schemas/domain/centre-portfolio.json"
+    ]
   },
   "W-25": {
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Cohort view: ranking, score and completeness distributions, trade and language mix, pathway counts, shortlist builder, export",
-    "implementation": "Cohort distributions/shortlist builder",
+    "implementation": "Centre cohort ranks, score distributions, mean completeness, pathway counts and evidence drill-down; human decisions record rank snapshots. Bulk shortlist builder/export remain pending.",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Same-rubric scoped rank/aggregate service; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
       "Same-rubric scoped rank/aggregate service",
       "Role/org/consent guards; shared contracts"
     ],
-    "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate cohort distributions/shortlist builder with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "cost_exposure": "No new hosted AI calls for comparisons; deterministic API/database calculations. Existing centre PDF scoring retains the user-approved metered Groq exception (D-31).",
+    "acceptance_test": "Compare multiple entrepreneurs; test ranks, selected-case evidence, missing scores, snapshot preservation and cross-centre denial.",
+    "status": "partial",
+    "evidence": [
+      "backend/src/modules/centre/portfolio.ts",
+      "backend/tests/centre-portfolio.test.ts",
+      "frontend/features/centre/ComparisonDashboard.tsx",
+      "packages/contracts/schemas/domain/centre-portfolio.json"
+    ]
   },
   "W-26": {
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Cross-cohort comparison: side-by-side distributions, trade × cohort heatmap, completeness by cohort, pathway mix, trends over intakes",
-    "implementation": "Cross-cohort comparison",
+    "implementation": "Centre-scoped same-rubric cohort distributions, completeness and pathway summaries and trade-by-cohort median heatmap with sample sizes. HQ reuse and longitudinal analysis remain pending.",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Same-rubric aggregates shared across centre/HQ scopes; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
       "Same-rubric aggregates shared across centre/HQ scopes",
       "Role/org/consent guards; shared contracts"
     ],
-    "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate cross-cohort comparison with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "cost_exposure": "No new hosted AI calls for comparisons; deterministic API/database calculations. Existing centre PDF scoring retains the user-approved metered Groq exception (D-31).",
+    "acceptance_test": "Test filtered chart/table agreement, same-version aggregation and sample counts; browser-check cohort and trade views.",
+    "status": "partial",
+    "evidence": [
+      "backend/src/modules/centre/portfolio.ts",
+      "backend/tests/centre-portfolio.test.ts",
+      "frontend/features/centre/ComparisonDashboard.tsx",
+      "packages/contracts/schemas/domain/centre-portfolio.json"
+    ]
   },
   "W-27": {
     "owner": "dev-3-hq-platform",
@@ -1006,17 +1029,22 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Screening quadrant: potential against completeness for a cohort, click a dot to open the card",
-    "implementation": "Potential/completeness quadrant",
+    "implementation": "Interactive portfolio quadrant for assessed centre ideas; each point opens the original/evidence/decision drawer. Low-coverage points are outlined and excluded from rankings. Published-rubric quadrant threshold integration remains pending.",
     "execution": "Next.js + API/database; local worker outputs where required",
     "local_strategy": "Code-computed A-22 values; no browser-side hosted AI key or duplicate pipeline",
     "dependencies": [
       "Code-computed A-22 values",
       "Role/org/consent guards; shared contracts"
     ],
-    "cost_exposure": "₹0 hosted AI API; hosting/storage/map/network or messaging costs tracked separately.",
-    "acceptance_test": "Demonstrate potential/completeness quadrant with loading/error/empty states; test PRD role scope, cross-org denial and permitted projection.",
-    "status": "planned",
-    "evidence": []
+    "cost_exposure": "No new hosted AI calls for comparisons; deterministic API/database calculations. Existing centre PDF scoring retains the user-approved metered Groq exception (D-31).",
+    "acceptance_test": "Browser-check quadrant drill-down, null-score exclusion and many-idea filtering; tenant scope tested at API.",
+    "status": "partial",
+    "evidence": [
+      "backend/src/modules/centre/portfolio.ts",
+      "backend/tests/centre-portfolio.test.ts",
+      "frontend/features/centre/ComparisonDashboard.tsx",
+      "packages/contracts/schemas/domain/centre-portfolio.json"
+    ]
   },
   "W-29": {
     "owner": "dev-2-centre-cohort",
@@ -1516,7 +1544,7 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "Score each domain 1 to 5 with a reason, evidence segment IDs and a confidence level. Run twice; if any domain differs by more than 1 point, flag for close review. Potential, completeness, band, quadrant and pathway are computed in code, not by the LLM",
-    "implementation": "Two-run cited provisional domain scoring; live Groq centre PDF adapter with strict schema and deterministic totals. Readiness remains unscored without cited skills/experience evidence, with an explicit reason and follow-up. Supplied English sample passes scored 80, 83 and 80/100 at 90% domain coverage; organiser accuracy and parity remain unverified.",
+    "implementation": "Two-run cited provisional domain scoring; live Groq centre PDF adapter with strict schema and deterministic totals. Readiness remains unscored without cited skills/experience evidence, with an explicit reason and follow-up. Supplied English sample passes scored 80, 83 and 80/100 at 90% domain coverage; organiser accuracy and parity remain unverified.; fixed chunk-specific prompt generation and added domain criteria/1–5 evidence anchors (edp-score-v2); calibration remains pending",
     "execution": "worker",
     "local_strategy": "User-requested D-31 exception: Groq only for redacted centre EDP domain judgements; all totals and missing-domain rules remain local code",
     "dependencies": [
@@ -1576,18 +1604,22 @@
     "owner": "dev-2-centre-cohort",
     "priority": "P0",
     "requirement": "After each evaluation, refresh trade and cohort percentiles for that rubric version",
-    "implementation": "Trade/cohort percentile refresh",
+    "implementation": "Deterministic live read-time trade/cohort ranks on the complete same-version centre population; competition ranks handle ties, percentiles withheld below five peers; comparison snapshots retained at human decision. Worker materialization/HQ aggregate fallback pending.",
     "execution": "API/database + worker",
     "local_strategy": "Deterministic ranks; no model",
     "dependencies": [
       "Stored assessments; rubric version"
     ],
-    "cost_exposure": "₹0 hosted AI API; local CPU/RAM/disk/electricity remain. Open-data calls require cache/policy compliance.",
-    "acceptance_test": "Ranks compare only the same rubric version and scoped population",
+    "cost_exposure": "No new hosted AI calls for comparisons; deterministic API/database calculations. Existing centre PDF scoring retains the user-approved metered Groq exception (D-31).",
+    "acceptance_test": "Test rank ties, missing coverage/version exclusion, search-independent benchmark populations and decision snapshots.",
     "status": "partial",
     "evidence": [
       "ai/intel/ranking.py",
-      "ai/tests/test_centre_ranking_routing.py"
+      "ai/tests/test_centre_ranking_routing.py",
+      "backend/src/modules/centre/portfolio.ts",
+      "backend/tests/centre-portfolio.test.ts",
+      "frontend/features/centre/ComparisonDashboard.tsx",
+      "packages/contracts/schemas/domain/centre-portfolio.json"
     ]
   },
   "A-26": {

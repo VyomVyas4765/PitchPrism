@@ -21,6 +21,23 @@ def scorer(prompt, schema):
 
 
 class CentreScoringTests(unittest.TestCase):
+    def test_each_chunk_gets_only_its_requested_domains_and_criteria(self):
+        import json
+        from types import SimpleNamespace
+        adapter = SimpleNamespace(max_domains_per_call=3, settings=SimpleNamespace(model='synthetic'))
+        calls = []
+        def chunked(prompt, schema):
+            payload = json.loads(prompt[prompt.index('{'):])
+            self.assertEqual(set(payload['domains']), set(payload['evidence']))
+            self.assertEqual(set(payload['domains']), set(payload['criteria']))
+            self.assertLessEqual(len(payload['domains']), 3)
+            self.assertIn('not independent verification', prompt)
+            calls.append(payload['domains'])
+            return scorer(prompt, schema)
+        result = evaluate(sample(), adapter=adapter, scorer=chunked)
+        self.assertEqual(len(calls), 6)
+        self.assertEqual(result['potential'], 80)
+
     def test_full_evidence_scores_eighty_and_retains_citations(self):
         idea = sample()
         result = evaluate(idea, scorer=scorer)

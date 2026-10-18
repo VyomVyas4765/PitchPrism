@@ -1,8 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { api } from '../../lib/api';
+import type { PortfolioRank } from '@pitchprism/contracts';
 import styles from './centre-workspace.module.css';
+import ComparisonDashboard from './ComparisonDashboard';
+import BatchWorkspace from './BatchWorkspace';
 
 type QueueItem = { submissionId: string; title: string; state: string; status: string; potential: number | null;
   completeness: number | null; band: string | null; updatedAt: string; reviewAvailable: boolean };
@@ -17,12 +20,12 @@ type Card = { submissionId: string; state: string; input: { segments: Segment[] 
   financialChecks: Array<{ field: string; written: string; expected: string; formula: string; evidence: string[] }>;
   followUps: Array<{ field: string; questionEn: string; reason: string }>;
   planDraft: { sections: Array<{ heading: string; textEn: string; evidence: string[] }> } | null;
-  reason: string | null; decision: { decision: string; reason?: string } | null;
+  reason: string | null; decision: { decision: string; reason?: string; comparisonSnapshot?: { rubricVersion: string; tradeRank: PortfolioRank | null; cohortRank: PortfolioRank | null } } | null;
   feedback: { textEn: string; status: string } | null };
-type Plan = { submissionId: string; title: string; status: string; processingConsent: boolean; applicant: { name: string | null; phone: string | null };
+type Plan = { submissionId: string; title: string; status: string; synthetic?: boolean; processingConsent: boolean; applicant: { name: string | null; phone: string | null };
   details: { district: string | null; trade: string | null; language: string | null; format: string | null };
   document: { id: string; bytes: number; pages: number; sha256: string; url: string } | null };
-type PreviewResult = { input: Card['input']; assessment: Pick<Card, 'evaluation' | 'quality' | 'financialChecks' | 'followUps' | 'planDraft' | 'reason'> & { status: 'assessed' | 'pending_model' }; document: { pages: number; bytes: number }; saved: false };
+export type PreviewResult = { input: Card['input']; assessment: Pick<Card, 'evaluation' | 'quality' | 'financialChecks' | 'followUps' | 'planDraft' | 'reason'> & { status: 'assessed' | 'pending_model' }; document: { pages: number; bytes: number }; saved: false };
 
 const rubric = [
   ['clarity', 'Clarity', '#6f55a5'], ['customer_need', 'Customer need', '#435eab'],
@@ -40,15 +43,15 @@ const consentNoticeVersion = 'consent-notice-2026-10-17';
 const demoPreviewEnabled = process.env.NODE_ENV !== 'production';
 
 export default function CentreWorkspace() {
+  const [mode, setMode] = useState<'portfolio' | 'batch'>('portfolio');
+  const [revision, setRevision] = useState(0);
+  const [intakeOptions, setIntakeOptions] = useState<{cohorts: Array<{id: string; label: string}>; trades: Array<{key: string; label: string}>}>({cohorts: [], trades: []});
   const [items, setItems] = useState<QueueItem[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [card, setCard] = useState<Card | null>(null);
   const [evidence, setEvidence] = useState<string | null>(null);
   const [sourcePage, setSourcePage] = useState<number | null>(null);
-  const [lane, setLane] = useState('all');
-  const [search, setSearch] = useState('');
-  const [sort, setSort] = useState('updated');
   const [tab, setTab] = useState<'assessment' | 'document' | 'notes'>('assessment');
   const [showUpload, setShowUpload] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -62,15 +65,17 @@ export default function CentreWorkspace() {
   const [consentConfirmed, setConsentConfirmed] = useState(false);
   const previewFile = useRef<HTMLInputElement>(null);
   const previewUrl = useRef<string | null>(null);
+  const openRequest = useRef(0);
 
   useEffect(() => () => { if (previewUrl.current) URL.revokeObjectURL(previewUrl.current); }, []);
 
   const refresh = useCallback(async () => {
     const result = await api<{ items: QueueItem[] }>('/centre/queue');
-    setItems(result.items);
+    setItems(result.items); setRevision(value => value + 1);
     return result.items;
   }, []);
-  const open = useCallback(async (item: QueueItem) => {
+  const open = useCallback(async (item: Pick<QueueItem, 'submissionId' | 'reviewAvailable'>) => {
+    const request = ++openRequest.current;
     if (previewUrl.current) { URL.revokeObjectURL(previewUrl.current); previewUrl.current = null; }
     setSelected(item.submissionId); setPlan(null); setCard(null); setEvidence(null); setSourcePage(null); setError(''); setTab('assessment');
     setConsentFile(null); setConsentConfirmed(false);
@@ -79,16 +84,17 @@ export default function CentreWorkspace() {
         api<Plan>(`/centre/submissions/${item.submissionId}/plan`),
         item.reviewAvailable ? api<Card>(`/centre/submissions/${item.submissionId}/card`) : Promise.resolve(null),
       ]);
-      setPlan(planResult); setCard(cardResult); setFeedback(cardResult?.feedback?.textEn ?? '');
-    } catch (err) { setError(err instanceof Error ? err.message : 'Could not open the assessment.'); }
+      if (request === openRequest.current) { setPlan(planResult); setCard(cardResult); setFeedback(cardResult?.feedback?.textEn ?? ''); }
+    } catch (err) { if (request === openRequest.current) setError(err instanceof Error ? err.message : 'Could not open the assessment.'); }
   }, []);
   useEffect(() => {
     let active = true;
-    refresh().then(rows => { if (active && rows[0]) void open(rows[0]); })
+    refresh()
       .catch(err => { if (active) setError(err instanceof Error ? err.message : 'Could not load the queue.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [refresh, open]);
+  }, [refresh]);
+  useEffect(() => { void api<typeof intakeOptions>('/centre/intake-options').then(setIntakeOptions).catch(() => {}); }, []);
   useEffect(() => {
     if (!detailOpen && !showUpload) return;
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -104,6 +110,9 @@ export default function CentreWorkspace() {
     const form = event.currentTarget;
     const fields = new FormData(form);
     fields.set('plan', file);
+    if (!fields.get('cohortId')) fields.delete('cohortId');
+    if (!fields.get('tradeKey')) fields.delete('tradeKey');
+    if (!fields.get('phone')) fields.delete('phone');
     setBusy(true); setError('');
     try {
       const response = await fetch('/api/v1/centre/plans', { method: 'POST', credentials: 'same-origin', body: fields });
@@ -112,7 +121,7 @@ export default function CentreWorkspace() {
       const rows = await refresh();
       const item = rows.find(row => row.submissionId === result.submissionId);
       if (item) await open(item);
-      setShowUpload(false); setFile(null); form.reset();
+      setShowUpload(false); setDetailOpen(true); setFile(null); form.reset();
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not receive the plan.'); }
     finally { setBusy(false); }
   }
@@ -120,6 +129,7 @@ export default function CentreWorkspace() {
     const pdf = event.target.files?.[0];
     event.target.value = '';
     if (!pdf) return;
+    ++openRequest.current;
     if (pdf.size > 12 * 1024 * 1024) { setError('The PDF must be 12 MB or smaller.'); return; }
     const fields = new FormData();
     fields.set('plan', pdf);
@@ -128,26 +138,29 @@ export default function CentreWorkspace() {
       const response = await fetch('/api/v1/centre/evaluate-preview', { method: 'POST', credentials: 'same-origin', body: fields });
       const result = await response.json() as PreviewResult & { error?: string };
       if (!response.ok) throw new Error(result.error ?? 'Could not evaluate this PDF.');
-      const evaluated = result.assessment.evaluation as (NonNullable<Card['evaluation']> & {
-        financialChecks?: Card['financialChecks']; followUps?: Card['followUps']; planDraft?: Card['planDraft'];
-      }) | null;
       if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
       previewUrl.current = URL.createObjectURL(pdf);
-      setSelected('preview'); setDetailOpen(false); setTab('assessment'); setEvidence(null); setSourcePage(null);
-      setPlan({ submissionId: 'preview', title: pdf.name.replace(/\.pdf$/i, ''), status: 'PREVIEW', processingConsent: false,
-        applicant: { name: null, phone: null }, details: { district: null, trade: null, language: 'en', format: 'pdf' },
-        document: { id: 'preview', bytes: result.document.bytes, pages: result.document.pages, sha256: '', url: previewUrl.current } });
-      setCard({ submissionId: 'preview', state: result.assessment.status === 'assessed' ? 'READY' : 'PENDING_MODEL', input: result.input,
-        evaluation: evaluated ?? null, quality: result.assessment.quality ?? null,
-        financialChecks: result.assessment.financialChecks ?? evaluated?.financialChecks ?? [],
-        followUps: result.assessment.followUps ?? evaluated?.followUps ?? [],
-        planDraft: result.assessment.planDraft ?? evaluated?.planDraft ?? null,
-        reason: result.assessment.reason ?? null, decision: null, feedback: null });
+      openPreview(result, pdf, previewUrl.current);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not evaluate this PDF.';
       setError(`${message} Selected file: ${pdf.name.slice(0, 120)} (${pdf.size} bytes).`);
     }
     finally { setBusy(false); }
+  }
+  function openPreview(result: PreviewResult, pdf: File, url: string) {
+    ++openRequest.current;
+    const evaluated = result.assessment.evaluation as (NonNullable<Card['evaluation']> & {
+      financialChecks?: Card['financialChecks']; followUps?: Card['followUps']; planDraft?: Card['planDraft'];
+    }) | null;
+    setSelected('preview'); setDetailOpen(true); setTab('assessment'); setEvidence(null); setSourcePage(null);
+    setPlan({ submissionId: 'preview', title: pdf.name.replace(/\.pdf$/i, ''), status: 'PREVIEW', processingConsent: false,
+      applicant: { name: null, phone: null }, details: { district: null, trade: null, language: 'en', format: 'pdf' },
+      document: { id: 'preview', bytes: result.document.bytes, pages: result.document.pages, sha256: '', url } });
+    setCard({ submissionId: 'preview', state: result.assessment.status === 'assessed' ? 'READY' : 'PENDING_MODEL', input: result.input,
+      evaluation: evaluated ?? null, quality: result.assessment.quality ?? null,
+      financialChecks: result.assessment.financialChecks ?? evaluated?.financialChecks ?? [],
+      followUps: result.assessment.followUps ?? evaluated?.followUps ?? [], planDraft: result.assessment.planDraft ?? evaluated?.planDraft ?? null,
+      reason: result.assessment.reason ?? null, decision: null, feedback: null });
   }
   async function decide(decision: 'shortlist' | 'not_yet' | 'more_info') {
     if (!selected || selected === 'preview' || !card) return;
@@ -201,19 +214,10 @@ export default function CentreWorkspace() {
     finally { setBusy(false); }
   }
 
-  const visible = useMemo(() => items.filter(item => (lane === 'all' || item.state === lane) &&
-    item.title.toLowerCase().includes(search.trim().toLowerCase())).sort((a, b) => {
-      if (sort === 'potential') return (b.potential ?? -1) - (a.potential ?? -1);
-      if (sort === 'completeness') return (b.completeness ?? -1) - (a.completeness ?? -1);
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    }), [items, lane, search, sort]);
   const selectedItem = items.find(item => item.submissionId === selected);
   const evaluation = card?.evaluation;
   const cited = card?.input.segments.find(segment => segment.segId === evidence);
   const flags = evaluation?.flags ?? card?.quality?.flags ?? [];
-  const scoredCount = items.filter(item => item.potential !== null).length;
-  const waitingCount = items.filter(item => !item.reviewAvailable).length;
-  const reviewCount = items.filter(item => item.state === 'NEEDS_ATTENTION').length;
   const lookup = new Map(evaluation?.domains.map(domain => [domain.key, domain]) ?? []);
   const segmentsById = new Map(card?.input.segments.map(segment => [segment.segId, segment]) ?? []);
   const documentUrl = plan?.document?.url;
@@ -222,98 +226,27 @@ export default function CentreWorkspace() {
   return <section className={styles.desk} aria-label="Centre evaluator dashboard">
     <header className={styles.overviewHeader}>
       <div><span className={styles.kicker}>PITCHPRISM / CENTRE ASSESSOR</span><h2>Evaluator desk<span className={styles.liveDot} aria-label="Workspace active" /></h2>
-        <p>Everything you need for the first pass, in one place.</p></div>
+        <p>Compare incoming ideas, inspect evidence, and record the next decision.</p></div>
       <div className={styles.overviewActions}><button className={styles.ghostButton} onClick={() => void refresh().catch(err => setError(String(err)))}>↻ Refresh</button>
         <button className={styles.ghostButton} onClick={() => setShowUpload(true)}>+ Receive a plan</button>
         {demoPreviewEnabled && <><button className={styles.receiveButton} disabled={busy} onClick={() => previewFile.current?.click()}>{busy ? 'Evaluating PDF…' : '↑ Evaluate PDF'}</button>
-        <input ref={previewFile} type="file" accept="application/pdf,.pdf" hidden aria-label="Choose a two-page PDF for demo evaluation" onChange={event => void evaluatePreview(event)} /></>}</div>
+        <input ref={previewFile} type="file" accept="application/pdf,.pdf" hidden style={{ display: 'none' }} aria-label="Choose a two-page PDF for demo evaluation" onChange={event => void evaluatePreview(event)} /></>}</div>
     </header>
-    <div className={styles.miniMetrics} aria-label="Queue summary">
-      <div><strong>{items.length.toString().padStart(2, '0')}</strong><span>Plans in desk</span></div>
-      <div><strong>{waitingCount.toString().padStart(2, '0')}</strong><span>Awaiting evaluation</span></div>
-      <div><strong>{scoredCount.toString().padStart(2, '0')}</strong><span>Scored</span></div>
-      <div><strong>{reviewCount.toString().padStart(2, '0')}</strong><span>Needs attention</span></div>
-    </div>
     {error && <div className={styles.error} role="alert">{error}<button onClick={() => setError('')} aria-label="Dismiss error">×</button></div>}
-    {busy && <div className={styles.previewBanner} role="status">Reading the two-page PDF and validating evidence-linked scores. This can take up to three minutes.</div>}
-    {selected === 'preview' && <div className={styles.previewBanner} role="status">Demo preview · The PDF and result are only in this browser session. The redacted answers were evaluated with Groq. Use “Receive a plan” for the saved, consent-gated workflow.</div>}
-
-    <div className={styles.overviewGrid}>
-      <aside className={styles.queue} aria-label="Review queue">
-        <div className={styles.queueTools}>
-          <label className={styles.searchLabel}><span className="sr-only">Search plans</span><input type="search" placeholder="Search plans…" value={search} onChange={event => setSearch(event.target.value)} /></label>
-          <div className={styles.filters}><label>Lane<select value={lane} onChange={event => setLane(event.target.value)}>
-            <option value="all">All plans</option><option value="READY">Ready</option><option value="NEEDS_ATTENTION">Needs attention</option>
-            <option value="UNASSESSABLE">Unassessable</option><option value="PENDING_MODEL">Awaiting evaluation</option>
-          </select></label><label>Sort<select value={sort} onChange={event => setSort(event.target.value)}>
-            <option value="updated">Latest</option><option value="potential">Potential</option><option value="completeness">Completeness</option>
-          </select></label></div>
-        </div>
-        <div className={styles.queueRows}>{loading ? <p className={styles.queueEmpty}>Loading plans…</p> : visible.length === 0
-          ? <div className={styles.queueEmpty}><strong>No plans in this view.</strong><p>{demoPreviewEnabled ? 'Choose “Evaluate PDF” to see an immediate demo result.' : 'Receive a two-page PDF to start the centre review.'}</p></div>
-          : visible.map(item => <button key={item.submissionId} className={`${styles.queueRow} ${selected === item.submissionId ? styles.selected : ''}`}
-            onClick={() => void open(item)} aria-pressed={selected === item.submissionId}>
-            <span className={styles.rowTop}><span className={styles.rowId}>PLAN / {item.submissionId.slice(-6).toUpperCase()}</span><span>{date(item.updatedAt)}</span></span>
-            <strong>{item.title}</strong><span className={styles.rowBottom}><span className={`${styles.statusPill} ${item.reviewAvailable ? styles.readyPill : ''}`}>{item.reviewAvailable ? nice(item.state) : 'Awaiting evaluation'}</span>
-              <span className={styles.rowScore}>{item.potential === null ? 'Score —' : `${item.potential}/100`} ↗</span></span>
-          </button>)}
-        </div>
-        <div className={styles.queueFooter}>PRIVATE CENTRE RECORDS <span>↗</span></div>
-      </aside>
-
-      <main className={styles.overviewMain} aria-label="Selected plan overview">
-        {!selected ? <div className={styles.overviewEmpty}><span className={styles.cardKicker}>START HERE</span><h3>Evaluate a business idea.</h3><p>{demoPreviewEnabled ? 'Choose a supported two-page English digital business idea PDF. Its scores, chart, and original will appear here together.' : 'Receive a plan to begin the consent-gated centre review.'}</p>{demoPreviewEnabled && <button className={styles.receiveButton} disabled={busy} onClick={() => previewFile.current?.click()}>↑ Evaluate PDF</button>}</div>
-          : !plan ? <div className={styles.overviewEmpty} role="status">Opening the selected plan…</div> : <>
-          <div className={styles.overviewTitle}><div><span className={styles.cardKicker}>{selected === 'preview' ? 'UNSAVED DEMO PREVIEW' : `SELECTED PLAN / ${selected.slice(-6).toUpperCase()}`}</span>
-            <h3>{plan.title}</h3><p>{plan.applicant.name ?? 'Applicant pending'} · {plan.details.trade ?? 'Trade pending'} · {plan.details.district ?? 'District pending'}</p></div>
-            <span className={`${styles.overviewStatus} ${evaluation ? styles.scoredStatus : ''}`}>{evaluation ? evaluation.band : 'Awaiting evaluation'}</span></div>
-          <div className={styles.overviewScoreArea}>
-            <section className={styles.overviewPotential} aria-label="Potential score"><span className={styles.cardKicker}>POTENTIAL</span>
-              <div className={styles.overviewGauge} style={{ '--score': `${evaluation?.potential ?? 0}%` } as React.CSSProperties}>
-                <div><strong>{evaluation?.potential ?? '—'}</strong><small>/ 100</small></div></div>
-              <p>{evaluation ? 'Evidence-linked score' : 'Scoring pending'}</p>
-              <small>{evaluation ? `Rubric ${evaluation.rubricVersion}` : 'No assessment has been generated'}</small></section>
-            <section className={styles.overviewChart} aria-label="Nine assessment domains"><div className={styles.overviewCardTop}><span className={styles.cardKicker}>ASSESSMENT DOMAINS</span><button onClick={() => { setTab('assessment'); setDetailOpen(true); }}>See evidence ↗</button></div>
-              {rubric.map(([key, name, color]) => { const domain = lookup.get(key); const value = key === 'completeness'
-                ? evaluation?.completeness ?? card?.quality?.completeness ?? null : domain?.score ?? null;
-                const percent = value === null ? 0 : key === 'completeness' ? value : value * 20;
-                return <div className={styles.overviewBar} key={key}><span><i style={{ backgroundColor: color }} />{name}</span><div><i style={{ width: `${percent}%`, backgroundColor: color }} /></div><strong>{value === null ? evaluation && key !== 'completeness' ? 'Not assessed' : '—' : key === 'completeness' ? `${value}%` : `${value}/5`}</strong></div>;
-              })}
-              {evaluation && lookup.get('entrepreneur_readiness')?.score === null && <p className={styles.readinessNote}>Readiness needs evidence of skills, experience, or action already taken. Ask the applicant before scoring it.</p>}</section>
-          </div>
-          <div className={styles.overviewBottom}>
-            <section className={styles.overviewQuadrant}><div className={styles.overviewCardTop}><span className={styles.cardKicker}>SCREENING QUADRANT</span><span>Potential ↑ &nbsp; Completeness →</span></div>
-              <div className={styles.miniQuadrant}><div>Ask for more<br />information</div><div>Deeper evaluation<br />or funding</div><div>Re-submit<br />with help</div><div>Mentoring<br />or skilling</div>
-                {evaluation && evaluation.potential !== null && <i className={styles.quadrantPoint} style={{ left: `${evaluation.completeness}%`, bottom: `${evaluation.potential}%` }} />}</div>
-              <p>{evaluation ? `Suggested pathway: ${evaluation.pathway}` : 'Position appears after a valid assessment.'}</p></section>
-            <section className={styles.overviewNext}><span className={styles.cardKicker}>NEXT STEP</span><div className={styles.nextIcon}>{evaluation ? '✓' : '◷'}</div>
-              <h4>{evaluation ? 'Review the evidence' : selected === 'preview' ? 'Score unavailable' : 'Ready for evaluation'}</h4><p>{evaluation ? selected === 'preview' ? 'Inspect the cited claims in this unsaved demo preview.' : 'Check the cited claims before making a human decision.' : selected === 'preview' ? card?.reason ?? 'The PDF could not be scored safely.' : plan?.processingConsent ? 'The original is ready for evidence-linked scoring.' : 'Processing consent must be recorded before the plan can be scored.'}</p>
-              {evaluation ? <button onClick={() => { setTab('assessment'); setDetailOpen(true); }}>{selected === 'preview' ? 'Inspect score evidence →' : 'Open full review →'}</button>
-                : selected === 'preview' ? <button onClick={() => previewFile.current?.click()}>Try another PDF →</button>
-                : plan.processingConsent ? <button disabled={busy || !plan.document || !!card?.decision} onClick={() => void evaluatePdf()}>{busy ? 'Evaluating…' : 'Evaluate plan →'}</button>
-                  : <button onClick={() => { setTab('notes'); setDetailOpen(true); }}>Record consent →</button>}</section>
-          </div>
-        </>}
-      </main>
-
-      <aside className={styles.overviewSide} aria-label="Original and applicant details">
-        <section className={styles.sideDocument}><div className={styles.sideHeading}><span className={styles.cardKicker}>ORIGINAL PITCH PLAN</span><span>{plan?.document ? `${plan.document.pages} PAGES` : 'PENDING'}</span></div>
-          {plan?.document ? <><div className={styles.sidePreview}><iframe src={`${plan.document.url}#toolbar=0&navpanes=0`} title="Preview of original pitch plan" /></div>
-            <button onClick={() => { setTab('document'); setDetailOpen(true); }}>Open document ↗</button></>
-            : <div className={styles.sidePlaceholder}><span>▤</span><p>{selected ? 'No original PDF is linked to this record.' : 'Choose a plan to preview its original.'}</p></div>}</section>
-        <section className={styles.sideFacts}><span className={styles.cardKicker}>ENTREPRENEUR & CONTEXT</span>
-          <dl><div><dt>Entrepreneur</dt><dd>{plan?.applicant.name ?? '—'}</dd></div><div><dt>Trade</dt><dd>{plan?.details.trade ?? '—'}</dd></div>
-            <div><dt>District</dt><dd>{plan?.details.district ?? '—'}</dd></div><div><dt>Language</dt><dd>{languageName[plan?.details.language ?? ''] ?? '—'}</dd></div></dl>
-          {plan && <button onClick={() => { setTab('notes'); setDetailOpen(true); }}>All details & notes ↗</button>}</section>
-        <section className={styles.sideSignal}><span className={styles.cardKicker}>REVIEW SIGNAL</span><strong>{evaluation ? `${flags.length} quality ${flags.length === 1 ? 'flag' : 'flags'}` : 'Awaiting evidence'}</strong>
-          <p>{evaluation ? `${evaluation.coverage}% evidence coverage · ${selected === 'preview' ? 'preview only' : `human decision ${card?.decision ? 'recorded' : 'pending'}`}` : card?.reason ?? 'Missing information is not treated as a weak idea.'}</p></section>
-      </aside>
+    {busy && <div className={styles.previewBanner} role="status">Processing this plan and checking its cited evidence. The comparison updates when the saved assessment finishes.</div>}
+    {selected === 'preview' && <div className={styles.previewBanner}>Unsaved PDF preview · excluded from portfolio rankings. <button onClick={() => setDetailOpen(true)}>Open preview ↗</button></div>}
+    <div className={styles.modeTabs} role="tablist" aria-label="Evaluator mode">
+      <button role="tab" aria-selected={mode === 'portfolio'} onClick={() => { setMode('portfolio'); setDetailOpen(false); }}>Demo & saved portfolio</button>
+      <button role="tab" aria-selected={mode === 'batch'} onClick={() => { setMode('batch'); setDetailOpen(false); }}>Batch upload & evaluate</button>
     </div>
+    <div style={{ display: mode === 'portfolio' ? 'block' : 'none' }}><ComparisonDashboard revision={revision} onOpen={item => { void open(item); setDetailOpen(true); }} /></div>
+    <div style={{ display: mode === 'batch' ? 'block' : 'none' }}><BatchWorkspace enabled={demoPreviewEnabled} onDiscard={url => { if (selected === 'preview' && (!url || plan?.document?.url === url)) { setSelected(null); setPlan(null); setCard(null); setDetailOpen(false); } }} onOpen={entry => openPreview(entry.result, entry.file, entry.url)} /></div>
 
     {detailOpen && <div className={styles.reviewBackdrop} role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setDetailOpen(false); }}>
       <div className={styles.reviewDrawer} role="dialog" aria-modal="true" aria-label="Full plan review">
         <div className={styles.reviewToolbar}><span>FULL PLAN REVIEW</span><button onClick={() => setDetailOpen(false)} aria-label="Close full review">×</button></div>
       <article className={styles.casePanel}>
+        {plan?.synthetic && <div className={styles.previewBanner}>Synthetic demo case · existing fixture scores are illustrative assessments, not model accuracy results. Real uploads still require processing consent before inference.</div>}
         {!selected ? <div className={styles.selectEmpty}><span>01 / THE IDEA CARD</span><h3>Select a plan to begin.</h3><p>The original document, assessment domains, and decision path will appear here.</p></div>
           : !plan ? <div className={styles.selectEmpty} role="status">Opening plan…</div> : <>
           <div className={styles.caseHero}>
@@ -410,7 +343,8 @@ export default function CentreWorkspace() {
               <ol>{card.followUps.map(question => <li key={question.field}>{question.questionEn}</li>)}</ol></section>}
             {card?.planDraft && <section><span className={styles.cardKicker}>SUMMARY PLAN DRAFT</span><h4>For entrepreneur confirmation</h4>
               {card.planDraft.sections.map(section => <p key={section.heading}><strong>{section.heading}</strong><br />{section.textEn}</p>)}</section>}
-            {card?.decision && <section className={styles.savedDecision}><strong>Human decision: {nice(card.decision.decision)}</strong><p>{card.decision.reason}</p></section>}
+            {card?.decision && <section className={styles.savedDecision}><strong>Human decision: {nice(card.decision.decision)}</strong><p>{card.decision.reason}</p>
+              {card.decision.comparisonSnapshot && <p>Position when decided ({card.decision.comparisonSnapshot.rubricVersion}): {card.decision.comparisonSnapshot.tradeRank ? `trade rank ${card.decision.comparisonSnapshot.tradeRank.rank} of ${card.decision.comparisonSnapshot.tradeRank.of}` : 'trade unranked'} · {card.decision.comparisonSnapshot.cohortRank ? `cohort rank ${card.decision.comparisonSnapshot.cohortRank.rank} of ${card.decision.comparisonSnapshot.cohortRank.of}` : 'cohort unranked'}. The portfolio shows current ranks.</p>}</section>}
             {selected !== 'preview' && evaluation && !card?.decision && card?.state !== 'UNASSESSABLE' && <section><span className={styles.cardKicker}>HUMAN DECISION</span><h4>Make the final call</h4>
               <label htmlFor="centre-reason">Reason for an override</label><textarea id="centre-reason" value={reason} onChange={event => setReason(event.target.value)} maxLength={1000} />
               <div className={styles.decisionActions}><button disabled={busy} onClick={() => void decide('shortlist')}>Shortlist</button>
@@ -435,6 +369,8 @@ export default function CentreWorkspace() {
           <label>Plan or business title<input name="title" required maxLength={160} placeholder="e.g. Neighbourhood tailoring studio" /></label>
           <label>Entrepreneur name<input name="applicantName" required maxLength={100} placeholder="Name on the plan" /></label>
           <label>Trade or business type<input name="trade" required maxLength={80} placeholder="e.g. Tailoring" /></label>
+          <label>Cohort<select name="cohortId" defaultValue=""><option value="">Unassigned</option>{intakeOptions.cohorts.map(cohort => <option key={cohort.id} value={cohort.id}>{cohort.label}</option>)}</select></label>
+          <label>Comparison trade<select name="tradeKey" defaultValue=""><option value="">Unclassified</option>{intakeOptions.trades.map(trade => <option key={trade.key} value={trade.key}>{trade.label}</option>)}</select></label>
           <label>District<input name="district" required maxLength={80} placeholder="e.g. Pune" /></label>
           <label>Plan language<select name="language" defaultValue="en">{Object.entries(languageName).map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
           <label>Phone (optional)<input name="phone" inputMode="tel" placeholder="Applicant contact" /></label>

@@ -37,6 +37,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _busy = false;
   bool _sending = false;
   bool _downloading = false;
+  bool _replying = false;
+  String? _slotChoice;
   bool _readAloud = true;
   Recorder? _recorder;
   bool _loadedOnce = false;
@@ -91,6 +93,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     if (_state == 'complete') _say('plan-ready', ctx.t('chatPlanReady'), ctx.language);
     if (_state == 'submitted') _say('submitted', ctx.t('chatSubmitted'), ctx.language);
+    if (_state == 'decided') _say('decided-${_outcome?['decision']}', ctx.t(_outcomeTitleKey), ctx.language);
     if (_state == 'failed') _say('failed-${_view?['round']}', ctx.t('chatFailed'), ctx.language);
   }
 
@@ -121,6 +124,8 @@ class _ChatScreenState extends State<ChatScreen> {
     _poll?.cancel();
     // While the AI reads a reply (a voice note or a PDF can take a minute), check back for its next message.
     if (_state == 'reading' || _state == 'evaluating') _poll = Timer(widget.pollEvery, _load);
+    // Once sent, keep checking (less often) so the evaluator's decision appears without reopening the screen.
+    if (_state == 'submitted' || (_state == 'decided' && _interview?['status'] == 'awaiting_choice')) _poll = Timer(widget.pollEvery * 4, _load);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
     });
@@ -275,6 +280,33 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Map<String, dynamic>? get _outcome => _view?['outcome'] as Map<String, dynamic>?;
+  Map<String, dynamic>? get _interview => _outcome?['interview'] as Map<String, dynamic>?;
+  String get _outcomeTitleKey => switch (_outcome?['decision']) {
+    'shortlisted' => 'outcomeShortlistedTitle', 'not_selected' => 'outcomeNotSelectedTitle', _ => 'outcomeMoreInfoTitle' };
+
+  /// Shortlist reply: one of the offered interview slots, or a request for other times.
+  Future<void> _replyInterview(Map<String, dynamic> body) async {
+    if (_replying || _pitchId == null) return;
+    setState(() => _replying = true);
+    try {
+      _show(await api.request('/pitches/$_pitchId/interview', body: body));
+    } on ApiException catch (error) {
+      if (mounted) showMessage(context, error.message);
+    } catch (_) {
+      if (mounted) showMessage(context, ctx.t('offline'));
+    } finally {
+      if (mounted) setState(() => _replying = false);
+    }
+  }
+
+  String _slotLabel(Map<String, dynamic> slot) {
+    final at = DateTime.parse(slot['at'] as String).toLocal();
+    final l = MaterialLocalizations.of(context);
+    final mode = ctx.t(switch (slot['mode']) { 'phone' => 'outcomeModePhone', 'video' => 'outcomeModeVideo', _ => 'outcomeModeInPerson' });
+    return '${l.formatFullDate(at)}, ${l.formatTimeOfDay(TimeOfDay.fromDateTime(at))} · $mode';
+  }
+
   /// The plan is built: send it to the evaluator, whose pipeline then scores it.
   Future<void> _submitToEvaluator() async {
     if (_sending || _pitchId == null) return;
@@ -308,12 +340,13 @@ class _ChatScreenState extends State<ChatScreen> {
             : _user(message),
       if (_state == 'reading' || _busy) _reading(),
       if (_state == 'complete') _assistant(ctx.t('chatPlanReady'), ctx.language, key: const Key('chat-plan-ready')),
-      if (['complete', 'evaluating', 'submitted'].contains(_state) && _view?['brief'] is List)
+      if (['complete', 'evaluating', 'submitted', 'decided'].contains(_state) && _view?['brief'] is List)
         _brief((_view!['brief'] as List).cast<Map<String, dynamic>>()),
-      if (['complete', 'evaluating', 'submitted'].contains(_state)) _downloadCard(),
+      if (['complete', 'evaluating', 'submitted', 'decided'].contains(_state)) _downloadCard(),
       if (_state == 'complete') _submitCard(),
       if (_state == 'evaluating') _evaluating(),
       if (_state == 'submitted') _assistant(ctx.t('chatSubmitted'), ctx.language, key: const Key('chat-submitted')),
+      if (_state == 'decided') _outcomeCard(),
       if (_state == 'failed' && !_busy) _failed(),
     ];
     return Scaffold(
@@ -337,7 +370,7 @@ class _ChatScreenState extends State<ChatScreen> {
             trailing: TextButton(onPressed: _pitchId == null ? _loadCentres : _load, child: Text(ctx.t('retry'))),
           )),
         Expanded(child: ListView(controller: _scroll, padding: const EdgeInsets.all(12), children: items)),
-        if (!['complete', 'evaluating', 'submitted'].contains(_state)) _composer(theme),
+        if (!['complete', 'evaluating', 'submitted', 'decided'].contains(_state)) _composer(theme),
       ])),
     );
   }
@@ -435,6 +468,82 @@ class _ChatScreenState extends State<ChatScreen> {
     const SizedBox(width: 12),
     Flexible(child: Semantics(liveRegion: true, child: Text(ctx.t(_busy ? 'chatSending' : 'chatReading')))),
   ]));
+
+  /// The evaluator's decision: shortlisted (pick an interview time), not selected (their review), or more information.
+  Widget _outcomeCard() {
+    final theme = Theme.of(context);
+    final outcome = _outcome!;
+    final decision = outcome['decision'] as String;
+    final message = outcome['message'] as String?;
+    final interview = _interview;
+    final slots = ((interview?['slots'] as List?) ?? const []).cast<Map<String, dynamic>>();
+    final chosen = slots.where((slot) => slot['id'] == interview?['chosenSlotId']).firstOrNull;
+    final (icon, colour) = switch (decision) {
+      'shortlisted' => (Icons.celebration, theme.colorScheme.primaryContainer),
+      'not_selected' => (Icons.info_outline, theme.colorScheme.surfaceContainerHighest),
+      _ => (Icons.help_outline, theme.colorScheme.tertiaryContainer),
+    };
+    return Card(key: Key('chat-outcome-$decision'), color: colour, margin: const EdgeInsets.symmetric(vertical: 8), child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(icon, size: 32),
+          const SizedBox(width: 12),
+          Expanded(child: Text(ctx.t(_outcomeTitleKey), style: theme.textTheme.titleLarge)),
+          ListenButton(context_: ctx, text: [ctx.t(_outcomeTitleKey), ?message].join('. ')),
+        ]),
+        if (message != null) ...[
+          const SizedBox(height: 12),
+          Text(ctx.t('outcomeEvaluatorMessage'), style: theme.textTheme.labelLarge),
+          const SizedBox(height: 4),
+          Text(message, key: const Key('chat-outcome-message'), style: theme.textTheme.bodyLarge),
+          if (ctx.language != 'en') Padding(padding: const EdgeInsets.only(top: 4),
+            child: Text(ctx.t('chatShownInEnglish'), style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic))),
+        ],
+        if (decision == 'not_selected') Padding(padding: const EdgeInsets.only(top: 12), child: Text(ctx.t('outcomeKeepGoing'))),
+        if (decision == 'shortlisted' && interview != null) ...[
+          const Divider(height: 28),
+          if (chosen != null) ...[
+            Text(ctx.t('outcomeInterviewConfirmed'), style: theme.textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text(_slotLabel(chosen), key: const Key('chat-interview-confirmed'), style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+            Text(chosen['details'] as String? ?? ''),
+          ] else if (interview['status'] == 'other_times_requested')
+            Text(ctx.t('outcomeOtherTimesSent'), key: const Key('chat-interview-other-times'))
+          else ...[
+            Text(ctx.t('outcomeNextInterview'), style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            RadioGroup<String>(
+              groupValue: _slotChoice,
+              onChanged: (value) => setState(() => _slotChoice = value),
+              child: Column(children: [
+                for (final slot in slots)
+                  RadioListTile<String>(
+                    key: Key('chat-slot-${slot['id']}'),
+                    contentPadding: EdgeInsets.zero,
+                    value: slot['id'] as String,
+                    title: Text(_slotLabel(slot)),
+                    subtitle: Text(slot['details'] as String? ?? ''),
+                  ),
+              ]),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              key: const Key('chat-slot-confirm'),
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              onPressed: _slotChoice == null || _replying ? null : () => _replyInterview({'slotId': _slotChoice}),
+              child: Text(ctx.t('outcomeConfirmSlot')),
+            ),
+            TextButton(
+              key: const Key('chat-slot-other'),
+              onPressed: _replying ? null : () => _replyInterview({'requestOtherTimes': true}),
+              child: Text(ctx.t('outcomeOtherTimes')),
+            ),
+          ],
+        ],
+      ]),
+    ));
+  }
 
   Widget _downloadCard() => Padding(padding: const EdgeInsets.only(top: 8), child: OutlinedButton.icon(
     key: const Key('chat-download-brief'),

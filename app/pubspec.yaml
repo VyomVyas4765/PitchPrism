@@ -43,6 +43,8 @@ dependencies:
   crypto: ^3.0.7
   just_audio: ^0.10.6
   share_plus: ^13.3.1
+  printing: ^5.15.1
+  pdf: ^3.13.1
 
 dev_dependencies:
   flutter_test:

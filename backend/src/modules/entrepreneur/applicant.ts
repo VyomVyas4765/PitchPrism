@@ -18,6 +18,20 @@ export async function applicantForCentre(entrepreneurId: Id, ownerOrgId: Id) {
     : Entrepreneur.findOne({ _id: id, homeOrgId: ownerOrgId }).setOptions({ tenant: { homeOrgId: ownerOrgId } }).select('+personal +onboarding').lean();
 }
 
+/** Everything the app's application form collected, for the centre's applicant panel (sealed parts opened here). */
+export function applicantProfile(applicant: { _id: unknown; personal?: unknown; onboarding?: unknown; district?: string | null;
+  state?: string | null; pincode?: string | null } | null, vault: PiiVault | null) {
+  const empty = { gender: null, village: null, block: null, district: null, state: null, pincode: null, education: null, workBackground: null, creditScore: null };
+  if (!applicant) return empty;
+  const id = String(applicant._id);
+  const personal = applicant.personal && vault ? vault.open<{ gender?: string | null }>(applicant.personal as Sealed, id) : {};
+  const form = applicant.onboarding && vault ? vault.open<{ village?: string; block?: string; education?: string; workBackground?: string;
+    creditScore?: number | null }>(applicant.onboarding as Sealed, id) : {};
+  return { ...empty, gender: personal.gender ?? null, village: form.village ?? null, block: form.block ?? null, district: applicant.district ?? null,
+    state: applicant.state ?? null, pincode: applicant.pincode ?? null, education: form.education ?? null, workBackground: form.workBackground ?? null,
+    creditScore: form.creditScore ?? null };
+}
+
 /** Name and phone from the sealed records: imports keep the phone with the name; app onboarding keeps the mobile. */
 export function applicantContact(applicant: { _id: unknown; personal?: unknown; onboarding?: unknown } | null, vault: PiiVault | null) {
   if (!applicant || !vault) return { name: null, phone: null };

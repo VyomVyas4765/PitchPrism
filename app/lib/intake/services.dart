@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/widgets.dart' show Rect;
+import 'package:pdf/pdf.dart' show PdfPageFormat;
+import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../core/api.dart';
@@ -13,6 +15,14 @@ typedef PickedFile = ({String path, String name});
 
 /// Hands a saved file to the phone's share sheet (Save to Files, Print, AirDrop, a messaging app).
 typedef ShareFile = Future<void> Function(String path, String mime, Rect? origin);
+
+/// Renders an HTML page to PDF bytes with the phone's own engine (WebKit on iOS), which shapes Indic scripts correctly.
+typedef HtmlToPdf = Future<List<int>> Function(String html);
+
+// Deprecated upstream because output differs by platform; on iOS it is WebKit, which shapes Devanagari, Telugu,
+// Odia and Bengali correctly, unlike the pdf package's own text layout.
+// ignore: deprecated_member_use
+Future<List<int>> htmlToPdfNative(String html) => Printing.convertHtml(format: PdfPageFormat.a4, html: html);
 
 Future<void> shareFileSheet(String path, String mime, Rect? origin) async {
   await SharePlus.instance.share(ShareParams(files: [XFile(path, mimeType: mime)], sharePositionOrigin: origin));
@@ -30,6 +40,7 @@ class IntakeServices {
     this.pickPdf = pickPdfFile,
     this.pickPhoto = pickPhotoFile,
     this.shareFile = shareFileSheet,
+    this.htmlToPdf = htmlToPdfNative,
   }) : sync = OutboxSync(api, store);
   final ApiClient api;
   final OutboxStore store;
@@ -45,6 +56,8 @@ class IntakeServices {
   final Future<PickedFile?> Function() pickPhoto;
   /// Opens the share sheet for a file the app saved (the chat's "Download plan (PDF)").
   final ShareFile shareFile;
+  /// Makes the Business Idea Brief PDF in the person's own language ("My ideas" → Business draft).
+  final HtmlToPdf htmlToPdf;
 
   /// The phone's real microphone, file picker and private storage for one account.
   factory IntakeServices.device(ApiClient api, String account) => IntakeServices(

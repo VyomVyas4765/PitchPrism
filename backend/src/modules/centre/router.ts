@@ -8,6 +8,7 @@ import { recordAudit } from '../../platform/audit.js';
 import { CentreCase } from './model.js';
 import { assessLocally, assessPdfWithGroq, type AssessmentResult, type PdfAssessment } from './runner.js';
 import { planIntakeRouter } from './plan-intake.js';
+import { appInboxRouter } from './app-inbox.js';
 import type { Config } from '../../config.js';
 import { PitchDocument } from '../entrepreneur/intake-models.js';
 import { readOriginal } from '../entrepreneur/storage.js';
@@ -36,9 +37,15 @@ const inputSchema = z.object({ template: z.literal('edp-idea-brief'),
   fields: z.record(z.string(), field),
   financials: z.record(z.string(), z.object({ value: z.number().finite().nonnegative(), segId: z.string() }).strict()).optional(),
 }).strict();
+// The decision reaches the entrepreneur in the app: applicantMessage is the evaluator's words to them (the review),
+// and a shortlist offers 1-3 interview slots for them to pick from.
+const interviewSlot = z.object({ at: z.iso.datetime({ offset: true }), mode: z.enum(['in_person', 'phone', 'video']),
+  details: z.string().trim().min(2).max(200) }).strict();
 const decisions = z.object({ decision: z.enum(['shortlist', 'not_yet', 'more_info']),
   reason: z.string().trim().max(1000).optional(), pathwayOverride: z.string().trim().max(100).optional(),
-  bandOverride: z.enum(['Strong', 'Promising', 'Not yet', 'Insufficient information']).optional() }).strict();
+  bandOverride: z.enum(['Strong', 'Promising', 'Not yet', 'Insufficient information']).optional(),
+  applicantMessage: z.string().trim().min(10).max(2000).optional(),
+  interviewSlots: z.array(interviewSlot).min(1).max(3).optional() }).strict();
 const inFlightPdf = new Set<string>();
 
 function stateOf(result: AssessmentResult): string {
@@ -52,6 +59,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
   const router = Router();
   router.use(requirePermission('review_centre'));
   router.use(portfolioRouter());
+  router.use(appInboxRouter(config));
   if (config) router.use(planIntakeRouter(config, assessPdf));
 
   router.get('/queue', async (req, res) => {
@@ -169,6 +177,7 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
       input: item.input, evaluation: item.evaluation, quality: item.quality, financialChecks: item.financialChecks,
       followUps: item.followUps, planDraft: item.planDraft,
       reason: item.reason, metrics: item.metrics ?? null, decision: item.decision ?? null, feedback: item.feedback ?? null,
+      interview: (item as { interview?: unknown }).interview ?? null,
       previousEvaluations: item.evaluationHistory?.length ?? 0 });
   });
 
@@ -181,6 +190,11 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     if (!item || !item.evaluation || item.state === 'PENDING_MODEL' || item.state === 'UNASSESSABLE')
       throw new HttpError(409, 'A valid assessment is required before deciding.');
     if (item.decision) throw new HttpError(409, 'This submission has already been decided.');
+    if (input.decision !== 'shortlist' && !input.applicantMessage)
+      throw new HttpError(400, 'Write a message to the applicant explaining this decision.');
+    if (input.decision === 'shortlist' && !input.interviewSlots?.length) throw new HttpError(400, 'Offer at least one interview slot.');
+    if (input.decision !== 'shortlist' && input.interviewSlots) throw new HttpError(400, 'Interview slots go with a shortlist only.');
+    if (input.interviewSlots?.some(slot => new Date(slot.at).getTime() < Date.now())) throw new HttpError(400, 'Interview slots must be in the future.');
     const suggestion = item.evaluation.pathway;
     const override = input.pathwayOverride && input.pathwayOverride !== suggestion;
     const bandOverride = input.bandOverride && input.bandOverride !== item.evaluation.band;
@@ -192,14 +206,19 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     const decided = ['centre_assessor', 'cohort_lead'].includes(req.auth!.user.role) ? await portfolioRows(req.auth!) : [];
     buildPortfolio(decided, { sort: 'updated', page: 1, pageSize: 100, rubricVersion: version });
     const snapshot = decided.find(row => row.submissionId === submissionId);
-    item.decision = { ...input, actorId: req.auth!.user.id, at: new Date().toISOString(),
+    const { interviewSlots, ...decision } = input;
+    if (interviewSlots) {
+      item.set('interview', { status: 'awaiting_choice', chosenSlotId: null, respondedAt: null, note: null,
+        slots: interviewSlots.map((slot, index) => ({ id: `s${index + 1}`, at: new Date(slot.at).toISOString(), mode: slot.mode, details: slot.details })) });
+    }
+    item.decision = { ...decision, actorId: req.auth!.user.id, at: new Date().toISOString(),
       comparisonSnapshot: { rubricVersion: version, tradeRank: snapshot?.tradeRank ?? null, cohortRank: snapshot?.cohortRank ?? null },
       suggestedPathway: suggestion, suggestedBand: item.evaluation.band };
     await item.save();
     submission.status = input.decision === 'shortlist' ? 'SHORTLISTED' : input.decision === 'not_yet' ? 'NOT_YET' : 'MORE_INFO';
     await submission.save();
     await recordAudit(req.auth, 'decision.record', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, { decision: input.decision, override: !!(override || bandOverride) });
-    res.json({ decision: item.decision, status: submission.status });
+    res.json({ decision: item.decision, interview: item.get('interview') ?? null, status: submission.status });
   });
 
   router.put('/submissions/:id/feedback', async (req, res) => {

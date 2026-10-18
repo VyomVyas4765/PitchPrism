@@ -15,6 +15,8 @@ const centreCaseSchema = new Schema({
   metrics: { type: Schema.Types.Mixed },
   decision: { type: Schema.Types.Mixed },
   feedback: { type: Schema.Types.Mixed },
+  // Shortlist interview: slots the evaluator offered and the entrepreneur's choice from the app.
+  interview: { type: Schema.Types.Mixed },
 }, { timestamps: true, minimize: false });
 centreCaseSchema.index({ ownerOrgId: 1, state: 1, updatedAt: -1 });
 export const CentreCase = mongoose.model('CentreCase', centreCaseSchema);

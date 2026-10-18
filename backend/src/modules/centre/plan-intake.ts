@@ -9,13 +9,13 @@ import type { Config } from '../../config.js';
 import { contactHasher, isPlaceholderContact } from '../../crypto.js';
 import { HttpError } from '../../errors.js';
 import { submissionScope } from '../../auth/authorization.js';
-import { Cohort, Entrepreneur, Submission, Trade } from '../../models.js';
+import { Cohort, Entrepreneur, ReviewSession, Submission, Trade } from '../../models.js';
 import { recordAudit } from '../../platform/audit.js';
 import { PORTFOLIO_DEMO_ORG } from './portfolio.js';
 import { CONSENT_NOTICE_VERSION, LANGUAGES } from '../entrepreneur/models.js';
-import { PitchDocument } from '../entrepreneur/intake-models.js';
+import { Pitch, PitchDocument } from '../entrepreneur/intake-models.js';
 import { piiVault, type Sealed } from '../entrepreneur/pii-vault.js';
-import { applicantContact, applicantForCentre } from '../entrepreneur/applicant.js';
+import { applicantContact, applicantForCentre, applicantProfile } from '../entrepreneur/applicant.js';
 import { deleteOriginal, readOriginal, storeOriginal } from '../entrepreneur/storage.js';
 import { hasProcessingConsent } from '../entrepreneur/consent.js';
 import { grantConsent } from '../entrepreneur/consent.js';
@@ -178,19 +178,26 @@ export function planIntakeRouter(config: Config, assessPdf: (pdf: Buffer, distri
     const submissionId = id.parse(req.params.id);
     const submission = await Submission.findOne({ _id: submissionId }).setOptions({ tenant: submissionScope(req.auth!) }).lean();
     if (!submission) throw new HttpError(404, 'Submission not found.');
-    const [document, applicant] = await Promise.all([
+    const [document, applicant, chat, review] = await Promise.all([
       PitchDocument.findOne({ submissionId: submission._id, entrepreneurId: submission.entrepreneurId,
         kind: 'pdf', purpose: 'pitch', state: 'complete' }).lean(),
       applicantForCentre(submission.entrepreneurId, submission.ownerOrgId),
+      Pitch.findOne({ submissionId: submission._id, mode: 'chat' }).select('language').lean(),
+      ReviewSession.findOne({}).setOptions({ tenant: { submissionId: submission._id } }).select('status businessType').lean(),
     ]);
+    // An app (chat) submission brings the Business Idea Brief the entrepreneur sent; its business type names the idea.
+    const businessType = (review as { businessType?: string | null } | null)?.businessType ?? null;
+    const brief = chat && review?.status === 'complete' ? { url: `/api/v1/submissions/${submissionId}/brief` } : null;
     // Centre evaluators see the applicant's name and phone (or app mobile) for submissions made to their centre.
     const personal = applicantContact(applicant, vault ?? null);
-    res.json({ submissionId, title: submission.title, status: submission.status,
+    res.json({ submissionId, title: submission.title && submission.title !== 'Pitch in progress' ? submission.title : businessType ?? submission.title,
+      status: submission.status, source: chat ? 'app_chat' : document ? 'centre_upload' : null, brief,
+      profile: applicantProfile(applicant, vault ?? null),
       synthetic: String(submission.ownerOrgId) === PORTFOLIO_DEMO_ORG,
       processingConsent: await hasProcessingConsent(submission.entrepreneurId),
       applicant: { name: personal.name ?? null, phone: personal.phone ?? null },
-      details: { district: applicant?.district ?? null, trade: applicant?.trade ?? null,
-        language: applicant?.language ?? null, format: document ? 'pdf' : null },
+      details: { district: applicant?.district ?? null, trade: applicant?.trade ?? businessType,
+        language: applicant?.language ?? chat?.language ?? null, format: document ? 'pdf' : brief ? 'app' : null },
       document: document ? { id: String(document._id), bytes: document.bytes, pages: 2,
         sha256: document.sha256, url: `/api/v1/centre/submissions/${submissionId}/plan/file` } : null });
   });

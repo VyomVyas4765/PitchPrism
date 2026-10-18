@@ -15,6 +15,7 @@ import { appendChunk, finalise, readOriginal, storeOriginal } from './storage.js
 import { processPitch, Transcript } from './processing.js';
 import { piiVault, type Sealed } from './pii-vault.js';
 import { briefRows, buildBrief, type ReviewForBrief } from './brief.js';
+import { CentreCase } from '../centre/model.js';
 import type { Config } from '../../config.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
@@ -63,6 +64,16 @@ const documentView = (document: InstanceType<typeof PitchDocument>) => ({
   id: String(document._id), clientFileId: document.clientFileId, kind: document.kind, promptStep: document.promptStep ?? null,
   bytes: document.bytes, receivedBytes: document.receivedBytes, state: document.state,
 });
+
+type Interview = { status: 'awaiting_choice' | 'confirmed' | 'other_times_requested'; chosenSlotId: string | null; respondedAt: string | null;
+  note: string | null; slots: { id: string; at: string; mode: 'in_person' | 'phone' | 'video'; details: string }[] };
+/** What the person sees once the evaluator decides (the decision's internal reason and ranks stay with staff). */
+function outcomeView(status: string, item: { decision: Record<string, unknown>; interview?: Interview }) {
+  const decision = status === 'SHORTLISTED' ? 'shortlisted' : status === 'NOT_YET' ? 'not_selected' : 'more_info';
+  return { decision, message: (item.decision.applicantMessage as string | undefined) ?? null, decidedAt: item.decision.at ?? null,
+    interview: decision === 'shortlisted' && item.interview ? { status: item.interview.status, chosenSlotId: item.interview.chosenSlotId,
+      respondedAt: item.interview.respondedAt, slots: item.interview.slots } : null };
+}
 
 export function intakeRouter(config: Config) {
   const router = Router();
@@ -131,7 +142,14 @@ export function intakeRouter(config: Config) {
   router.get('/pitches', canPitch, async (req, res) => {
     const user = req.auth!.user;
     const pitches = await Pitch.find(user.role === 'entrepreneur' ? { entrepreneurId: user.id } : { createdByUserId: user.id }).sort({ _id: -1 }).limit(100);
-    res.json({ pitches: pitches.map(pitch => pitchView(pitch)) });
+    // Where each idea stands (for the home screen): the submission's status, e.g. SHORTLISTED once the evaluator decides.
+    const ids = pitches.flatMap(pitch => pitch.submissionId ? [pitch.submissionId] : []);
+    const submissions = ids.length ? await Submission.find({ _id: { $in: ids } }).setOptions({ tenant: submissionScope(req.auth!) }).select('status title').lean() : [];
+    const byId = new Map(submissions.map(item => [String(item._id), item]));
+    res.json({ pitches: pitches.map(pitch => {
+      const submission = pitch.submissionId ? byId.get(String(pitch.submissionId)) : undefined;
+      return { ...pitchView(pitch), submissionStatus: submission?.status ?? null, title: submission?.title ?? null };
+    }) });
   });
 
   router.get('/pitches/:id', canPitch, async (req, res) => {
@@ -274,7 +292,12 @@ export function intakeRouter(config: Config) {
     // `evaluating` while the evaluator pipeline runs, `submitted` once it has finished.
     const evaluationJob = review?.status === 'complete' && submission
       ? await Job.findOne({ submissionId: submission._id, fromStage: 'quality' }).sort({ createdAt: -1 }).setOptions({ tenant: 'system' }).lean() : null;
+    // The evaluator's decision, shown to the person: their review/message and, for a shortlist, interview slots to pick.
+    const decided = submission && ['SHORTLISTED', 'NOT_YET', 'MORE_INFO'].includes(submission.status)
+      ? await CentreCase.findOne({ submissionId: submission._id }).select('decision interview').lean() : null;
+    const outcome = decided?.decision ? outcomeView(submission!.status, decided as { decision: Record<string, unknown>; interview?: Interview }) : null;
     const state = !submission ? 'start'
+      : outcome ? 'decided'
       : submission.status === 'FAILED' ? 'failed'
       : review?.status === 'complete' && evaluationJob ? (['QUEUED', 'PROCESSING'].includes(submission.status) ? 'evaluating' : 'submitted')
       : review?.status === 'complete' ? 'complete'
@@ -283,7 +306,7 @@ export function intakeRouter(config: Config) {
     return { pitchId: String(pitch._id), language: pitch.language, centreId: pitch.centreId ? String(pitch.centreId) : null,
       submissionId: submission ? String(submission._id) : null, state, round: review?.round ?? 0, messages, brief,
       canSubmit: state === 'complete' && submission?.status === 'DRAFT',
-      evaluation: evaluationJob ? { status: evaluationJob.status, stage: evaluationJob.currentStage ?? null } : null };
+      evaluation: evaluationJob ? { status: evaluationJob.status, stage: evaluationJob.currentStage ?? null } : null, outcome };
   }
 
   const chatPitch = async (req: Request) => {
@@ -413,6 +436,32 @@ export function intakeRouter(config: Config) {
     sendPdf(res, result.pdf);
   });
 
+  // The person answers a shortlist: one of the offered interview slots, or a request for other times.
+  router.post('/pitches/:id/interview', canPitch, async (req, res) => {
+    const input = z.union([z.object({ slotId: z.string().regex(/^s[1-3]$/) }).strict(),
+      z.object({ requestOtherTimes: z.literal(true), note: z.string().trim().max(300).optional() }).strict()]).parse(req.body);
+    const pitch = await chatPitch(req);
+    const submission = pitch.submissionId ? await Submission.findOne({ _id: pitch.submissionId }).setOptions({ tenant: submissionScope(req.auth!) }).lean() : null;
+    if (!submission || submission.status !== 'SHORTLISTED') throw new HttpError(409, 'There is no interview to schedule for this idea.');
+    const item = await CentreCase.findOne({ submissionId: submission._id });
+    const interview = item?.get('interview') as Interview | undefined;
+    if (!item || !interview) throw new HttpError(409, 'There is no interview to schedule for this idea.');
+    if (interview.status === 'confirmed') throw new HttpError(409, 'Your interview time is already confirmed. Contact the centre to change it.');
+    if ('slotId' in input) {
+      const slot = interview.slots.find(entry => entry.id === input.slotId);
+      if (!slot) throw new HttpError(400, 'Choose one of the offered times.');
+      if (new Date(slot.at).getTime() < Date.now()) throw new HttpError(409, 'That time has passed. Choose another or ask for other times.');
+      item.set('interview', { ...interview, status: 'confirmed', chosenSlotId: slot.id, respondedAt: new Date().toISOString(), note: null });
+    } else {
+      item.set('interview', { ...interview, status: 'other_times_requested', chosenSlotId: null, respondedAt: new Date().toISOString(), note: input.note ?? null });
+    }
+    item.markModified('interview');
+    await item.save();
+    await recordAudit(req.auth!, 'submission.interview_reply', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) },
+      { reply: 'slotId' in input ? 'slot' : 'other_times' });
+    res.json(await chatView(req, pitch));
+  });
+
   // The person sends the finished plan to the evaluator: only now does the scoring pipeline (quality -> score ->
   // narrative -> feedback -> route) run on the extracted evidence. Repeating the request is harmless.
   router.post('/pitches/:id/chat/submit', canPitch, async (req, res) => {
@@ -428,6 +477,11 @@ export function intakeRouter(config: Config) {
     // submission (the centre desk's plan view and PDF evaluator read it there). The model scoring still sees only the
     // redacted evidence: names and phone numbers are never sent to the hosted model (consent notice, D-13).
     await attachBrief(submission._id, pitch);
+    // The idea is named by the business the review identified (it replaces the "Pitch in progress" placeholder).
+    const businessType = (review as { businessType?: string | null }).businessType?.trim();
+    if (businessType && (!submission.title || submission.title === 'Pitch in progress')) {
+      await Submission.updateOne({ _id: submission._id }, { $set: { title: businessType.slice(0, 200) } }).setOptions({ tenant: submissionScope(req.auth!) });
+    }
     const { created } = await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(submission.ownerOrgId), fromStage: 'quality', reason: 'new',
       inputVersion: submission.inputVersion ?? 1, requestedByUserId: req.auth!.user.id });
     if (created) await recordAudit(req.auth!, 'submission.send_to_evaluator', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, {});

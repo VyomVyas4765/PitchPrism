@@ -5,6 +5,7 @@ import { api } from '../../lib/api';
 import type { PortfolioRank } from '@pitchprism/contracts';
 import styles from './centre-workspace.module.css';
 import ComparisonDashboard from './ComparisonDashboard';
+import LiveInbox from './LiveInbox';
 import BatchWorkspace from './BatchWorkspace';
 
 type QueueItem = { submissionId: string; title: string; state: string; status: string; potential: number | null;
@@ -20,9 +21,18 @@ type Card = { submissionId: string; state: string; input: { segments: Segment[] 
   financialChecks: Array<{ field: string; written: string; expected: string; formula: string; evidence: string[] }>;
   followUps: Array<{ field: string; questionEn: string; reason: string }>;
   planDraft: { sections: Array<{ heading: string; textEn: string; evidence: string[] }> } | null;
-  reason: string | null; decision: { decision: string; reason?: string; comparisonSnapshot?: { rubricVersion: string; tradeRank: PortfolioRank | null; cohortRank: PortfolioRank | null } } | null;
+  reason: string | null; interview?: Interview | null; decision: { decision: string; reason?: string; applicantMessage?: string; comparisonSnapshot?: { rubricVersion: string; tradeRank: PortfolioRank | null; cohortRank: PortfolioRank | null } } | null;
   feedback: { textEn: string; status: string } | null };
+type Interview = { status: 'awaiting_choice' | 'confirmed' | 'other_times_requested'; chosenSlotId: string | null; respondedAt: string | null; note: string | null;
+  slots: Array<{ id: string; at: string; mode: 'in_person' | 'phone' | 'video'; details: string }> };
+type SlotDraft = { at: string; mode: 'in_person' | 'phone' | 'video'; details: string };
+const emptySlots = (): SlotDraft[] => [0, 1, 2].map(() => ({ at: '', mode: 'in_person', details: '' }));
+const modeLabel = { in_person: 'In person', phone: 'Phone call', video: 'Video call' } as const;
+const slotTime = (at: string) => new Date(at).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+type Profile = { gender: string | null; village: string | null; block: string | null; district: string | null; state: string | null; pincode: string | null;
+  education: string | null; workBackground: string | null; creditScore: number | null };
 type Plan = { submissionId: string; title: string; status: string; synthetic?: boolean; processingConsent: boolean; applicant: { name: string | null; phone: string | null };
+  source?: 'app_chat' | 'centre_upload' | null; brief?: { url: string } | null; profile?: Profile;
   details: { district: string | null; trade: string | null; language: string | null; format: string | null };
   document: { id: string; bytes: number; pages: number; sha256: string; url: string } | null };
 export type PreviewResult = { input: Card['input']; assessment: Pick<Card, 'evaluation' | 'quality' | 'financialChecks' | 'followUps' | 'planDraft' | 'reason'> & { status: 'assessed' | 'pending_model' }; document: { pages: number; bytes: number }; saved: false };
@@ -43,7 +53,7 @@ const consentNoticeVersion = 'consent-notice-2026-10-17';
 const demoPreviewEnabled = process.env.NODE_ENV !== 'production';
 
 export default function CentreWorkspace() {
-  const [mode, setMode] = useState<'portfolio' | 'batch'>('portfolio');
+  const [mode, setMode] = useState<'live' | 'portfolio' | 'batch'>('live');
   const [revision, setRevision] = useState(0);
   const [intakeOptions, setIntakeOptions] = useState<{cohorts: Array<{id: string; label: string}>; trades: Array<{key: string; label: string}>}>({cohorts: [], trades: []});
   const [items, setItems] = useState<QueueItem[]>([]);
@@ -60,6 +70,8 @@ export default function CentreWorkspace() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState('');
+  const [applicantMessage, setApplicantMessage] = useState('');
+  const [slots, setSlots] = useState<SlotDraft[]>(emptySlots);
   const [feedback, setFeedback] = useState('');
   const [consentFile, setConsentFile] = useState<File | null>(null);
   const [consentConfirmed, setConsentConfirmed] = useState(false);
@@ -78,13 +90,13 @@ export default function CentreWorkspace() {
     const request = ++openRequest.current;
     if (previewUrl.current) { URL.revokeObjectURL(previewUrl.current); previewUrl.current = null; }
     setSelected(item.submissionId); setPlan(null); setCard(null); setEvidence(null); setSourcePage(null); setError(''); setTab('assessment');
-    setConsentFile(null); setConsentConfirmed(false);
+    setConsentFile(null); setConsentConfirmed(false); setApplicantMessage(''); setSlots(emptySlots());
     try {
       const [planResult, cardResult] = await Promise.all([
         api<Plan>(`/centre/submissions/${item.submissionId}/plan`),
         item.reviewAvailable ? api<Card>(`/centre/submissions/${item.submissionId}/card`) : Promise.resolve(null),
       ]);
-      if (request === openRequest.current) { setPlan(planResult); setCard(cardResult); setFeedback(cardResult?.feedback?.textEn ?? ''); }
+      if (request === openRequest.current) { setPlan(planResult); setCard(cardResult); setFeedback(cardResult?.feedback?.textEn ?? ''); setApplicantMessage(cardResult?.feedback?.textEn ?? ''); }
     } catch (err) { if (request === openRequest.current) setError(err instanceof Error ? err.message : 'Could not open the assessment.'); }
   }, []);
   useEffect(() => {
@@ -166,7 +178,9 @@ export default function CentreWorkspace() {
     if (!selected || selected === 'preview' || !card) return;
     setBusy(true); setError('');
     try {
-      await api(`/centre/submissions/${selected}/decision`, { method: 'POST', body: JSON.stringify({ decision, ...(reason.trim() ? { reason: reason.trim() } : {}) }) });
+      const offered = slots.filter(slot => slot.at && slot.details.trim().length >= 2).map(slot => ({ at: new Date(slot.at).toISOString(), mode: slot.mode, details: slot.details.trim() }));
+      await api(`/centre/submissions/${selected}/decision`, { method: 'POST', body: JSON.stringify({ decision, ...(reason.trim() ? { reason: reason.trim() } : {}),
+        ...(applicantMessage.trim() ? { applicantMessage: applicantMessage.trim() } : {}), ...(decision === 'shortlist' ? { interviewSlots: offered } : {}) }) });
       const rows = await refresh();
       const item = rows.find(row => row.submissionId === selected);
       if (item) await open(item);
@@ -236,9 +250,11 @@ export default function CentreWorkspace() {
     {busy && <div className={styles.previewBanner} role="status">Processing this plan and checking its cited evidence. The comparison updates when the saved assessment finishes.</div>}
     {selected === 'preview' && <div className={styles.previewBanner}>Unsaved PDF preview · excluded from portfolio rankings. <button onClick={() => setDetailOpen(true)}>Open preview ↗</button></div>}
     <div className={styles.modeTabs} role="tablist" aria-label="Evaluator mode">
+      <button role="tab" aria-selected={mode === 'live'} onClick={() => { setMode('live'); setDetailOpen(false); }}>Live from app</button>
       <button role="tab" aria-selected={mode === 'portfolio'} onClick={() => { setMode('portfolio'); setDetailOpen(false); }}>Demo & saved portfolio</button>
       <button role="tab" aria-selected={mode === 'batch'} onClick={() => { setMode('batch'); setDetailOpen(false); }}>Batch upload & evaluate</button>
     </div>
+    <div style={{ display: mode === 'live' ? 'block' : 'none' }}><LiveInbox active={mode === 'live'} onOpen={item => { void open(item); setDetailOpen(true); }} /></div>
     <div style={{ display: mode === 'portfolio' ? 'block' : 'none' }}><ComparisonDashboard revision={revision} onOpen={item => { void open(item); setDetailOpen(true); }} /></div>
     <div style={{ display: mode === 'batch' ? 'block' : 'none' }}><BatchWorkspace enabled={demoPreviewEnabled} onDiscard={url => { if (selected === 'preview' && (!url || plan?.document?.url === url)) { setSelected(null); setPlan(null); setCard(null); setDetailOpen(false); } }} onOpen={entry => openPreview(entry.result, entry.file, entry.url)} /></div>
 
@@ -253,13 +269,13 @@ export default function CentreWorkspace() {
             <div><span className={styles.kicker}>IDEA CARD &nbsp; / &nbsp; {selected?.slice(-6).toUpperCase()}</span>
               <h3>{plan.title}</h3><p>{plan.applicant.name ?? 'Applicant details pending'} <span>·</span> {plan.details.trade ?? 'Trade not recorded'} <span>·</span> {plan.details.district ?? 'District not recorded'}</p>
               <div className={styles.chips}><span>{languageName[plan.details.language ?? ''] ?? 'Language pending'}</span><span>{plan.details.format?.toUpperCase() ?? 'FORMAT PENDING'}</span>
-                <span>{plan.document ? `${plan.document.pages} PAGE PLAN` : 'ORIGINAL PENDING'}</span></div>
+                <span>{plan.document ? `${plan.document.pages} PAGE PLAN` : plan.brief ? 'APP · IDEA BRIEF' : 'ORIGINAL PENDING'}</span></div>
             </div><div className={styles.caseState}><span>SCREENING STATUS</span><strong>{evaluation ? evaluation.band : 'Awaiting evaluation'}</strong>
               <small>{evaluation ? `Rubric ${evaluation.rubricVersion}` : 'No score has been generated'}</small></div>
           </div>
           <div className={styles.tabs} role="tablist" aria-label="Idea card views">
             <button role="tab" aria-selected={tab === 'assessment'} className={tab === 'assessment' ? styles.activeTab : ''} onClick={() => setTab('assessment')}>Assessment</button>
-            <button role="tab" aria-selected={tab === 'document'} className={tab === 'document' ? styles.activeTab : ''} onClick={() => setTab('document')}>Original plan {plan.document ? '↗' : ''}</button>
+            <button role="tab" aria-selected={tab === 'document'} className={tab === 'document' ? styles.activeTab : ''} onClick={() => setTab('document')}>{plan.brief && !plan.document ? 'Idea brief (PDF)' : 'Original plan'} {plan.document || plan.brief ? '↗' : ''}</button>
             <button role="tab" aria-selected={tab === 'notes'} className={tab === 'notes' ? styles.activeTab : ''} onClick={() => setTab('notes')}>Review notes</button>
           </div>
           {tab === 'assessment' && <div className={styles.assessment}>
@@ -318,6 +334,11 @@ export default function CentreWorkspace() {
               <p>{plan.document.pages} pages · {(plan.document.bytes / 1024).toFixed(0)} KB · {selected === 'preview' ? 'Browser-local demo preview' : 'Private to this centre'}</p></div>
               <a href={viewedDocumentUrl} target="_blank" rel="noopener noreferrer">Open original{sourcePage ? ` at page ${sourcePage}` : ''} ↗</a></div>
             <iframe key={viewedDocumentUrl} src={viewedDocumentUrl} title={sourcePage ? `Original pitch plan, page ${sourcePage}` : 'Original two-page pitch plan'} className={styles.pdfFrame} /></>
+            : plan.brief ? <>
+            <div className={styles.documentMeta}><div><span className={styles.cardKicker}>FROM THE APP / BUSINESS IDEA BRIEF</span><h4>What the entrepreneur sent to the evaluator</h4>
+              <p>Built from the chat in the app · the same PDF the entrepreneur can download · private to this centre</p></div>
+              <a href={plan.brief.url} target="_blank" rel="noopener noreferrer">Open brief ↗</a></div>
+            <iframe key={plan.brief.url} src={plan.brief.url} title="Business Idea Brief sent from the app" className={styles.pdfFrame} /></>
             : <div className={styles.selectEmpty}><h4>Original document pending</h4><p>This record has no centre-uploaded PDF linked yet.</p></div>}</div>}
           {tab === 'notes' && <div className={styles.notesView}>
             {selected !== 'preview' && !plan.processingConsent && plan.document && plan.details.language === 'en' && <section className={styles.consentPanel}>
@@ -331,7 +352,18 @@ export default function CentreWorkspace() {
             <section><span className={styles.cardKicker}>APPLICANT DETAILS</span><h4>At a glance</h4>
               <dl><div><dt>Entrepreneur</dt><dd>{plan.applicant.name ?? 'Not available'}</dd></div><div><dt>Phone</dt><dd>{plan.applicant.phone ?? 'Not provided'}</dd></div>
                 <div><dt>Trade</dt><dd>{plan.details.trade ?? 'Not recorded'}</dd></div><div><dt>District</dt><dd>{plan.details.district ?? 'Not recorded'}</dd></div>
-                <div><dt>Language</dt><dd>{languageName[plan.details.language ?? ''] ?? 'Not recorded'}</dd></div></dl></section>
+                <div><dt>Language</dt><dd>{languageName[plan.details.language ?? ''] ?? 'Not recorded'}</dd></div>
+                {plan.profile && <>
+                  <div><dt>Gender</dt><dd>{plan.profile.gender ? nice(plan.profile.gender) : 'Not shared'}</dd></div>
+                  <div><dt>Village / area</dt><dd>{plan.profile.village ?? 'Not recorded'}</dd></div>
+                  <div><dt>Block</dt><dd>{plan.profile.block ?? 'Not recorded'}</dd></div>
+                  <div><dt>State</dt><dd>{plan.profile.state ?? 'Not recorded'}</dd></div>
+                  <div><dt>Pincode</dt><dd>{plan.profile.pincode ?? 'Not recorded'}</dd></div>
+                  <div><dt>Education</dt><dd>{plan.profile.education ?? 'Not recorded'}</dd></div>
+                  <div><dt>Work background</dt><dd>{plan.profile.workBackground ?? 'Not recorded'}</dd></div>
+                  <div><dt>Credit score</dt><dd>{plan.profile.creditScore ?? 'Not shared'}</dd></div>
+                </>}</dl>
+              {plan.brief && <p><a href={plan.brief.url} target="_blank" rel="noopener noreferrer">Open the Business Idea Brief sent from the app ↗</a></p>}</section>
             {cited && <section className={styles.citationPanel}><span className={styles.cardKicker}>SOURCE / {cited.segId}</span><h4>Cited evidence</h4>
               {cited.textOriginal && <p lang={cited.lang}>{cited.struck ? <del>{cited.textOriginal}</del> : cited.textOriginal}</p>}
               <blockquote>{cited.textEn}</blockquote><small>{cited.source.type === 'pdf' ? `PDF page ${cited.source.page ?? 'unknown'}` : nice(cited.source.type)} · {cited.lang}
@@ -344,11 +376,28 @@ export default function CentreWorkspace() {
             {card?.planDraft && <section><span className={styles.cardKicker}>SUMMARY PLAN DRAFT</span><h4>For entrepreneur confirmation</h4>
               {card.planDraft.sections.map(section => <p key={section.heading}><strong>{section.heading}</strong><br />{section.textEn}</p>)}</section>}
             {card?.decision && <section className={styles.savedDecision}><strong>Human decision: {nice(card.decision.decision)}</strong><p>{card.decision.reason}</p>
+              {card.decision.applicantMessage && <p><strong>Sent to the applicant:</strong> {card.decision.applicantMessage}</p>}
+              {card.interview && <div><strong>Interview · {card.interview.status === 'confirmed' ? 'confirmed by the applicant' : card.interview.status === 'other_times_requested' ? 'applicant asked for other times' : 'waiting for the applicant to pick a time'}</strong>
+                <ul>{card.interview.slots.map(slot => <li key={slot.id}>{slot.id === card.interview?.chosenSlotId ? '✓ ' : ''}{slotTime(slot.at)} · {modeLabel[slot.mode]} · {slot.details}</li>)}</ul>
+                {card.interview.note && <p>Applicant&apos;s note: {card.interview.note}</p>}</div>}
               {card.decision.comparisonSnapshot && <p>Position when decided ({card.decision.comparisonSnapshot.rubricVersion}): {card.decision.comparisonSnapshot.tradeRank ? `trade rank ${card.decision.comparisonSnapshot.tradeRank.rank} of ${card.decision.comparisonSnapshot.tradeRank.of}` : 'trade unranked'} · {card.decision.comparisonSnapshot.cohortRank ? `cohort rank ${card.decision.comparisonSnapshot.cohortRank.rank} of ${card.decision.comparisonSnapshot.cohortRank.of}` : 'cohort unranked'}. The portfolio shows current ranks.</p>}</section>}
             {selected !== 'preview' && evaluation && !card?.decision && card?.state !== 'UNASSESSABLE' && <section><span className={styles.cardKicker}>HUMAN DECISION</span><h4>Make the final call</h4>
-              <label htmlFor="centre-reason">Reason for an override</label><textarea id="centre-reason" value={reason} onChange={event => setReason(event.target.value)} maxLength={1000} />
-              <div className={styles.decisionActions}><button disabled={busy} onClick={() => void decide('shortlist')}>Shortlist</button>
-                <button disabled={busy} onClick={() => void decide('more_info')}>More information</button><button disabled={busy} onClick={() => void decide('not_yet')}>Not yet</button></div></section>}
+              <label htmlFor="centre-message">Message to the applicant (shown in their app)</label>
+              <textarea id="centre-message" value={applicantMessage} onChange={event => setApplicantMessage(event.target.value)} maxLength={2000}
+                placeholder="Your review: what was strong, what to improve, or what information is missing. Required for Not yet and More information." />
+              <fieldset className={styles.slotFields}><legend>Interview slots for a shortlist (offer 1–3; the applicant picks one in the app)</legend>
+                {slots.map((slot, index) => <div key={index} className={styles.slotRow}>
+                  <input type="datetime-local" aria-label={`Slot ${index + 1} date and time`} value={slot.at} onChange={event => setSlots(all => all.map((item, i) => i === index ? { ...item, at: event.target.value } : item))} />
+                  <select aria-label={`Slot ${index + 1} type`} value={slot.mode} onChange={event => setSlots(all => all.map((item, i) => i === index ? { ...item, mode: event.target.value as SlotDraft['mode'] } : item))}>
+                    <option value="in_person">In person</option><option value="phone">Phone call</option><option value="video">Video call</option></select>
+                  <input aria-label={`Slot ${index + 1} place or link`} placeholder="Centre address, phone number or meeting link" maxLength={200} value={slot.details}
+                    onChange={event => setSlots(all => all.map((item, i) => i === index ? { ...item, details: event.target.value } : item))} />
+                </div>)}</fieldset>
+              <label htmlFor="centre-reason">Internal reason for an override (not shown to the applicant)</label><textarea id="centre-reason" value={reason} onChange={event => setReason(event.target.value)} maxLength={1000} />
+              <div className={styles.decisionActions}>
+                <button disabled={busy || !slots.some(slot => slot.at && slot.details.trim().length >= 2)} title="Offer at least one interview slot" onClick={() => void decide('shortlist')}>Shortlist &amp; offer interview</button>
+                <button disabled={busy || applicantMessage.trim().length < 10} onClick={() => void decide('more_info')}>More information</button>
+                <button disabled={busy || applicantMessage.trim().length < 10} onClick={() => void decide('not_yet')}>Not yet</button></div></section>}
             {selected !== 'preview' && card && <section><span className={styles.cardKicker}>FEEDBACK DRAFT</span><h4>Words for the applicant</h4>
               <p>Saved in English; translation and delivery remain pending.</p><textarea aria-label="Feedback in English" value={feedback} onChange={event => setFeedback(event.target.value)} maxLength={4000} />
               <button disabled={busy || feedback.trim().length < 10} onClick={() => void saveFeedback()}>Save feedback draft</button></section>}

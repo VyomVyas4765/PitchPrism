@@ -8,6 +8,7 @@ import '../intake/services.dart';
 import 'chat_screen.dart';
 import 'common.dart';
 import 'consent_screen.dart';
+import 'ideas_dashboard.dart';
 import 'passport_screen.dart';
 import 'profile_screen.dart';
 
@@ -158,7 +159,11 @@ class _HomeScreenState extends State<HomeScreen> {
               key: Key('home-chat-${chat['id']}'),
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.forum_outlined),
-              title: Text(index == 0 ? ctx.t('chatContinue') : '${ctx.t('chatContinue')} (${index + 1})'),
+              title: Text(chat['title'] as String? ?? (index == 0 ? ctx.t('chatContinue') : '${ctx.t('chatContinue')} (${index + 1})')),
+              // Where the idea stands, e.g. "Decision: shortlisted" once the evaluator decides.
+              subtitle: chat['submissionStatus'] == null ? null : Text(ctx.t('status${chat['submissionStatus']}'),
+                style: ['SHORTLISTED', 'NOT_YET', 'MORE_INFO'].contains(chat['submissionStatus'])
+                    ? TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary) : null),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _openChat(chat['id'] as String),
             ),
@@ -177,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
       OutlinedButton.icon(
         key: const Key('home-ideas'),
         style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => IdeasScreen(ctx: ctx))),
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => MyIdeasScreen(ctx: ctx, services: widget.services))),
         icon: const Icon(Icons.timeline),
         label: Text(ctx.t('myIdeas')),
       ),

@@ -21,10 +21,11 @@ class ChatServer implements ApiClient {
   String state = 'start';
   int reads = 0;
   int evaluations = 0;
+  Map<String, dynamic>? outcome;
   bool failNext = false;
 
   Map<String, dynamic> get view => {'pitchId': 'p1', 'language': 'hi', 'state': state, 'round': messages.length, 'messages': List.of(messages),
-      'canSubmit': state == 'complete', 'brief': <Map<String, dynamic>>[]};
+      'canSubmit': state == 'complete', 'brief': <Map<String, dynamic>>[], 'outcome': outcome};
 
   @override
   Future<Map<String, dynamic>> request(String path, {Map<String, dynamic>? body, String? method}) async {
@@ -32,6 +33,15 @@ class ChatServer implements ApiClient {
     if (path == '/centres') return {'centres': [{'id': 'c1', 'name': 'Nashik centre'}, {'id': 'c2', 'name': 'Pune centre'}]};
     if (path == '/pitches' && body != null) return {'id': 'p1'};
     if (path == '/pitches/p1/documents') return {'id': 'd1', 'receivedBytes': 0, 'state': 'receiving'};
+    if (path == '/pitches/p1/interview') {
+      final interview = outcome!['interview'] as Map<String, dynamic>;
+      if (body!['slotId'] != null) {
+        interview..['status'] = 'confirmed'..['chosenSlotId'] = body['slotId'];
+      } else {
+        interview['status'] = 'other_times_requested';
+      }
+      return view;
+    }
     if (path == '/pitches/p1/chat/submit') {
       state = 'evaluating';
       evaluations = 0;
@@ -250,5 +260,56 @@ void main() {
     expect(find.byKey(const Key('chat-submitted')), findsOneWidget);
     expect(find.byKey(const Key('chat-submit')), findsNothing);
     expect(find.byKey(const Key('chat-download-brief')), findsOneWidget); // still downloadable after sending
+  });
+
+  Future<void> openDecided(WidgetTester tester, Map<String, dynamic> outcome) async {
+    server..state = 'decided'..outcome = outcome;
+    tester.view.physicalSize = const Size(1080, 2600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(home: ChatScreen(pitchId: 'p1', ctx: EntrepreneurContext(api: server, speech: speech, language: 'en'),
+        services: IntakeServices(api: server, store: MemoryStore(), directory: () async => dir, recorder: FakeRecorder.new,
+            pickFile: () async => null, pickPdf: () async => null, pickPhoto: () async => null, pickAudio: () async => null),
+        pollEvery: const Duration(milliseconds: 20))));
+    await settle(tester);
+  }
+
+  testWidgets('a shortlist shows the evaluator message and lets the person pick an interview slot', (tester) async {
+    final soon = DateTime.now().add(const Duration(days: 3)).toUtc().toIso8601String();
+    final later = DateTime.now().add(const Duration(days: 4)).toUtc().toIso8601String();
+    await openDecided(tester, {'decision': 'shortlisted', 'message': 'Strong customer research. Bring your price list.', 'interview': {
+      'status': 'awaiting_choice', 'chosenSlotId': null, 'slots': [
+        {'id': 's1', 'at': soon, 'mode': 'in_person', 'details': 'Centre office, room 2'},
+        {'id': 's2', 'at': later, 'mode': 'phone', 'details': 'The centre will call you'}]}});
+    expect(find.byKey(const Key('chat-outcome-shortlisted')), findsOneWidget);
+    expect(find.text(tr('en', 'outcomeShortlistedTitle')), findsOneWidget);
+    expect(find.text('Strong customer research. Bring your price list.'), findsOneWidget);
+    expect(find.byKey(const Key('chat-input')), findsNothing);
+    expect(tester.widget<FilledButton>(find.byKey(const Key('chat-slot-confirm'))).onPressed, isNull); // pick a time first
+    await tester.tap(find.byKey(const Key('chat-slot-s2')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('chat-slot-confirm')));
+    await settle(tester);
+    expect(server.posts['/pitches/p1/interview']!.single, {'slotId': 's2'});
+    expect(find.byKey(const Key('chat-interview-confirmed')), findsOneWidget);
+    expect(find.text('The centre will call you'), findsOneWidget);
+  });
+
+  testWidgets('a shortlisted person can ask for other interview times', (tester) async {
+    await openDecided(tester, {'decision': 'shortlisted', 'message': null, 'interview': {'status': 'awaiting_choice', 'chosenSlotId': null,
+      'slots': [{'id': 's1', 'at': DateTime.now().add(const Duration(days: 2)).toUtc().toIso8601String(), 'mode': 'video', 'details': 'Link by SMS'}]}});
+    await tester.tap(find.byKey(const Key('chat-slot-other')));
+    await settle(tester);
+    expect(server.posts['/pitches/p1/interview']!.single, {'requestOtherTimes': true});
+    expect(find.byKey(const Key('chat-interview-other-times')), findsOneWidget);
+  });
+
+  testWidgets('a rejection shows the evaluator review to the person', (tester) async {
+    await openDecided(tester, {'decision': 'not_selected', 'message': 'Your costs are unclear; work out your monthly expenses.', 'interview': null});
+    expect(find.byKey(const Key('chat-outcome-not_selected')), findsOneWidget);
+    expect(find.text(tr('en', 'outcomeNotSelectedTitle')), findsOneWidget);
+    expect(find.byKey(const Key('chat-outcome-message')), findsOneWidget);
+    expect(find.text(tr('en', 'outcomeKeepGoing')), findsOneWidget);
+    expect(find.byKey(const Key('chat-slot-confirm')), findsNothing);
   });
 }

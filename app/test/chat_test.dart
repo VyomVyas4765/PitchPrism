@@ -22,10 +22,11 @@ class ChatServer implements ApiClient {
   int reads = 0;
   int evaluations = 0;
   Map<String, dynamic>? outcome;
+  Map<String, dynamic>? feedback;
   bool failNext = false;
 
   Map<String, dynamic> get view => {'pitchId': 'p1', 'language': 'hi', 'state': state, 'round': messages.length, 'messages': List.of(messages),
-      'canSubmit': state == 'complete', 'brief': <Map<String, dynamic>>[], 'outcome': outcome};
+      'canSubmit': state == 'complete', 'brief': <Map<String, dynamic>>[], 'outcome': outcome, 'evaluatorFeedback': feedback};
 
   @override
   Future<Map<String, dynamic>> request(String path, {Map<String, dynamic>? body, String? method}) async {
@@ -311,5 +312,12 @@ void main() {
     expect(find.byKey(const Key('chat-outcome-message')), findsOneWidget);
     expect(find.text(tr('en', 'outcomeKeepGoing')), findsOneWidget);
     expect(find.byKey(const Key('chat-slot-confirm')), findsNothing);
+  });
+
+  testWidgets('feedback the evaluator saves shows in the chat even before a decision', (tester) async {
+    server.feedback = {'text': 'Add a month-by-month cost list.', 'at': '2026-10-18T08:00:00Z'};
+    await openDecided(tester, {'decision': 'not_selected', 'message': null, 'interview': null});
+    expect(find.byKey(const Key('chat-evaluator-feedback')), findsOneWidget);
+    expect(find.text('Add a month-by-month cost list.'), findsOneWidget);
   });
 }

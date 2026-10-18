@@ -125,7 +125,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // While the AI reads a reply (a voice note or a PDF can take a minute), check back for its next message.
     if (_state == 'reading' || _state == 'evaluating') _poll = Timer(widget.pollEvery, _load);
     // Once sent, keep checking (less often) so the evaluator's decision appears without reopening the screen.
-    if (_state == 'submitted' || (_state == 'decided' && _interview?['status'] == 'awaiting_choice')) _poll = Timer(widget.pollEvery * 4, _load);
+    if (_state == 'submitted' || _state == 'decided') _poll = Timer(widget.pollEvery * 4, _load);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
     });
@@ -347,6 +347,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (_state == 'evaluating') _evaluating(),
       if (_state == 'submitted') _assistant(ctx.t('chatSubmitted'), ctx.language, key: const Key('chat-submitted')),
       if (_state == 'decided') _outcomeCard(),
+      if (_view?['evaluatorFeedback'] is Map && ['submitted', 'decided', 'evaluating'].contains(_state)) _evaluatorFeedbackCard(),
       if (_state == 'failed' && !_busy) _failed(),
     ];
     return Scaffold(
@@ -541,6 +542,27 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ],
+      ]),
+    ));
+  }
+
+  /// Feedback the evaluator saved for the person (shown in English here; My ideas shows it in their language).
+  Widget _evaluatorFeedbackCard() {
+    final theme = Theme.of(context);
+    final text = (_view!['evaluatorFeedback'] as Map)['text'] as String;
+    return Card(key: const Key('chat-evaluator-feedback'), margin: const EdgeInsets.symmetric(vertical: 8), child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.rate_review_outlined),
+          const SizedBox(width: 8),
+          Expanded(child: Text(ctx.t('secFeedback'), style: theme.textTheme.titleMedium)),
+          ListenButton(context_: ctx, text: text),
+        ]),
+        const SizedBox(height: 8),
+        Text(text, style: theme.textTheme.bodyLarge),
+        if (ctx.language != 'en') Padding(padding: const EdgeInsets.only(top: 4),
+          child: Text(ctx.t('chatShownInEnglish'), style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic))),
       ]),
     ));
   }

@@ -399,7 +399,7 @@ export default function CentreWorkspace() {
                 <button disabled={busy || applicantMessage.trim().length < 10} onClick={() => void decide('more_info')}>More information</button>
                 <button disabled={busy || applicantMessage.trim().length < 10} onClick={() => void decide('not_yet')}>Not yet</button></div></section>}
             {selected !== 'preview' && card && <section><span className={styles.cardKicker}>FEEDBACK DRAFT</span><h4>Words for the applicant</h4>
-              <p>Saved in English; translation and delivery remain pending.</p><textarea aria-label="Feedback in English" value={feedback} onChange={event => setFeedback(event.target.value)} maxLength={4000} />
+              <p>Saved in English and shown to the applicant in their app (My ideas → Evaluator feedback, and in their chat), translated into their language.</p><textarea aria-label="Feedback in English" value={feedback} onChange={event => setFeedback(event.target.value)} maxLength={4000} />
               <button disabled={busy || feedback.trim().length < 10} onClick={() => void saveFeedback()}>Save feedback draft</button></section>}
             {!card && <section className={styles.notesPending}><h4>Review tools open after assessment</h4><p>The original plan and applicant details are ready. Scoring, questions and decisions wait for the evaluator pipeline.</p></section>}
           </div>}

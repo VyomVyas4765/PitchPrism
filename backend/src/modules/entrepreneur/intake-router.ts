@@ -293,8 +293,11 @@ export function intakeRouter(config: Config) {
     const evaluationJob = review?.status === 'complete' && submission
       ? await Job.findOne({ submissionId: submission._id, fromStage: 'quality' }).sort({ createdAt: -1 }).setOptions({ tenant: 'system' }).lean() : null;
     // The evaluator's decision, shown to the person: their review/message and, for a shortlist, interview slots to pick.
-    const decided = submission && ['SHORTLISTED', 'NOT_YET', 'MORE_INFO'].includes(submission.status)
-      ? await CentreCase.findOne({ submissionId: submission._id }).select('decision interview').lean() : null;
+    const centreCase = submission ? await CentreCase.findOne({ submissionId: submission._id }).select('decision interview feedback').lean() : null;
+    const decided = submission && ['SHORTLISTED', 'NOT_YET', 'MORE_INFO'].includes(submission.status) ? centreCase : null;
+    // Feedback the evaluator saved for the applicant (with or without a decision yet).
+    const evaluatorFeedback = (centreCase?.feedback as { textEn?: string; editedAt?: string } | undefined)?.textEn
+      ? { text: (centreCase!.feedback as { textEn: string }).textEn, at: (centreCase!.feedback as { editedAt?: string }).editedAt ?? null } : null;
     const outcome = decided?.decision ? outcomeView(submission!.status, decided as { decision: Record<string, unknown>; interview?: Interview }) : null;
     const state = !submission ? 'start'
       : outcome ? 'decided'
@@ -306,7 +309,7 @@ export function intakeRouter(config: Config) {
     return { pitchId: String(pitch._id), language: pitch.language, centreId: pitch.centreId ? String(pitch.centreId) : null,
       submissionId: submission ? String(submission._id) : null, state, round: review?.round ?? 0, messages, brief,
       canSubmit: state === 'complete' && submission?.status === 'DRAFT',
-      evaluation: evaluationJob ? { status: evaluationJob.status, stage: evaluationJob.currentStage ?? null } : null, outcome };
+      evaluation: evaluationJob ? { status: evaluationJob.status, stage: evaluationJob.currentStage ?? null } : null, outcome, evaluatorFeedback };
   }
 
   const chatPitch = async (req: Request) => {

@@ -54,8 +54,9 @@ class GroqAdapterTests(unittest.TestCase):
         with patch.object(self.adapter._http, "open", side_effect=[http_error(429, "0"), _Response(reply('{"answer": "ok"}'))]), \
                 patch("ai.llm.groq.time.sleep") as sleep:
             self.assertEqual(self.adapter.complete_json("Question", SCHEMA), {"answer": "ok"})
-        sleep.assert_called_once_with(0.0)
-        with patch.object(self.adapter._http, "open", side_effect=[http_error(429)] * 3), patch("ai.llm.groq.time.sleep"):
+        sleep.assert_called_once_with(2.0)  # never a zero-second retry: at least a short backoff
+        # Groq's minute budget refills slowly on the free tier, so it is retried six times before the job gives up.
+        with patch.object(self.adapter._http, "open", side_effect=[http_error(429)] * 6), patch("ai.llm.groq.time.sleep"):
             with self.assertRaises(RateLimited) as caught:
                 self.adapter.complete_json("Question", SCHEMA)
         self.assertTrue(caught.exception.retryable)

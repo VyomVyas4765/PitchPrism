@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import re
 import logging
 import time
 from urllib.error import HTTPError, URLError
@@ -28,6 +29,21 @@ SYSTEM = "You are a careful assistant for a business-idea screening tool. Reply 
 class RateLimited(RuntimeError):
     """Groq asked us to slow down (HTTP 429) or was briefly unavailable: retry later, not a broken result."""
     retryable = True  # the job queue requeues with backoff (ai/jobqueue.py)
+
+
+def _seconds(value: str | None) -> float | None:
+    """Groq's reset headers look like "22.89s", "1m3.2s" or "450ms"; retry-after is plain seconds."""
+    if not value:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        pass
+    total, number = 0.0, ""
+    for part in re.findall(r"([\d.]+)(ms|h|m|s)", value):
+        number, unit = part
+        total += float(number) * {"ms": 0.001, "s": 1, "m": 60, "h": 3600}[unit]
+    return total if number else None
 
 
 class _NoRedirects(HTTPRedirectHandler):
@@ -60,6 +76,9 @@ class GroqJsonAdapter:
         self.settings = settings
         self._http = build_opener(ProxyHandler(), _NoRedirects())
         self.last_metrics: dict = {}
+        # Groq's per-minute token budget (free tier: 8,000 tokens a minute for gpt-oss-120b), from its response headers.
+        self._remaining_tokens: float | None = None
+        self._tokens_reset_at = 0.0
 
     def complete_json(self, prompt: str, schema: dict, temperature=0.1) -> dict:
         Draft202012Validator.check_schema(schema)
@@ -74,15 +93,19 @@ class GroqJsonAdapter:
         started = time.monotonic()
         # One extra try when the model's JSON misses the schema (an extra evidence ID, say): that is ordinary
         # sampling variance, not a missing capability. Rate limits get their own, separate retries.
+        # Rough size of this call against the minute budget: prompt characters / 3, plus part of the output allowance.
+        needed = len(prompt) / 3 + min(self.settings.max_tokens, 1500)
         for output_try in range(2):
-            for attempt in range(3):
+            for attempt in range(6):
+                self._wait_for_budget(needed)
                 try:
                     response = self._post(body)
                     break
                 except RateLimited as error:
-                    if attempt == 2:
+                    if attempt == 5:
                         raise
-                    time.sleep(min(20.0, getattr(error, "wait", 2.0 * (attempt + 1))))
+                    # Wait as long as Groq asks (its token budget refills within a minute), not a fixed short pause.
+                    time.sleep(min(65.0, max(getattr(error, "wait", 0.0), 2.0 * (attempt + 1))))
             try:
                 choice = response["choices"][0]
                 if choice.get("finish_reason") == "length":
@@ -103,6 +126,24 @@ class GroqJsonAdapter:
         logger.info("groq_call %s", json.dumps(self.last_metrics))
         return result
 
+    def _wait_for_budget(self, needed: float) -> None:
+        """Pause before a call that would not fit in what is left of this minute's token budget."""
+        if self._remaining_tokens is None or self._remaining_tokens >= needed:
+            return
+        pause = self._tokens_reset_at - time.monotonic()
+        if pause > 0:
+            logger.info("groq_budget_wait %.1fs", min(pause, 65.0))
+            time.sleep(min(pause, 65.0))
+        self._remaining_tokens = None
+
+    def _note_limits(self, headers) -> None:
+        remaining, reset = headers.get("x-ratelimit-remaining-tokens"), _seconds(headers.get("x-ratelimit-reset-tokens"))
+        try:
+            self._remaining_tokens = float(remaining) if remaining is not None else None
+        except ValueError:
+            self._remaining_tokens = None
+        self._tokens_reset_at = time.monotonic() + (reset or 0.0)
+
     def _post(self, body: dict) -> dict:
         request = Request(API_URL, data=json.dumps(body).encode(), method="POST",
                           headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.settings.api_key}",
@@ -110,13 +151,14 @@ class GroqJsonAdapter:
         try:
             with self._http.open(request, timeout=self.settings.timeout_seconds) as response:
                 content = response.read(4 * 1024**2 + 1)
+                self._note_limits(getattr(response, "headers", None) or {})
         except HTTPError as error:
             if error.code in (429, 500, 502, 503, 504):
                 limited = RateLimited(f"Groq is busy (HTTP {error.code}); try again shortly.")
-                try:
-                    limited.wait = float(error.headers.get("retry-after", "2"))
-                except (TypeError, ValueError):
-                    limited.wait = 2.0
+                headers = error.headers or {}
+                waits = [_seconds(headers.get("retry-after")), _seconds(headers.get("x-ratelimit-reset-tokens")),
+                         _seconds(headers.get("x-ratelimit-reset-requests")) if error.code == 429 and headers.get("x-ratelimit-remaining-requests") == "0" else None]
+                limited.wait = max([value for value in waits if value is not None] or [2.0])
                 raise limited from None
             if error.code in (401, 403):
                 raise CapabilityUnavailable("Groq rejected the API key; check GROQ_API_KEY.") from None

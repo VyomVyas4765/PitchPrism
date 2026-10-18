@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert' show HtmlEscape;
 import 'dart:io';
 
@@ -70,6 +71,7 @@ class _IdeaDashboardScreenState extends State<IdeaDashboardScreen> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _translating = false;
+  Timer? _refresh;
 
   String get _path => '/me/ideas/${widget.pitchId}?lang=${ctx.language}';
   Map<String, dynamic>? get _localized => _data?['localized'] as Map<String, dynamic>?;
@@ -78,6 +80,14 @@ class _IdeaDashboardScreenState extends State<IdeaDashboardScreen> {
   void initState() {
     super.initState();
     _load();
+    // Evaluator decisions and feedback can arrive while the dashboard is open: check back regularly.
+    _refresh = Timer.periodic(const Duration(seconds: 20), (_) { if (!_translating) _load(); });
+  }
+
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -106,13 +116,18 @@ class _IdeaDashboardScreenState extends State<IdeaDashboardScreen> {
     }
   }
 
-  void _open(String section) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => switch (section) {
+  Future<void> _open(String section) async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _page(section)));
+    if (mounted) _load();
+  }
+
+  Widget _page(String section) => switch (section) {
     'score' => _ScorePage(ctx: ctx, data: _data!, localized: _localized),
     'feedback' => _FeedbackPage(ctx: ctx, services: widget.services, data: _data!, localized: _localized),
     'improve' => _ImprovePage(ctx: ctx, pitchId: widget.pitchId, initial: _data!['improve'] as Map<String, dynamic>?),
     'draft' => _DraftPage(ctx: ctx, services: widget.services, data: _data!, localized: _localized),
     _ => _FundingPage(ctx: ctx, data: _data!, localized: _localized),
-  }));
+  };
 
   @override
   Widget build(BuildContext context) {

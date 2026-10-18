@@ -3,11 +3,9 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 
 import '../core/api.dart';
-import '../core/speech.dart';
 import '../intake/device.dart';
 import '../intake/outbox.dart';
 import '../intake/services.dart';
-import 'onboarding_copy.dart';
 
 /// A device-only tour. No token is created and this adapter never calls the network.
 /// Answers and uploads are discarded when the tour ends; only synthetic labels are shown.
@@ -20,7 +18,7 @@ class OfflineDemo {
       recorder: DeviceRecorder.new,
       pickFile: () async {
         final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp']);
-        return file?.path == null ? null : (path: file!.path!, name: file!.name);
+        return file?.path == null ? null : (path: file!.path!, name: file.name);
       },
     );
   }
@@ -76,14 +74,17 @@ class _DemoApi implements ApiClient {
       if (replies.length >= 3) throw const ApiException('This demo chat is complete.', 409);
       replies.add({'role': 'user', 'round': replies.length, 'kind': body['text'] != null ? 'text' : 'pdf', 'text': body['text']});
     }
-    const asks = ['targetCustomers', 'setupLocation'];
+    const asks = [
+      ('location', 'Where do you intend to setup your business? (include village, block, district)'),
+      ('customers', 'Who are your targeted customers? Be specific, include the age range, gender etc.'),
+    ];
     final messages = <Map<String, dynamic>>[];
     for (final reply in replies) {
       messages.add(reply);
       final round = reply['round'] as int;
       if (round < asks.length) {
-        messages.add({'role': 'assistant', 'round': round + 1, 'qId': 'f${round + 1}', 'field': asks[round],
-          'text': onboardingText(_language, asks[round]), 'lang': _language});
+        messages.add({'role': 'assistant', 'round': round + 1, 'qId': 'f${round + 1}', 'field': asks[round].$1,
+          'text': asks[round].$2, 'lang': 'en'});
       }
     }
     return {'pitchId': id, 'language': _language, 'state': replies.isEmpty ? 'start' : replies.length > asks.length ? 'complete' : 'your_turn',
@@ -137,13 +138,6 @@ class _DemoApi implements ApiClient {
       }],
     };
     if (path == '/centres') return {'centres': [{'id': 'demo-centre', 'name': 'Sample centre (demo)'}]};
-    if (path == '/pitch-prompts') return {'steps': [
-      for (final (key, label) in [
-        ('sell', 'productsServices'), ('buyers', 'targetCustomers'), ('where', 'setupLocation'),
-        ('money', 'fundingSources'), ('skills', 'workBackground'),
-      ]) {'key': key, 'maxSeconds': 120,
-        'prompt': {for (final language in launchLanguages) language: onboardingText(language, label)}},
-    ]};
     if (path == '/pitches' && body != null) {
       final id = 'demo-pitch-${++_nextId}';
       _chats[id] = [];

@@ -52,7 +52,7 @@ class FakeSpeech implements Speech {
 Map<String, dynamic> me({bool consent = false, bool complete = false, String? language = 'mr'}) => {
   'id': 'synthetic', 'language': language, 'noticeVersion': 'consent-notice-2026-10-17', 'profileComplete': complete,
   'onboardingComplete': complete,
-  'profile': {'name': complete ? 'Synthetic Applicant' : null, 'district': null, 'pincode': null, 'trade': null, 'gender': null},
+  'profile': {'name': complete ? 'Synthetic Applicant' : null, 'district': null, 'pincode': null, 'gender': null},
   'consents': {
     'processing': consent ? {'id': 'c1'} : null,
     'sharing': {'sector_partner': null, 'funding_partner': null},

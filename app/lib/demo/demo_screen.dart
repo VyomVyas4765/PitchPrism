@@ -212,7 +212,6 @@ class DemoApiClient implements ApiClient {
           ? 'Demo entrepreneur'
           : 'Demo facilitator',
       'district': 'Demo district',
-      'trade': 'Demo trade',
     },
   };
 

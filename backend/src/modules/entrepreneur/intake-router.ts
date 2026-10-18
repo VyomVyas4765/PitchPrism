@@ -194,7 +194,7 @@ export function intakeRouter(config: Config) {
     if (pitch.status === 'SUBMITTED') {
       if (!await hasProcessingConsent(pitch.entrepreneurId)) throw new HttpError(403, 'Processing consent is needed before submitting.');
       if (!pitch.submissionId || !pitch.centreId) throw new HttpError(409, 'This submission needs queue repair.');
-      await enqueueJob({ submissionId: pitch.submissionId, ownerOrgId: pitch.centreId, requestedByUserId: req.auth!.user.id,
+      await enqueueJob({ submissionId: String(pitch.submissionId), ownerOrgId: String(pitch.centreId), requestedByUserId: req.auth!.user.id,
         fromStage: 'ingest', reason: 'new' });
       res.json(pitchView(pitch, await PitchDocument.find({ pitchId: pitch._id })));
       return;

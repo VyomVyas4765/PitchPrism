@@ -10,11 +10,13 @@ import { recordAudit } from '../../platform/audit.js';
 import { objectId } from '../../platform/validation.js';
 import { CentreCase } from '../centre/model.js';
 import { layout } from './idea-map.js';
+import { PORTFOLIO_DEMO_ORG } from '../centre/portfolio.js';
 
 // HQ reporting (W-03 pipeline, W-05 funnel, W-06 sampling, W-07 fairness, W-08 audit, W-33 model quality,
 // A-29 pipeline health). HQ reads across organisations, so tenant queries are explicitly unscoped ({}).
 // Reports show titles, statuses and numbers only: never applicant names, contacts or answers.
-const ALL = { tenant: {} } as const;
+// The explicit synthetic demo workspace must not enter real HQ analytics or benchmarks.
+const ALL = { tenant: { ownerOrgId: { $ne: new Types.ObjectId(PORTFOLIO_DEMO_ORG) } } } as const;
 const DAY = 86_400_000;
 const since = (days: number) => new Date(Date.now() - days * DAY);
 const oid = (value: string) => new Types.ObjectId(value);

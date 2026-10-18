@@ -336,7 +336,7 @@ export interface Entrepreneur {
   createdVia: "self" | "assisted" | "import";
   facilitatorId?: ObjectId;
   /**
-   * Facilitator device ID used to make assisted applicant creation idempotent.
+   * Assisted mode: the facilitator device's ID for this applicant, so an offline retry does not register them twice (Dev 1).
    */
   clientApplicantId?: string;
   homeOrgId?: ObjectId;
@@ -1218,4 +1218,159 @@ export interface User {
   invitedByUserId?: ObjectId;
   createdAt?: DateTime;
   updatedAt?: DateTime;
+}
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PortfolioRank".
+ */
+export interface PortfolioRank {
+  rank: number;
+  of: number;
+  percentile: number | null;
+  scope: string;
+}
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PortfolioDomain".
+ */
+export interface PortfolioDomain {
+  key: string;
+  score: number | null;
+  confidence: string;
+}
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PortfolioIdea".
+ */
+export interface PortfolioIdea {
+  submissionId: string;
+  title: string;
+  entrepreneurRef: string;
+  cohortId: string | null;
+  cohortName: string;
+  tradeKey: string | null;
+  tradeLabel: string;
+  district: string;
+  language: string;
+  format: string;
+  state: string;
+  status: string;
+  updatedAt: string;
+  reviewAvailable: boolean;
+  rubricVersion: string | null;
+  potential: number | null;
+  completeness: number | null;
+  coverage: number | null;
+  band: string | null;
+  pathway: string | null;
+  domains: PortfolioDomain[];
+  flagCount: number;
+  rankEligible: boolean;
+  tradeRank: PortfolioRank | null;
+  cohortRank: PortfolioRank | null;
+}
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PortfolioDomainBenchmark".
+ */
+export interface PortfolioDomainBenchmark {
+  key: string;
+  n: number;
+  median: number | null;
+  q1: number | null;
+  q3: number | null;
+}
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PortfolioGroup".
+ */
+export interface PortfolioGroup {
+  id: string;
+  label: string;
+  total: number;
+  assessed: number;
+  medianPotential: number | null;
+  meanCompleteness: number | null;
+  domains: PortfolioDomainBenchmark[];
+  distribution: PortfolioBucket[];
+  pathways: PortfolioBucket[];
+}
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PortfolioBucket".
+ */
+export interface PortfolioBucket {
+  label: string;
+  count: number;
+}
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PortfolioOption".
+ */
+export interface PortfolioOption {
+  id: string;
+  label: string;
+}
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PortfolioPoint".
+ */
+export interface PortfolioPoint {
+  submissionId: string;
+  title: string;
+  potential: number;
+  completeness: number;
+  tradeKey: string | null;
+  needsAttention: boolean;
+  rankEligible: boolean;
+}
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PortfolioSummary".
+ */
+export interface PortfolioSummary {
+  total: number;
+  assessed: number;
+  ranked: number;
+  pending: number;
+  attention: number;
+  shortlisted: number;
+  medianPotential: number | null;
+  medianCompleteness: number | null;
+}
+/**
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "PortfolioHeatCell".
+ */
+export interface PortfolioHeatCell {
+  cohortId: string;
+  tradeKey: string;
+  n: number;
+  medianPotential: number | null;
+}
+/**
+ * Centre-scoped comparison read model. Aggregate counts cover the filtered dataset, independent of pagination. Scores and ranks never mix rubric versions. No applicant personal data.
+ *
+ * This interface was referenced by `PitchPrismDomain`'s JSON-Schema
+ * via the `definition` "CentrePortfolio".
+ */
+export interface CentrePortfolio {
+  ideas: PortfolioIdea[];
+  total: number;
+  page: number;
+  pageSize: number;
+  summary: PortfolioSummary;
+  rubricVersion: string | null;
+  excludedOtherVersions: number;
+  synthetic: boolean;
+  versions: string[];
+  cohortOptions: PortfolioOption[];
+  tradeOptions: PortfolioOption[];
+  languageOptions: string[];
+  points: PortfolioPoint[];
+  distribution: PortfolioBucket[];
+  pathways: PortfolioBucket[];
+  cohorts: PortfolioGroup[];
+  trades: PortfolioGroup[];
+  heatmap: PortfolioHeatCell[];
 }

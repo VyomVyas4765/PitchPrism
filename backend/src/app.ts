@@ -30,7 +30,10 @@ const registerInput = z.object({ email: z.email().max(254).transform(value => va
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 const dummyHash = hashPassword('unused-random-timing-placeholder');
 
-export function createApp(config: Config, options: { assessIdea?: (input: CentreExtractedInput) => Promise<AssessmentResult> } = {}) {
+export function createApp(config: Config, options: {
+  assessIdea?: (input: CentreExtractedInput) => Promise<AssessmentResult>;
+  assessPdf?: (pdf: Buffer, district: string, applicantName: string, documentId: string) => Promise<PdfAssessment>;
+} = {}) {
   const app = express();
   const sessions = sessionService(config);
   const vault = piiVault(config.PII_ENCRYPTION_KEY);

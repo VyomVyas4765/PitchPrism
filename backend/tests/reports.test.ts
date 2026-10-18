@@ -11,6 +11,7 @@ import { configSchema } from '../src/config.js';
 import { connectDatabase } from '../src/database.js';
 import { ALL_MODELS, AuditLog, Decision, EvalRun, Evaluation, Job, Org, Outcome, PipelineRun, ReviewSample, StageEvent, Submission, User } from '../src/models.js';
 import { CentreCase } from '../src/modules/centre/model.js';
+import { PORTFOLIO_DEMO_ORG } from '../src/modules/centre/portfolio.js';
 import { setTenancyMode } from '../src/platform/tenancy.js';
 import type { Band, SubmissionStatus } from '@pitchprism/contracts';
 
@@ -48,6 +49,16 @@ beforeEach(async () => {
 });
 
 describe('HQ reports', () => {
+  it('keeps the isolated evaluator demo out of real HQ aggregates and pipeline lists', async () => {
+    const real = await idea(centre._id, 'READY');
+    await evaluate(real, 70, 'promising');
+    const demo = await idea(new mongoose.Types.ObjectId(PORTFOLIO_DEMO_ORG), 'READY');
+    await evaluate(demo, 100, 'strong');
+    const pipeline = await request(app).get('/api/v1/hq/reports/pipeline').set('Authorization', hqAuth).expect(200);
+    expect(pipeline.body.items.map((item: { id: string }) => item.id)).toEqual([String(real._id)]);
+    const funnel = await request(app).get('/api/v1/hq/reports/funnel').set('Authorization', hqAuth).expect(200);
+    expect(funnel.body.totals.received).toBe(1);
+  });
   it('are HQ only', async () => {
     for (const route of ['pipeline', 'funnel', 'pipeline-health', 'fairness', 'sampling', 'audit', 'model-quality', 'idea-map']) {
       await request(app).get(`/api/v1/hq/reports/${route}`).set('Authorization', assessorAuth).expect(403);

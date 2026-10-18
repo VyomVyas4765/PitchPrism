@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation';
 import { type AuthResponse, type SessionUser, type Workspace } from '@pitchprism/contracts';
 import { api, ApiError } from '../../lib/api';
 import CentreWorkspace from '../../features/centre/CentreWorkspace';
-import AccessAdmin from '../../features/hq/AccessAdmin';
-import DashboardShell from '../../features/shell/DashboardShell';
-import HqWorkspace from '../../features/hq/HqWorkspace';
-import HqAdminTools from '../../features/hq/HqAdminTools';
-import HqOperations from '../../features/hq/HqOperations';
+import DashboardShell, { NAVIGATION } from '../../features/shell/DashboardShell';
+import HqWorkspace, { type HqSection } from '../../features/hq/HqWorkspace';
+import TeamPanel from '../../features/hq/TeamPanel';
+import { ProgrammesPanel } from '../../features/hq/ConfigPanels';
 import { PartnerWorkspace } from '../../features/partners/partner-workspace';
 
 const PARTNER = ['implementation_partner', 'sector_partner', 'funding_partner'];
@@ -54,14 +53,12 @@ export default function DashboardView({ role, section = 'overview' }: { role: st
   const allowed = NAVIGATION.some(item => item.section === section && item.show(user, can));
   const isHq = user.role === 'hq_admin';
   const isCentre = user.role === 'centre_assessor' || user.role === 'cohort_lead';
-  const content = isHq ? (
-    section === 'configuration' ? <HqAdminTools /> :
-    section === 'operations' || section === 'audit' || section === 'clusters' ? <HqOperations /> :
-    section === 'access' ? <AccessAdmin isHq selfId={user.id} /> :
-    <HqWorkspace />
-  ) : isCentre ? <CentreWorkspace /> :
-    ['implementation_partner', 'sector_partner', 'funding_partner'].includes(user.role) ? <PartnerWorkspace /> :
-    workspace.permissions.includes('manage_org_users') ? <AccessAdmin isHq={false} selfId={user.id} /> :
+  const content = !allowed ?
+    <section className="dashboard-placeholder"><h2>Section unavailable</h2><p>This section is not available for your role.</p></section> :
+    isHq ? <HqWorkspace user={user} section={section as HqSection} /> :
+    section === 'team' ? <TeamPanel user={user} /> :
+    isCentre ? section === 'cohorts' ? <ProgrammesPanel user={user} /> : <CentreWorkspace /> :
+    PARTNER.includes(user.role) ? <PartnerWorkspace /> :
     <section className="dashboard-placeholder"><span className="eyebrow">Workspace section</span><h2>{section.replaceAll('-', ' ')}</h2><p>This role section is ready for its scoped workflow.</p></section>;
 
   return <DashboardShell user={user} workspace={workspace} section={section} onLogout={logout} busy={busy}>

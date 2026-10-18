@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { CentreExtractedInput } from '@pitchprism/contracts';
 import { HttpError } from '../../errors.js';
-import { requirePermission, submissionScope } from '../../auth/authorization.js';
-import { Submission } from '../../models.js';
+import { requirePermission, scoped, submissionScope } from '../../auth/authorization.js';
+import { Entrepreneur, Submission } from '../../models.js';
 import { recordAudit } from '../../platform/audit.js';
 import { CentreCase } from './model.js';
 import { assessLocally, assessPdfWithGroq, type AssessmentResult, type PdfAssessment } from './runner.js';
@@ -13,6 +13,7 @@ import { PitchDocument } from '../entrepreneur/intake-models.js';
 import { readOriginal } from '../entrepreneur/storage.js';
 import { hasProcessingConsent } from '../entrepreneur/consent.js';
 import { piiVault, type Sealed } from '../entrepreneur/pii-vault.js';
+import { portfolioRouter, portfolioRows, buildPortfolio } from './portfolio.js';
 
 const id = z.string().regex(/^[a-f\d]{24}$/i);
 const segment = z.object({ segId: z.string().min(1).max(80), textEn: z.string().max(2000), textOriginal: z.string().max(2000).optional(),
@@ -49,21 +50,23 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
                              assessPdf: (pdf: Buffer, district: string, applicantName: string, documentId: string) => Promise<PdfAssessment> = assessPdfWithGroq) {
   const router = Router();
   router.use(requirePermission('review_centre'));
+  router.use(portfolioRouter());
   if (config) router.use(planIntakeRouter(config, assessPdf));
 
   router.get('/queue', async (req, res) => {
-    const actor = req.auth!.user;
-    const match = actor.role === 'hq_admin' ? {} : { ownerOrgId: actor.orgId };
-    const cases = await CentreCase.find(match).sort({ updatedAt: -1 }).limit(100).lean();
-    const submissions = await Submission.find({ _id: { $in: cases.map(item => item.submissionId) } }).setOptions({ tenant: submissionScope(req.auth!) })
-      .select('title status ownerOrgId').lean();
-    const byId = new Map(submissions.map(item => [String(item._id), item]));
-    res.json({ items: cases.filter(item => byId.has(String(item.submissionId))).map(item => ({
-      submissionId: String(item.submissionId), title: byId.get(String(item.submissionId))!.title,
-      state: item.state, status: byId.get(String(item.submissionId))!.status,
-      potential: item.evaluation?.potential ?? null, completeness: item.evaluation?.completeness ?? item.quality?.completeness ?? null,
-      band: item.evaluation?.band ?? null, updatedAt: item.updatedAt,
-    })) });
+    const submissions = await Submission.find({}).setOptions({ tenant: submissionScope(req.auth!) })
+      .select('title status ownerOrgId updatedAt').sort({ updatedAt: -1 }).limit(100).lean();
+    const cases = await CentreCase.find({ submissionId: { $in: submissions.map(item => item._id) } }).lean();
+    const byId = new Map(cases.map(item => [String(item.submissionId), item]));
+    res.json({ items: submissions.map(submission => {
+      const item = byId.get(String(submission._id));
+      return { submissionId: String(submission._id), title: submission.title,
+        state: item?.state ?? 'PENDING_MODEL', status: submission.status,
+        potential: item?.evaluation?.potential ?? null,
+        completeness: item?.evaluation?.completeness ?? item?.quality?.completeness ?? null,
+        band: item?.evaluation?.band ?? null, updatedAt: item?.updatedAt ?? submission.updatedAt,
+        reviewAvailable: !!item };
+    }) });
   });
 
   router.post('/submissions/:id/assessment', async (req, res) => {
@@ -103,7 +106,8 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
 
   router.post('/submissions/:id/evaluate-pdf', async (req, res) => {
     const submissionId = id.parse(req.params.id);
-    const submission = await Submission.findOne(scoped(submissionScope(req.auth!), { _id: submissionId }));
+    const submission = await Submission.findOne(scoped(submissionScope(req.auth!), { _id: submissionId }))
+      .setOptions({ tenant: submissionScope(req.auth!) });
     if (!submission) throw new HttpError(404, 'Submission not found.');
     if (!await hasProcessingConsent(submission.entrepreneurId))
       throw new HttpError(403, 'Active processing consent is required before assessment.');
@@ -117,13 +121,14 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
         kind: 'pdf', purpose: 'pitch', state: 'complete' }).select('storageId bytes').lean();
       if (!document?.storageId || !document.bytes || document.bytes > 12 * 1024 * 1024)
         throw new HttpError(404, 'A supported pitch plan was not found.');
-      const applicant = await Entrepreneur.findOne({ _id: submission.entrepreneurId, homeOrgId: submission.ownerOrgId }).select('+personal').lean();
+      const applicant = await Entrepreneur.findOne({ _id: submission.entrepreneurId, homeOrgId: submission.ownerOrgId })
+        .setOptions({ tenant: { homeOrgId: submission.ownerOrgId } }).select('+personal').lean();
       const vault = config?.PII_ENCRYPTION_KEY && piiVault(config.PII_ENCRYPTION_KEY);
       if (!applicant?.personal || !vault) throw new HttpError(503, 'Private applicant details are unavailable.');
       const name = vault.open<{ name?: string }>(applicant.personal as Sealed, String(applicant._id)).name;
       if (!name) throw new HttpError(422, 'The applicant name is needed for redaction.');
       let output: PdfAssessment;
-      try { output = await assessPdf(await readOriginal(document.storageId), submission.district ?? 'Not recorded', name, String(document._id)); }
+      try { output = await assessPdf(await readOriginal(document.storageId), applicant.district ?? 'Not recorded', name, String(document._id)); }
       catch { throw new HttpError(422, 'This PDF could not be safely extracted or assessed.'); }
       // Consent may have been revoked during the two model calls.
       if (!await hasProcessingConsent(submission.entrepreneurId))
@@ -144,8 +149,9 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
       if (result.status === 'assessed' && ['DRAFT', 'READY', 'UNASSESSABLE'].includes(submission.status)) {
         submission.status = state === 'UNASSESSABLE' ? 'UNASSESSABLE' : 'READY'; await submission.save();
       }
-      await AuditEvent.create({ actorUserId: req.auth!.user.id, action: 'score', resourceType: 'Submission',
-        resourceId: submissionId, metadata: { state, provider: 'groq', model: result.metrics?.model } });
+      await recordAudit(req.auth, 'submission.score',
+        { type: 'submission', id: submissionId, orgId: String(submission.ownerOrgId) },
+        { state, provider: 'groq', ...(result.metrics?.model ? { model: result.metrics.model } : {}) });
       res.status(previous ? 200 : 201).json({ submissionId, state: record!.state, evaluation: record!.evaluation,
         quality: record!.quality, financialChecks: record!.financialChecks, followUps: record!.followUps,
         planDraft: record!.planDraft, reason: record!.reason, metrics: record!.metrics ?? null });
@@ -180,7 +186,13 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
     if ((override || bandOverride) && (!input.reason || input.reason.length < 10)) throw new HttpError(400, 'Explain the band or pathway override.');
     if (input.decision === 'shortlist' && ['Not yet', 'Insufficient information'].includes(item.evaluation.band)
         && (!input.reason || input.reason.length < 10)) throw new HttpError(400, 'Explain the shortlist override.');
+    const version = item.evaluation.rubricVersion;
+    // Freeze this case's rank at the decision, including ties and the benchmark population.
+    const decided = ['centre_assessor', 'cohort_lead'].includes(req.auth!.user.role) ? await portfolioRows(req.auth!) : [];
+    buildPortfolio(decided, { sort: 'updated', page: 1, pageSize: 100, rubricVersion: version });
+    const snapshot = decided.find(row => row.submissionId === submissionId);
     item.decision = { ...input, actorId: req.auth!.user.id, at: new Date().toISOString(),
+      comparisonSnapshot: { rubricVersion: version, tradeRank: snapshot?.tradeRank ?? null, cohortRank: snapshot?.cohortRank ?? null },
       suggestedPathway: suggestion, suggestedBand: item.evaluation.band };
     await item.save();
     submission.status = input.decision === 'shortlist' ? 'SHORTLISTED' : input.decision === 'not_yet' ? 'NOT_YET' : 'MORE_INFO';

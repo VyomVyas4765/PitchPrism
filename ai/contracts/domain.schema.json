@@ -82,6 +82,653 @@
         }
       }
     },
+    "PortfolioRank": {
+      "title": "PortfolioRank",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank",
+        "of",
+        "percentile",
+        "scope"
+      ],
+      "properties": {
+        "rank": {
+          "type": "integer"
+        },
+        "of": {
+          "type": "integer"
+        },
+        "percentile": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scope": {
+          "type": "string"
+        }
+      }
+    },
+    "PortfolioDomain": {
+      "title": "PortfolioDomain",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "score",
+        "confidence"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "type": "string"
+        }
+      }
+    },
+    "PortfolioIdea": {
+      "title": "PortfolioIdea",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "title",
+        "entrepreneurRef",
+        "cohortId",
+        "cohortName",
+        "tradeKey",
+        "tradeLabel",
+        "district",
+        "language",
+        "format",
+        "state",
+        "status",
+        "updatedAt",
+        "reviewAvailable",
+        "rubricVersion",
+        "potential",
+        "completeness",
+        "coverage",
+        "band",
+        "pathway",
+        "domains",
+        "flagCount",
+        "rankEligible",
+        "tradeRank",
+        "cohortRank"
+      ],
+      "properties": {
+        "submissionId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "entrepreneurRef": {
+          "type": "string"
+        },
+        "cohortId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cohortName": {
+          "type": "string"
+        },
+        "tradeKey": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tradeLabel": {
+          "type": "string"
+        },
+        "district": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "reviewAvailable": {
+          "type": "boolean"
+        },
+        "rubricVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "potential": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "completeness": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "coverage": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "band": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pathway": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioDomain"
+          }
+        },
+        "flagCount": {
+          "type": "integer"
+        },
+        "rankEligible": {
+          "type": "boolean"
+        },
+        "tradeRank": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/PortfolioRank"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cohortRank": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/PortfolioRank"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PortfolioDomainBenchmark": {
+      "title": "PortfolioDomainBenchmark",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "n",
+        "median",
+        "q1",
+        "q3"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "n": {
+          "type": "integer"
+        },
+        "median": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "q1": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "q3": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PortfolioGroup": {
+      "title": "PortfolioGroup",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "total",
+        "assessed",
+        "medianPotential",
+        "meanCompleteness",
+        "domains",
+        "distribution",
+        "pathways"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "assessed": {
+          "type": "integer"
+        },
+        "medianPotential": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "meanCompleteness": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioDomainBenchmark"
+          }
+        },
+        "distribution": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioBucket"
+          }
+        },
+        "pathways": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioBucket"
+          }
+        }
+      }
+    },
+    "PortfolioOption": {
+      "title": "PortfolioOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "PortfolioPoint": {
+      "title": "PortfolioPoint",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "title",
+        "potential",
+        "completeness",
+        "tradeKey",
+        "needsAttention",
+        "rankEligible"
+      ],
+      "properties": {
+        "submissionId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "potential": {
+          "type": "number"
+        },
+        "completeness": {
+          "type": "number"
+        },
+        "tradeKey": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "needsAttention": {
+          "type": "boolean"
+        },
+        "rankEligible": {
+          "type": "boolean"
+        }
+      }
+    },
+    "PortfolioSummary": {
+      "title": "PortfolioSummary",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "assessed",
+        "ranked",
+        "pending",
+        "attention",
+        "shortlisted",
+        "medianPotential",
+        "medianCompleteness"
+      ],
+      "properties": {
+        "total": {
+          "type": "integer"
+        },
+        "assessed": {
+          "type": "integer"
+        },
+        "ranked": {
+          "type": "integer"
+        },
+        "pending": {
+          "type": "integer"
+        },
+        "attention": {
+          "type": "integer"
+        },
+        "shortlisted": {
+          "type": "integer"
+        },
+        "medianPotential": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "medianCompleteness": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PortfolioBucket": {
+      "title": "PortfolioBucket",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "count"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer"
+        }
+      }
+    },
+    "PortfolioHeatCell": {
+      "title": "PortfolioHeatCell",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cohortId",
+        "tradeKey",
+        "n",
+        "medianPotential"
+      ],
+      "properties": {
+        "cohortId": {
+          "type": "string"
+        },
+        "tradeKey": {
+          "type": "string"
+        },
+        "n": {
+          "type": "integer"
+        },
+        "medianPotential": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "CentrePortfolio": {
+      "title": "CentrePortfolio",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideas",
+        "total",
+        "page",
+        "pageSize",
+        "summary",
+        "rubricVersion",
+        "excludedOtherVersions",
+        "synthetic",
+        "versions",
+        "cohortOptions",
+        "tradeOptions",
+        "languageOptions",
+        "points",
+        "distribution",
+        "pathways",
+        "cohorts",
+        "trades",
+        "heatmap"
+      ],
+      "properties": {
+        "ideas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioIdea"
+          }
+        },
+        "total": {
+          "type": "integer"
+        },
+        "page": {
+          "type": "integer"
+        },
+        "pageSize": {
+          "type": "integer"
+        },
+        "summary": {
+          "$ref": "#/definitions/PortfolioSummary"
+        },
+        "rubricVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "excludedOtherVersions": {
+          "type": "integer"
+        },
+        "synthetic": {
+          "type": "boolean"
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cohortOptions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioOption"
+          }
+        },
+        "tradeOptions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioOption"
+          }
+        },
+        "languageOptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioPoint"
+          }
+        },
+        "distribution": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioBucket"
+          }
+        },
+        "pathways": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioBucket"
+          }
+        },
+        "cohorts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioGroup"
+          }
+        },
+        "trades": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioGroup"
+          }
+        },
+        "heatmap": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PortfolioHeatCell"
+          }
+        }
+      },
+      "description": "Centre-scoped comparison read model. Aggregate counts cover the filtered dataset, independent of pagination. Scores and ranks never mix rubric versions. No applicant personal data."
+    },
     "Cohort": {
       "title": "Cohort",
       "description": "One intake batch within a programme. Cohort-wise ratings compare within a cohort.",

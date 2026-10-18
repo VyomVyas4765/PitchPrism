@@ -578,6 +578,8 @@ ReviewQuestion = TypedDict("ReviewQuestion", {
     "field": Required[CanonicalField],
     "round": Required[int],
     "questionEn": Required[str],
+    "text": str,
+    "lang": Literal["en", "hi", "mr", "te", "or", "bn"],
     "reason": str,
     "status": Required[Literal["pending", "answered", "skipped"]],
     "answerSegIds": list[str],

@@ -212,7 +212,6 @@ class DemoApiClient implements ApiClient {
           ? 'Demo entrepreneur'
           : 'Demo facilitator',
       'district': 'Demo district',
-      'trade': 'Demo trade',
     },
   };
 
@@ -222,4 +221,8 @@ class DemoApiClient implements ApiClient {
     int offset,
     List<int> bytes,
   ) async => {'documentId': documentId, 'receivedBytes': offset + bytes.length};
+
+  @override
+  Future<List<int>> download(String path) async =>
+      throw const ApiException('No recording is stored on a server in the demo.', 404);
 }

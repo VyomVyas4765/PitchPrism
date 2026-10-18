@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../core/api.dart';
 import '../core/speech.dart';
-import '../intake/device.dart';
+import '../intake/pitch_screen.dart' show OutboxScreen;
 import '../intake/outbox.dart';
-import '../intake/pitch_screen.dart';
 import '../intake/services.dart';
+import 'chat_screen.dart';
 import 'common.dart';
 import 'consent_screen.dart';
 import 'passport_screen.dart';
@@ -75,7 +75,7 @@ class _EntrepreneurShellState extends State<EntrepreneurShell> {
             return ConsentScreen(ctx: ctx, noticeVersion: notice, onDone: _refresh);
           }
           if (me['onboardingComplete'] != true) {
-            return ProfileScreen(ctx: ctx, profile: me['profile'] as Map<String, dynamic>, onDone: _refresh);
+            return ProfileScreen(ctx: ctx, profile: Map<String, dynamic>.from(me['profile'] as Map? ?? const {}), onDone: _refresh);
           }
           final account = me['id'] as String;
           return HomeScreen(ctx: ctx, noticeVersion: notice,
@@ -106,50 +106,64 @@ class _HomeScreenState extends State<HomeScreen> {
     widget.services.sync.syncAll().catchError((Object _) => <OutboxItem>[]);
   }
 
-  Future<void> _startPitch(String mode) async {
-    final item = OutboxItem(clientDraftId: newClientId('draft'), mode: mode, language: ctx.language);
-    await widget.services.upsert(item);
+  late Future<List<Map<String, dynamic>>> _chats = _loadChats();
+
+  /// Chats already started (the opening reply was sent), newest first, to continue answering.
+  Future<List<Map<String, dynamic>>> _loadChats() async {
+    final data = await ctx.api.request('/pitches');
+    return ((data['pitches'] as List?) ?? []).cast<Map<String, dynamic>>()
+        .where((pitch) => pitch['mode'] == 'chat' && pitch['status'] == 'SUBMITTED').take(5).toList();
+  }
+
+  Future<void> _openChat([String? pitchId]) async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ChatScreen(ctx: ctx, services: widget.services, pitchId: pitchId)));
     if (!mounted) return;
-    final sent = await Navigator.of(context).push(MaterialPageRoute<bool>(
-      builder: (_) => PitchScreen(ctx: ctx, services: widget.services, item: item)));
-    if (mounted && sent == true) showMessage(context, ctx.t('itemQueued'));
+    setState(() {
+      _chats = _loadChats();
+    });
   }
 
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(16),
     children: [
-      for (final (key, icon) in [('speak', Icons.mic), ('type', Icons.keyboard), ('upload', Icons.upload_file)])
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Material(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(4),
-            child: InkWell(
-              key: Key('home-$key'),
-              onTap: () async {
-                if (key != 'speak') return _startPitch(key == 'type' ? 'typed' : 'upload');
-                final mode = await showModalBottomSheet<String>(context: context, builder: (sheet) => SafeArea(child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    FilledButton.icon(key: const Key('speak-guided'), onPressed: () => Navigator.pop(sheet, 'guided'), icon: const Icon(Icons.quiz), label: Text(ctx.t('answerQuestions'))),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(key: const Key('speak-free'), onPressed: () => Navigator.pop(sheet, 'free_talk'), icon: const Icon(Icons.record_voice_over), label: Text(ctx.t('justTalk'))),
-                  ]))));
-                if (mode != null) await _startPitch(mode);
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(children: [
-                  Icon(icon, size: 48),
-                  const SizedBox(width: 16),
-                  Expanded(child: Text(ctx.t(key), style: Theme.of(context).textTheme.headlineMedium)),
-                  ListenButton(context_: ctx, text: ctx.t(key)),
-                ]),
-              ),
-            ),
+      // M-05: one clear starting point. The AI asks; the person answers by typing, speaking or sending their form.
+      Material(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(4),
+        child: InkWell(
+          key: const Key('home-chat'),
+          onTap: _openChat,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(children: [
+              const Icon(Icons.chat_bubble_outline, size: 48),
+              const SizedBox(width: 16),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(ctx.t('chatStart'), style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 4),
+                Text(ctx.t('chatStartHelp')),
+              ])),
+              ListenButton(context_: ctx, text: '${ctx.t('chatStart')}. ${ctx.t('chatStartHelp')}'),
+            ]),
           ),
         ),
+      ),
+      FutureBuilder<List<Map<String, dynamic>>>(
+        future: _chats,
+        builder: (context, snapshot) => Column(children: [
+          for (final (index, chat) in (snapshot.data ?? const <Map<String, dynamic>>[]).indexed)
+            ListTile(
+              key: Key('home-chat-${chat['id']}'),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.forum_outlined),
+              title: Text(index == 0 ? ctx.t('chatContinue') : '${ctx.t('chatContinue')} (${index + 1})'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _openChat(chat['id'] as String),
+            ),
+        ]),
+      ),
       const SizedBox(height: 8),
       OutlinedButton.icon(
         key: const Key('home-passport'),

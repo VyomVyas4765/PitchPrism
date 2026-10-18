@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from typing import Callable
 
-from ai.review.criteria import DESCRIBE, FALLBACK_QUESTION, MAX_ASKS_PER_FIELD, PRIORITY, QUESTIONS_PER_ROUND
+from ai.review.criteria import DESCRIBE, FALLBACK_QUESTION, FORM_QUESTION, MAX_ASKS_PER_FIELD, PRIORITY, QUESTIONS_PER_ROUND
 
 PROMPT_VERSION = "review-ask-v1"
 # Questions must never ask for the entrepreneur's own personal details (D-13, PRD section 21).
@@ -38,8 +38,11 @@ def prompt(keys: list[str], verdicts: dict[str, dict], fields: dict) -> str:
     blocks = []
     for key in keys:
         said = fields.get(key, {}).get("value") or "nothing yet"
-        blocks.append(f"- {key}: topic: {DESCRIBE[key]} | what they said: <<<{said}>>> | still needed: {verdicts[key]['reason'] or 'more detail'}")
-    return ("You help a first-time entrepreneur in India complete their business pitch. Write one question per topic below.\n"
+        blocks.append(f"- {key}: form question: {FORM_QUESTION[key]} | what they gave so far: <<<{said}>>> | "
+                      f"what is missing: {verdicts[key]['reason'] or 'more detail'}")
+    return ("You help a first-time entrepreneur in India complete their Business Idea Brief (the EDP form). Their pitch or "
+            "uploaded form has been read; for each topic below, write one question that asks only for what is missing, "
+            "based on what they already gave.\n"
             "Rules: plain simple English; at most 25 words; exactly one question mark; ask about one thing only; "
             "when they already said something, refer to it so they know what to add; do not suggest the answer; "
             "never ask for their name, phone, address, age, caste, religion, gender or family. "
@@ -48,7 +51,8 @@ def prompt(keys: list[str], verdicts: dict[str, dict], fields: dict) -> str:
 
 def questions(keys: list[str], verdicts: dict[str, dict], fields: dict, attempts: dict[str, int],
               call: Callable[[str, str, dict], dict]) -> dict[str, str]:
-    """Question text per field. Model wording when it passes the rules, otherwise the bank's fallback wording."""
+    """Question text per field, written by the model from what is missing in the reading so far. Only when its wording
+    breaks the rules (personal details, leading, several questions) is the bank's fallback wording used instead."""
     if not keys:
         return {}
     try:

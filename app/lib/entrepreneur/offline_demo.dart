@@ -3,11 +3,10 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 
 import '../core/api.dart';
-import '../core/speech.dart';
 import '../intake/device.dart';
 import '../intake/outbox.dart';
 import '../intake/services.dart';
-import 'onboarding_copy.dart';
+import '../l10n/strings.dart';
 
 /// A device-only tour. No token is created and this adapter never calls the network.
 /// Answers and uploads are discarded when the tour ends; only synthetic labels are shown.
@@ -20,7 +19,7 @@ class OfflineDemo {
       recorder: DeviceRecorder.new,
       pickFile: () async {
         final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp']);
-        return file?.path == null ? null : (path: file!.path!, name: file!.name);
+        return file?.path == null ? null : (path: file!.path!, name: file.name);
       },
     );
   }
@@ -63,16 +62,31 @@ class _DemoApi implements ApiClient {
 
   static const _sampleProfile = <String, dynamic>{
     'name': 'Demo Entrepreneur', 'mobile': '9000000080', 'education': 'Secondary school',
-    'workBackground': 'Sample tailoring experience', 'creditScore': '', 'village': 'Demo Village',
+    'workBackground': 'Two years of sample work experience', 'creditScore': '', 'village': 'Demo Village',
     'block': 'Demo Block', 'district': 'Nashik', 'state': 'Maharashtra', 'pincode': '422001',
-    'trade': 'Tailoring', 'setupLocation': 'A sample shop in Demo Village',
-    'productsServices': 'Clothing alterations and stitching',
-    'targetCustomers': 'Local households', 'marketResearch': 'Sample conversations with neighbours',
-    'rawMaterials': 'Fabric and thread', 'suppliers': 'Sample local wholesale shop',
-    'fundingSources': 'Sample personal savings', 'competition': 'Other sample tailoring shops',
-    'prices': 'Sample price per alteration: 100 rupees',
-    'expectedMonthlyRevenue': 'Sample estimate: 10000 rupees',
   };
+
+  // Chat tour: two scripted questions in the chosen language, then done. No AI runs on the device.
+  final _chats = <String, List<Map<String, dynamic>>>{};
+  final _kinds = <String, String>{};
+
+  Map<String, dynamic> _chat(String id, Map<String, dynamic>? body) {
+    // Nothing is read or analysed on the phone: the tour says so instead of pretending with scripted questions.
+    final replies = _chats.putIfAbsent(id, () => []);
+    if (body != null && (body['text'] != null || body['documentId'] != null)) {
+      if (replies.length >= 5) throw const ApiException('This demo chat is full.', 409);
+      replies.add({'role': 'user', 'round': replies.length, 'kind': body['text'] != null ? 'text' : (_kinds[body['documentId']] ?? 'pdf'),
+        'text': body['text']});
+    }
+    final messages = <Map<String, dynamic>>[];
+    for (final reply in replies) {
+      messages.add(reply);
+      if (reply['round'] == 0) {
+        messages.add({'role': 'assistant', 'round': 1, 'qId': 'demo', 'field': 'offering', 'text': tr(_language, 'chatDemoNote'), 'lang': _language});
+      }
+    }
+    return {'pitchId': id, 'language': _language, 'state': replies.isEmpty ? 'start' : 'your_turn', 'round': replies.length, 'messages': messages};
+  }
 
   Map<String, dynamic> _consents() => {
     'processing': _processing ? {'id': 'demo-processing'} : null,
@@ -121,17 +135,18 @@ class _DemoApi implements ApiClient {
       }],
     };
     if (path == '/centres') return {'centres': [{'id': 'demo-centre', 'name': 'Sample centre (demo)'}]};
-    if (path == '/pitch-prompts') return {'steps': [
-      for (final (key, label) in [
-        ('sell', 'productsServices'), ('buyers', 'targetCustomers'), ('where', 'setupLocation'),
-        ('money', 'fundingSources'), ('skills', 'workBackground'),
-      ]) {'key': key, 'maxSeconds': 120,
-        'prompt': {for (final language in launchLanguages) language: onboardingText(language, label)}},
-    ]};
-    if (path == '/pitches' && body != null) return {'id': 'demo-pitch-${++_nextId}'};
+    if (path == '/pitches' && body != null) {
+      final id = 'demo-pitch-${++_nextId}';
+      _chats[id] = [];
+      return {'id': id};
+    }
+    if (path == '/pitches') return {'pitches': [for (final id in _chats.keys) if (_chats[id]!.isNotEmpty) {'id': id, 'mode': 'chat', 'status': 'SUBMITTED'}]};
+    if (path.endsWith('/chat') || path.endsWith('/chat/retry')) return _chat(path.split('/')[2], body);
     if (path.endsWith('/answers')) return {};
     if (path.endsWith('/documents') && body != null) {
-      return {'id': 'demo-document-${++_nextId}', 'receivedBytes': 0, 'state': 'receiving'};
+      final id = 'demo-document-${++_nextId}';
+      _kinds[id] = body['kind'] as String;
+      return {'id': id, 'receivedBytes': 0, 'state': 'receiving'};
     }
     if (path.endsWith('/submit')) {
       final id = 'demo-idea-${++_nextId}';

@@ -111,7 +111,9 @@ class ReviewLoopTests(unittest.TestCase):
         session = engine.start(GAPPY_PITCH)
         self.assertEqual(session["status"], "needs_input")
         first = pending_questions(session)
-        self.assertEqual([q["field"] for q in first], ["customers", "location", "funding"])
+        # The printed form's order (Q1 location, Q3 customers, Q4 market research); the model writes every question.
+        self.assertEqual([q["field"] for q in first], ["location", "customers", "market_research"])
+        self.assertTrue(all(q["questionEn"].startswith("Could you tell us more") for q in first))
         self.assertLessEqual(len(first), QUESTIONS_PER_ROUND)
         session, rounds = answer_all(engine, session, lambda field: FACTS[field])
         self.assertEqual(session["status"], "complete")

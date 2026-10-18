@@ -109,7 +109,9 @@ void main() {
     expect(find.byWidgetPredicate((widget) => widget is Banner && widget.message == 'OFFLINE DEMO'), findsOneWidget);
     expect(find.text(tr('en', 'consentTitle')), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const Key('consent-processing')));
     await tester.tap(find.byKey(const Key('consent-processing')));
+    await tester.pump();
     await tester.ensureVisible(find.byKey(const Key('consent-save')));
     await tester.tap(find.byKey(const Key('consent-save')));
     await tester.pumpAndSettle();
@@ -119,11 +121,15 @@ void main() {
     await tester.ensureVisible(find.byKey(const Key('profile-save')));
     await tester.tap(find.byKey(const Key('profile-save')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('home-type')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('home-type')));
+    expect(find.byKey(const Key('home-chat')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('home-chat')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('pitch-centre')), findsOneWidget);
-    expect(find.byKey(const Key('answer-sell')), findsOneWidget);
+    expect(find.byKey(const Key('chat-opening')), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('chat-input')), 'A synthetic tailoring idea.');
+    await tester.tap(find.byKey(const Key('chat-send')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('chat-q-demo')), findsOneWidget); // the demo says it analyses nothing
+    expect(find.text(tr('en', 'chatDemoNote')), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(api.calls, isEmpty);

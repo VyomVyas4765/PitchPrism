@@ -7,6 +7,7 @@ import { requirePermission, submissionScope } from '../../auth/authorization.js'
 import { piiVault, type Sealed } from './pii-vault.js';
 import { CONSENT_NOTICE_VERSION, CONSENT_NOTICE_VERSIONS, Consent, Entrepreneur, GENDERS, INDIAN_STATES, LANGUAGES, SHARING_SCOPES, type SharingScope } from './models.js';import { grantConsent, hasProcessingConsent, revokeConsent } from './consent.js';
 import { intakeRouter } from './intake-router.js';
+import { geoRouter } from './geo.js';
 import { assistedRouter } from './assisted-router.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
@@ -23,12 +24,9 @@ const profileInput = z.object({
 }).strict();
 const onboardingInput = z.object({
   name: text(100), mobile: z.string().trim().regex(/^\+?[0-9 ()-]{10,20}$/)
-    .refine(value => /^(?:91)?[6-9]\d{9}$/.test(value.replace(/\D/g, ''))), trade: text(80),
+    .refine(value => /^(?:91)?[6-9]\d{9}$/.test(value.replace(/\D/g, ''))),
   village: text(80), block: text(80), district: text(80), state: z.enum(INDIAN_STATES),
-  pincode: z.string().trim().regex(/^[1-9]\d{5}$/), setupLocation: text(300),
-  productsServices: text(300), targetCustomers: text(300), marketResearch: text(300),
-  rawMaterials: text(300), suppliers: text(300), fundingSources: text(300),
-  competition: text(300), prices: text(300), expectedMonthlyRevenue: text(300),
+  pincode: z.string().trim().regex(/^[1-9]\d{5}$/),
   education: text(150), workBackground: text(300),
   gender: z.enum(GENDERS).nullable(),
   creditScore: z.number().int().min(300).max(900).nullable(),
@@ -79,7 +77,7 @@ export function entrepreneurRouter(config: Config) {
     };
     return {
       id: entrepreneurId, language: record?.language ?? null, profile,
-      profileComplete: !!(profile.name && (profile.district || profile.pincode) && profile.trade),
+      profileComplete: !!record?.onboardingCompletedAt || !!(profile.name && (profile.district || profile.pincode) && profile.trade),
       onboardingComplete: !!record?.onboardingCompletedAt,
       consents: await consentState(entrepreneurId), noticeVersion: CONSENT_NOTICE_VERSION,
     };
@@ -87,21 +85,21 @@ export function entrepreneurRouter(config: Config) {
 
   router.get('/me', entrepreneurOnly, async (req, res) => { res.json(await profileView(self(req))); });
 
-  // A complete application is written once. Concurrent retries cannot replace the first answer set.
+  // Onboarding details are written once. Concurrent retries cannot replace the first submission.
   router.post('/me/onboarding', entrepreneurOnly, async (req, res) => {
     const input = onboardingInput.parse(req.body);
     const id = self(req);
     if (!await hasProcessingConsent(id)) throw new HttpError(403, 'Give consent before saving onboarding details.');
     if (!vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
-    const { name, gender, trade, district, state, pincode, ...answers } = input;
+    const { name, gender, district, state, pincode, ...details } = input;
     const current = await Entrepreneur.findById(id).setOptions({ tenant: { _id: id } }).select('+personal onboardingCompletedAt').lean();
     if (current?.onboardingCompletedAt) throw new HttpError(409, 'Onboarding has already been completed.');
     const previousPersonal = current?.personal ? vault.open<{ gender?: string | null }>(current.personal as Sealed, id) : {};
     const personal = vault.seal({ ...previousPersonal, name, gender }, id);
     const saved = await Entrepreneur.updateOne({ _id: id, onboardingCompletedAt: { $exists: false } }, {
       $set: {
-        personal, onboarding: vault.seal(answers, id),
-        onboardingCompletedAt: new Date(), trade, district, state, pincode,
+        personal, onboarding: vault.seal(details, id),
+        onboardingCompletedAt: new Date(), district, state, pincode,
       },
       $setOnInsert: { userId: id, createdVia: 'self' },
     }, { upsert: false, runValidators: true }).setOptions({ tenant: { _id: id } });
@@ -110,7 +108,7 @@ export function entrepreneurRouter(config: Config) {
       if (existing?.onboardingCompletedAt) throw new HttpError(409, 'Onboarding has already been completed.');
       try {
         await Entrepreneur.create({ _id: id, userId: id, createdVia: 'self', personal,
-          onboarding: vault.seal(answers, id), onboardingCompletedAt: new Date(), trade, district, state, pincode });
+          onboarding: vault.seal(details, id), onboardingCompletedAt: new Date(), district, state, pincode });
       } catch (error) {
         if (error instanceof Error && 'code' in error && error.code === 11000) {
           throw new HttpError(409, 'Onboarding has already been completed.');
@@ -204,6 +202,7 @@ export function entrepreneurRouter(config: Config) {
   });
 
   // Intake and assisted mode live in this module and mount through this router (no extra app.ts edit).
+  router.use(geoRouter());
   router.use(intakeRouter(config));
   router.use(assistedRouter(config));
   return router;

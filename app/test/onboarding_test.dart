@@ -52,7 +52,7 @@ class FakeSpeech implements Speech {
 Map<String, dynamic> me({bool consent = false, bool complete = false, String? language = 'mr'}) => {
   'id': 'synthetic', 'language': language, 'noticeVersion': 'consent-notice-2026-10-17', 'profileComplete': complete,
   'onboardingComplete': complete,
-  'profile': {'name': complete ? 'Synthetic Applicant' : null, 'district': null, 'pincode': null, 'trade': null, 'gender': null},
+  'profile': {'name': complete ? 'Synthetic Applicant' : null, 'district': null, 'pincode': null, 'gender': null},
   'consents': {
     'processing': consent ? {'id': 'c1'} : null,
     'sharing': {'sector_partner': null, 'funding_partner': null},
@@ -125,7 +125,7 @@ void main() {
     ]);
   });
 
-  testWidgets('one-time application validates and sends all scenario prompts', (tester) async {
+  testWidgets('one-time application accepts only the short personal and location form', (tester) async {
     tallScreen(tester);
     final api = FakeApi((call) => me(consent: true, complete: true));
     var done = false;
@@ -135,19 +135,29 @@ void main() {
     await tester.tap(find.byKey(const Key('profile-save')));
     await tester.pump();
     expect(api.calls, isEmpty);
+    expect(find.text(onboardingText('mr', 'idea')), findsNothing);
+    expect(find.byKey(const Key('profile-trade')), findsNothing);
+    expect(find.byKey(const Key('profile-productsServices')), findsNothing);
     const values = {
-      'name': 'Synthetic Applicant', 'mobile': '+91 9123456789', 'education': 'Trade training',
+      'name': 'Synthetic Applicant', 'mobile': '9123456789', 'education': 'Trade training',
       'workBackground': 'Two years stitching', 'village': 'Sample village', 'block': 'Sample block',
-      'district': 'Nashik', 'pincode': '422001', 'trade': 'Tailoring', 'setupLocation': 'Rented room',
-      'productsServices': 'Garments', 'targetCustomers': 'Local families', 'marketResearch': 'Visited shops',
-      'rawMaterials': 'Fabric', 'suppliers': 'Wholesalers', 'fundingSources': 'Savings',
-      'competition': 'Two tailors', 'prices': '400 rupees', 'expectedMonthlyRevenue': '40000 rupees',
+      'district': 'Nashik', 'pincode': '422001',
     };
     for (final entry in values.entries) {
       final field = find.byKey(Key('profile-${entry.key}'));
       await tester.ensureVisible(field);
       await tester.enterText(field, entry.value);
     }
+    final mobile = find.byKey(const Key('profile-mobile'));
+    await tester.ensureVisible(mobile);
+    await tester.enterText(mobile, '91234567890123456789');
+    expect(tester.widget<TextFormField>(mobile).controller!.text, '9123456789');
+    await tester.enterText(mobile, '1123456789');
+    await tester.ensureVisible(find.byKey(const Key('profile-save')));
+    await tester.tap(find.byKey(const Key('profile-save')));
+    await tester.pump();
+    expect(api.calls, isEmpty);
+    await tester.enterText(mobile, values['mobile']!);
     await tester.ensureVisible(find.byKey(const Key('profile-save')));
     await tester.tap(find.byKey(const Key('profile-save')));
     await tester.pumpAndSettle();
@@ -155,6 +165,29 @@ void main() {
     final call = api.calls.single;
     expect('${call.method} ${call.path}', 'POST /me/onboarding');
     expect(call.body, {...values, 'state': 'Andhra Pradesh', 'gender': null, 'creditScore': null});
+  });
+
+  testWidgets('long state names fit a narrow iPhone and the keyboard can be dismissed', (tester) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final api = FakeApi((call) => me(consent: true, complete: true));
+    await tester.pumpWidget(host(MediaQuery(
+      data: const MediaQueryData(viewInsets: EdgeInsets.only(bottom: 300)),
+      child: ProfileScreen(ctx: ctxWith(api, language: 'en'),
+        profile: const {'state': 'Dadra and Nagar Haveli and Daman and Diu'}, onDone: () {}),
+    )));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    final mobile = find.byKey(const Key('profile-mobile'));
+    await tester.ensureVisible(mobile);
+    await tester.showKeyboard(mobile);
+    await tester.pump();
+    final editable = find.descendant(of: mobile, matching: find.byType(EditableText));
+    expect(tester.widget<EditableText>(editable).focusNode.hasFocus, isTrue);
+    await tester.tap(find.byKey(const Key('keyboard-dismiss')));
+    await tester.pump();
+    expect(tester.widget<EditableText>(editable).focusNode.hasFocus, isFalse);
   });
 
   testWidgets('the server state decides consent, then profile, then home; the device language is synced', (tester) async {
@@ -178,9 +211,7 @@ void main() {
     state = me(consent: true, complete: true);
     await tester.pumpWidget(const SizedBox());
     await show();
-    for (final key in ['speak', 'type', 'upload']) {
-      expect(find.byKey(Key('home-$key')), findsOneWidget);
-    }
+    expect(find.byKey(const Key('home-chat')), findsOneWidget);
   });
 
   testWidgets('an expired session returns to sign-in', (tester) async {

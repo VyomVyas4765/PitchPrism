@@ -269,6 +269,13 @@ class Pipeline:
         for key in CORE_FIELDS:
             fields.setdefault(key, {"state": "not_asked", "evidence": []})
 
+        # Which question each answer line belongs to, so later readers (the chat review) keep the form's context.
+        by_id = {segment["segId"]: segment for segment in segments}
+        for pair in pairs:
+            for line in pair.answer:
+                if pair.canonical and id(line) in seg_of:
+                    by_id[seg_of[id(line)]]["field"] = pair.canonical
+
         location = self._location(fields.get("location"), segments, job.get("profile") or {})
         if location is None:
             pending.append({"stage": "location", "reason": "No district and state could be read; ask the applicant or use the profile."})
@@ -336,6 +343,12 @@ def _page_lines(page, document_id: str) -> list[Line]:
         return min(s.ocr_confidence if s.ocr_confidence is not None else 1.0 for s in spans)
 
     outside = [span for span in page.spans if span.cell is None]
+    in_table = [span for span in page.spans if span.cell is not None]
+    if page.number > 1 and in_table:
+        # A repeated masthead above a continued table ("TATA STRIVE" on page 2) is page furniture, not the end of the
+        # previous page's last answer.
+        table_top = min(span.bbox[1] for span in in_table)
+        outside = [span for span in outside if span.bbox[3] > table_top]
     lines: list[Line] = []
     for row in pdf.lines_of(pdf.Page(page.number, page.width, page.height, page.text_chars, True, outside)):
         # A struck value and its correction on one row stay separate lines (A-08 history).

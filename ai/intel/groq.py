@@ -24,7 +24,9 @@ class GroqEdpAdapter:
     max_domains_per_call = 8
     def __init__(self, key: str | None = None, model: str | None = None):
         load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
-        self._key = key or os.getenv("GROQ_API_KEY", "")
+        # Same lookup as the review's adapter factory (GROQ_API_KEY, or a Groq key kept in LLM_MODEL).
+        from ai.llm.factory import _groq_key
+        self._key = key or _groq_key()
         self.model = model or os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
         if self.model not in ALLOWED_MODELS:
             raise CapabilityUnavailable("The configured Groq centre model is not approved for strict EDP scoring.")

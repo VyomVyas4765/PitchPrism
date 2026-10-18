@@ -753,6 +753,14 @@ export interface ReviewQuestion {
   field: CanonicalField;
   round: number;
   questionEn: string;
+  /**
+   * The question as the entrepreneur reads it in the chat (M-05): their language, or English when no checked translation exists.
+   */
+  text?: string;
+  /**
+   * Language of text.
+   */
+  lang?: "en" | "hi" | "mr" | "te" | "or" | "bn";
   reason?: string;
   status: "pending" | "answered" | "skipped";
   answerSegIds?: string[];

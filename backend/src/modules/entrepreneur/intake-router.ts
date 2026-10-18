@@ -1,17 +1,20 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import express, { Router, type Request } from 'express';
+import { Types } from 'mongoose';
 import { z } from 'zod';
 import { HttpError } from '../../errors.js';
+import { recordAudit } from '../../platform/audit.js';
 import { enqueueJob } from '../../platform/jobs.js';
-import { Job, Org, Submission } from '../../models.js';
-import { requirePermission } from '../../auth/authorization.js';
+import { Job, Org, ReviewSession, Submission } from '../../models.js';
+import { requirePermission, submissionScope } from '../../auth/authorization.js';
 import { hasProcessingConsent } from './consent.js';
 import { Entrepreneur, LANGUAGES } from './models.js';
-import { CHUNK_BYTES, DOCUMENT_KINDS, GUIDED_STEPS, MAX_BYTES, MAX_DOCUMENTS, PITCH_MODES, Pitch, PitchDocument } from './intake-models.js';
+import { CHUNK_BYTES, ChatMessage, DOCUMENT_KINDS, GUIDED_STEPS, MAX_BYTES, MAX_DOCUMENTS, PITCH_MODES, Pitch, PitchDocument } from './intake-models.js';
 import { appendChunk, finalise, readOriginal, storeOriginal } from './storage.js';
 import { processPitch, Transcript } from './processing.js';
-import { piiVault } from './pii-vault.js';
+import { piiVault, type Sealed } from './pii-vault.js';
+import { briefRows, buildBrief, type ReviewForBrief } from './brief.js';
 import type { Config } from '../../config.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i);
@@ -20,10 +23,15 @@ const pitchInput = z.object({
   clientDraftId: clientId, mode: z.enum(PITCH_MODES), language: z.enum(LANGUAGES),
   centreId: objectId.optional(), entrepreneurId: objectId.optional(),
 }).strict();
+// Newlines and tabs are allowed in typed answers; other control characters are not.
+const typedText = z.string().trim().min(1).max(4000).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]*$/);
 const answersInput = z.object({
-  // Newlines and tabs are allowed in typed answers; other control characters are not.
-  answers: z.array(z.object({ step: z.enum(GUIDED_STEPS), text: z.string().trim().min(1).max(4000).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]*$/) }).strict()).max(GUIDED_STEPS.length),
+  answers: z.array(z.object({ step: z.enum(GUIDED_STEPS), text: typedText }).strict()).max(GUIDED_STEPS.length),
 }).strict();
+// A chat reply is typed text or one uploaded file (a voice note, a PDF form or a photo), never both.
+const chatInput = z.object({ text: typedText.optional(), documentId: z.string().regex(/^[a-f\d]{24}$/i).optional() }).strict()
+  .refine(input => !input.text !== !input.documentId, 'Send a message or one file.');
+type ReviewQuestion = { qId: string; field: string; round: number; questionEn: string; text?: string; lang?: string; status: string };
 const documentInput = z.object({
   clientFileId: clientId, kind: z.enum(DOCUMENT_KINDS), bytes: z.number().int().positive(),
   sha256: z.string().regex(/^[a-f\d]{64}$/), mime: z.string().regex(/^[a-z]+\/[a-z0-9.+-]+$/i).max(80),
@@ -150,12 +158,14 @@ export function intakeRouter(config: Config) {
       if (String(existing.pitchId) !== String(pitch._id) || existing.sha256 !== input.sha256 || existing.bytes !== input.bytes) throw new HttpError(409, 'This file ID is already used for different content.');
       res.json(documentView(existing)); return;
     }
-    if (pitch.status !== 'DRAFT') throw new HttpError(409, 'This pitch was already submitted.');
+    // A submitted chat pitch takes voice notes and files as replies to the AI's questions (M-05 chat).
+    const reply = pitch.status === 'SUBMITTED' && pitch.mode === 'chat';
+    if (pitch.status !== 'DRAFT' && !reply) throw new HttpError(409, 'This pitch was already submitted.');
     if (input.bytes > MAX_BYTES[input.kind]) throw new HttpError(413, 'This file is too large.');
     if (!MIMES[input.kind].test(input.mime)) throw new HttpError(400, 'This file type is not accepted.');
     if (await PitchDocument.countDocuments({ pitchId: pitch._id }) >= MAX_DOCUMENTS) throw new HttpError(409, 'This pitch already has the maximum number of files.');
     const document = await PitchDocument.create({ pitchId: pitch._id, entrepreneurId: pitch.entrepreneurId, createdByUserId: user.id,
-      purpose: 'pitch', kind: input.kind, declaredMime: input.mime.toLowerCase(), clientFileId: input.clientFileId,
+      purpose: reply ? 'chat_reply' : 'pitch', kind: input.kind, declaredMime: input.mime.toLowerCase(), clientFileId: input.clientFileId,
       promptStep: input.promptStep, bytes: input.bytes, sha256: input.sha256 });
     res.status(201).json(documentView(document));
   });
@@ -199,10 +209,22 @@ export function intakeRouter(config: Config) {
       res.json(pitchView(pitch, await PitchDocument.find({ pitchId: pitch._id })));
       return;
     }
+    await checkSubmittable(req, pitch);
+    const updated = await submitDraft(pitch);
+    res.status(201).json(pitchView(updated, await PitchDocument.find({ pitchId: pitch._id })));
+    // Reading, transcription and translation run in the background on this host (no hosted service).
+    void processPitch(updated._id, vault);
+  });
+
+  async function checkSubmittable(req: Request, pitch: InstanceType<typeof Pitch>) {
     if (!await hasProcessingConsent(pitch.entrepreneurId)) throw new HttpError(403, 'Processing consent is needed before submitting.');
     if (!pitch.centreId) throw new HttpError(409, req.auth!.user.role === 'facilitator'
       ? 'Your organisation is not linked to a centre yet.' : 'Choose the centre you are applying to.');
     if (!await Org.exists({ _id: pitch.centreId, type: 'centre', active: true })) throw new HttpError(409, 'Choose an active centre.');
+  }
+
+  /** Turns a checked draft into a centre-owned Submission and enqueues the pipeline. */
+  async function submitDraft(pitch: InstanceType<typeof Pitch>) {
     const documents = await PitchDocument.find({ pitchId: pitch._id });
     if (documents.some(document => document.state === 'receiving')) throw new HttpError(409, 'Some files are still uploading.');
     const complete = documents.filter(document => document.state === 'complete');
@@ -226,9 +248,186 @@ export function intakeRouter(config: Config) {
     if (!updated) { await Submission.deleteOne({ _id: submission._id }).setOptions({ tenant: { createdByUserId: pitch.createdByUserId } }); throw new HttpError(409, 'This pitch was already submitted.'); }
     // Processing starts at once (consent was checked above); the worker records each stage for the live card.
     await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(pitch.centreId), fromStage: 'ingest', reason: 'new', requestedByUserId: String(pitch.createdByUserId) });
-    res.status(201).json(pitchView(updated, await PitchDocument.find({ pitchId: pitch._id })));
-    // Reading, transcription and translation run in the background on this host (no hosted service).
-    void processPitch(updated._id, vault);
+    return updated;
+  }
+
+  // ---- M-05 chat: the AI asks for the idea, the person replies by text, voice note or PDF, and the review (D-33)
+  // keeps asking in their language until every field is covered. Assistant turns are the review's questions.
+  async function chatView(req: Request, pitch: InstanceType<typeof Pitch>) {
+    const replies = await ChatMessage.find({ pitchId: pitch._id }).sort({ round: 1 }).lean();
+    const submission = pitch.submissionId
+      ? await Submission.findOne({ _id: pitch.submissionId }).setOptions({ tenant: submissionScope(req.auth!) }).lean() : null;
+    const review = submission ? await ReviewSession.findOne({}).setOptions({ tenant: { submissionId: submission._id } }).lean() : null;
+    const questions = (review?.questions ?? []) as ReviewQuestion[];
+    const messages: Record<string, unknown>[] = [];
+    for (const reply of replies) {
+      messages.push({ role: 'user', round: reply.round, kind: reply.kind, text: reply.text ?? null, at: reply.createdAt });
+      for (const question of questions.filter(item => item.round === reply.round + 1)) {
+        messages.push({ role: 'assistant', round: question.round, qId: question.qId, field: question.field,
+          text: question.text ?? question.questionEn, lang: question.lang ?? 'en' });
+      }
+    }
+    const waiting = (review?.inbox ?? []).length > 0;
+    // Once complete, the person sees what the brief will say (the PDF adds their name and mobile from the profile).
+    const brief = review?.status === 'complete' ? briefRows(review as unknown as ReviewForBrief) : null;
+    // Once the plan is built the person decides when it goes to the evaluator: `complete` waits for that button,
+    // `evaluating` while the evaluator pipeline runs, `submitted` once it has finished.
+    const evaluationJob = review?.status === 'complete' && submission
+      ? await Job.findOne({ submissionId: submission._id, fromStage: 'quality' }).sort({ createdAt: -1 }).setOptions({ tenant: 'system' }).lean() : null;
+    const state = !submission ? 'start'
+      : submission.status === 'FAILED' ? 'failed'
+      : review?.status === 'complete' && evaluationJob ? (['QUEUED', 'PROCESSING'].includes(submission.status) ? 'evaluating' : 'submitted')
+      : review?.status === 'complete' ? 'complete'
+      : submission.status === 'NEEDS_INPUT' && review?.status === 'needs_input' && !waiting ? 'your_turn'
+      : 'reading';
+    return { pitchId: String(pitch._id), language: pitch.language, centreId: pitch.centreId ? String(pitch.centreId) : null,
+      submissionId: submission ? String(submission._id) : null, state, round: review?.round ?? 0, messages, brief,
+      canSubmit: state === 'complete' && submission?.status === 'DRAFT',
+      evaluation: evaluationJob ? { status: evaluationJob.status, stage: evaluationJob.currentStage ?? null } : null };
+  }
+
+  const chatPitch = async (req: Request) => {
+    const pitch = await ownPitch(req, req.params.id as string);
+    if (pitch.mode !== 'chat') throw new HttpError(409, 'This pitch is not a chat.');
+    return pitch;
+  };
+
+  router.get('/pitches/:id/chat', canPitch, async (req, res) => { res.json(await chatView(req, await chatPitch(req))); });
+
+  router.post('/pitches/:id/chat', canPitch, async (req, res) => {
+    const input = chatInput.parse(req.body);
+    const pitch = await chatPitch(req);
+    const user = req.auth!.user;
+    let file: InstanceType<typeof PitchDocument> | null = null;
+    if (input.documentId) {
+      file = await PitchDocument.findOne({ _id: input.documentId, pitchId: pitch._id, createdByUserId: user.id,
+        purpose: pitch.status === 'DRAFT' ? 'pitch' : 'chat_reply' });
+      if (!file || file.state !== 'complete') throw new HttpError(409, 'That file has not finished uploading.');
+      if (await ChatMessage.exists({ pitchId: pitch._id, documentId: file._id })) throw new HttpError(409, 'That file was already sent.');
+    }
+    const kind = file?.kind ?? 'text';
+
+    if (pitch.status === 'DRAFT') {
+      // The opening reply submits the pitch; the review then asks its first questions.
+      await checkSubmittable(req, pitch);
+      let storageId = file?.storageId;
+      if (input.text) {
+        const content = Buffer.from(input.text, 'utf8');
+        const clientFileId = `chat-${pitch._id}-r0`;
+        if (await PitchDocument.exists({ createdByUserId: pitch.createdByUserId, clientFileId })) throw new HttpError(409, 'This idea was already sent.');
+        storageId = await storeOriginal(clientFileId, content, { pitchId: pitch._id, kind: 'text' });
+        await PitchDocument.create({ pitchId: pitch._id, entrepreneurId: pitch.entrepreneurId, createdByUserId: pitch.createdByUserId,
+          purpose: 'pitch', kind: 'text', declaredMime: 'text/plain', clientFileId, bytes: content.length,
+          sha256: createHash('sha256').update(content).digest('hex'), receivedBytes: content.length, state: 'complete', storageId, completedAt: new Date() });
+      }
+      await ChatMessage.create({ pitchId: pitch._id, round: 0, kind, text: input.text, documentId: file?._id, storageId: storageId ?? undefined });
+      const updated = await submitDraft(pitch);
+      res.status(201).json(await chatView(req, updated));
+      return;
+    }
+
+    const submission = await Submission.findOne({ _id: pitch.submissionId }).setOptions({ tenant: submissionScope(req.auth!) });
+    if (!submission) throw new HttpError(404, 'Submission not found.');
+    const scope = { tenant: { submissionId: submission._id } };
+    let review = await ReviewSession.findOne({}).setOptions(scope).lean();
+    if (!review || review.status !== 'needs_input') throw new HttpError(409, 'Wait for the next question before replying.');
+    if (submission.status === 'FAILED') {
+      // The last reply could not be read (for example a voice note in a language without a local model):
+      // it is replaced by this one, and the review continues from the same questions.
+      await ReviewSession.updateOne({}, { $set: { inbox: [] } }).setOptions(scope);
+      await ChatMessage.deleteOne({ pitchId: pitch._id, round: review.round });
+      review = { ...review, inbox: [] };
+    } else if (submission.status !== 'NEEDS_INPUT') throw new HttpError(409, 'Wait for the next question before replying.');
+    const received = new Set((review.inbox ?? []).map(item => item.qId));
+    const pending = (review.questions as ReviewQuestion[]).filter(question => question.status === 'pending' && !received.has(question.qId)).map(question => question.qId);
+    if (!pending.length) throw new HttpError(409, 'Wait for the next question before replying.');
+    const storageId = file?.storageId ?? await storeOriginal(`chat-${pitch._id}-r${review.round}`, Buffer.from(input.text!, 'utf8'),
+      { pitchId: pitch._id, submissionId: submission._id, purpose: 'chat_reply', kind: 'text' });
+    try {
+      await ChatMessage.create({ pitchId: pitch._id, round: review.round, kind, text: input.text, documentId: file?._id, storageId });
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000) throw new HttpError(409, 'You already replied; the next question is coming.');
+      throw error;
+    }
+    // One reply answers every open question; the worker reads it once (ai/worker.py, chat replies).
+    const entries = pending.map(qId => ({ qId, storageId, receivedAt: new Date(), byUserId: new Types.ObjectId(user.id) }));
+    const added = await ReviewSession.updateOne({ status: 'needs_input', 'inbox.qId': { $nin: pending } }, { $push: { inbox: { $each: entries } } }).setOptions(scope);
+    if (added.modifiedCount !== 1) {
+      await ChatMessage.deleteOne({ pitchId: pitch._id, round: review.round });
+      throw new HttpError(409, 'You already replied; the next question is coming.');
+    }
+    const version = (submission.inputVersion ?? 1) + 1;
+    await Submission.updateOne({ _id: submission._id }, { $set: { 'followUps.$[question].status': 'answered' }, $inc: { inputVersion: 1 } },
+      { arrayFilters: [{ 'question.qId': { $in: pending } }] }).setOptions({ tenant: submissionScope(req.auth!) });
+    await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(submission.ownerOrgId), fromStage: 'extract', reason: 'followup',
+      inputVersion: version, requestedByUserId: user.id });
+    await recordAudit(req.auth!, 'submission.chat_reply', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, { kind });
+    res.status(202).json(await chatView(req, pitch));
+  });
+
+  /** The Business Idea Brief PDF for a completed review: header from the sealed profile, responses from the review. */
+  async function brief(submissionId: Types.ObjectId, entrepreneurId: Types.ObjectId) {
+    const review = await ReviewSession.findOne({}).setOptions({ tenant: { submissionId } }).lean();
+    if (!review || review.status !== 'complete') throw new HttpError(409, 'The brief is ready once every question is answered.');
+    const id = String(entrepreneurId);
+    const person = await Entrepreneur.findById(id).setOptions({ tenant: { _id: id } }).select('+personal +onboarding').lean();
+    if ((person?.personal || person?.onboarding) && !vault) throw new HttpError(503, 'Profile storage is not configured on this server.');
+    const personal = person?.personal ? vault!.open<{ name?: string }>(person.personal as Sealed, id) : {};
+    const details = person?.onboarding ? vault!.open<{ mobile?: string }>(person.onboarding as Sealed, id) : {};
+    const reviewed = review as unknown as ReviewForBrief;
+    return buildBrief({ name: personal.name ?? null, mobile: details.mobile ?? null, business: reviewed.businessType ?? null, rows: briefRows(reviewed) });
+  }
+  const sendPdf = (res: express.Response, pdf: Buffer) => {
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': 'inline; filename="business-idea-brief.pdf"', 'Cache-Control': 'private, no-store' });
+    res.send(pdf);
+  };
+
+  router.get('/pitches/:id/brief', canPitch, async (req, res) => {
+    const pitch = await chatPitch(req);
+    if (!pitch.submissionId) throw new HttpError(409, 'The brief is ready once every question is answered.');
+    sendPdf(res, (await brief(pitch.submissionId, pitch.entrepreneurId)).pdf);
+  });
+
+  // Centre staff (and HQ) read the brief for submissions in their scope; it carries the applicant's name and mobile.
+  router.get('/submissions/:id/brief', requirePermission('review_centre'), async (req, res) => {
+    const submission = await Submission.findOne({ _id: objectId.parse(req.params.id) }).setOptions({ tenant: submissionScope(req.auth!) }).lean();
+    if (!submission) throw new HttpError(404, 'Submission not found.');
+    const pitch = await Pitch.findOne({ submissionId: submission._id, mode: 'chat' }).lean();
+    if (!pitch) throw new HttpError(404, 'This idea was not completed in the chat.');
+    const result = await brief(submission._id, pitch.entrepreneurId);
+    await recordAudit(req.auth!, 'submission.brief_view', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, {});
+    sendPdf(res, result.pdf);
+  });
+
+  // The person sends the finished plan to the evaluator: only now does the scoring pipeline (quality -> score ->
+  // narrative -> feedback -> route) run on the extracted evidence. Repeating the request is harmless.
+  router.post('/pitches/:id/chat/submit', canPitch, async (req, res) => {
+    const pitch = await chatPitch(req);
+    const submission = pitch.submissionId ? await Submission.findOne({ _id: pitch.submissionId }).setOptions({ tenant: submissionScope(req.auth!) }) : null;
+    if (!submission) throw new HttpError(409, 'Finish the chat before sending your plan.');
+    const review = await ReviewSession.findOne({}).setOptions({ tenant: { submissionId: submission._id } }).lean();
+    if (review?.status !== 'complete') throw new HttpError(409, 'Answer every question before sending your plan to the evaluator.');
+    if (!await hasProcessingConsent(pitch.entrepreneurId)) throw new HttpError(403, 'Processing consent is needed before submitting.');
+    if (!['DRAFT', 'FAILED'].includes(submission.status) && !await Job.exists({ submissionId: submission._id, fromStage: 'quality' }).setOptions({ tenant: 'system' }))
+      throw new HttpError(409, 'Wait for the review to finish, then send your plan.');
+    const { created } = await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(submission.ownerOrgId), fromStage: 'quality', reason: 'new',
+      inputVersion: submission.inputVersion ?? 1, requestedByUserId: req.auth!.user.id });
+    if (created) await recordAudit(req.auth!, 'submission.send_to_evaluator', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, {});
+    res.status(202).json(await chatView(req, pitch));
+  });
+
+  // Try the last step again after a failure (a local model was missing or busy). Nothing is re-sent by the person.
+  router.post('/pitches/:id/chat/retry', canPitch, async (req, res) => {
+    const pitch = await chatPitch(req);
+    const submission = pitch.submissionId ? await Submission.findOne({ _id: pitch.submissionId }).setOptions({ tenant: submissionScope(req.auth!) }) : null;
+    if (!submission || submission.status !== 'FAILED') throw new HttpError(409, 'There is nothing to try again.');
+    const review = await ReviewSession.findOne({}).setOptions({ tenant: { submissionId: submission._id } }).lean();
+    const followup = !!review && (review.inbox ?? []).length > 0;
+    // A failure after the plan was sent to the evaluator is retried from scoring, not from reading the pitch again.
+    const evaluating = review?.status === 'complete' && !followup;
+    await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(submission.ownerOrgId), fromStage: evaluating ? 'quality' : followup ? 'extract' : 'ingest',
+      reason: followup ? 'followup' : 'new', inputVersion: submission.inputVersion ?? 1, requestedByUserId: req.auth!.user.id });
+    res.status(202).json(await chatView(req, pitch));
   });
 
   // Retry after a failure or once a missing local capability has been installed.

@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pitchprism_app/core/speech.dart';
 import 'package:pitchprism_app/entrepreneur/common.dart';
-import 'package:pitchprism_app/entrepreneur/entrepreneur_shell.dart';
 import 'package:pitchprism_app/facilitator/applicant_screen.dart';
 import 'package:pitchprism_app/intake/device.dart';
 import 'package:pitchprism_app/intake/outbox.dart';
+import 'package:pitchprism_app/intake/pitch_screen.dart';
 import 'package:pitchprism_app/intake/services.dart';
 import 'package:pitchprism_app/intake/transcript_screen.dart';
 import 'package:pitchprism_app/l10n/strings.dart';
@@ -39,7 +39,7 @@ class ScreenServer extends FakeServer {
       return {'pipeline': 'pending_queue'};
     }
     if (path == '/me') {
-      return {'id': 'entrepreneur1', 'language': 'en', 'noticeVersion': consentNoticeVersion, 'profileComplete': true,
+      return {'id': 'entrepreneur1', 'language': 'en', 'noticeVersion': consentNoticeVersion, 'profileComplete': true, 'onboardingComplete': true,
         'profile': {}, 'consents': {'processing': {'id': 'c1'}, 'sharing': {'sector_partner': null, 'funding_partner': null}}};
     }
     return super.request(path, body: body, method: method);
@@ -100,18 +100,19 @@ void main() {
   });
   tearDown(() => dir.delete(recursive: true));
 
-  Future<void> openHome(WidgetTester tester) async {
+  // The entrepreneur home now opens the chat (chat_test.dart); facilitators still use these pitch screens.
+  Future<void> openPitch(WidgetTester tester, String mode) async {
     tallScreen(tester);
-    await tester.pumpWidget(MaterialApp(home: EntrepreneurShell(api: server, speech: SilentSpeech(), language: 'en',
-        onChangeLanguage: () {}, onSignOut: () async {}, services: (_) => services)));
+    final item = OutboxItem(clientDraftId: newClientId('draft'), mode: mode, language: 'en');
+    await services.upsert(item);
+    await tester.pumpWidget(MaterialApp(home: PitchScreen(ctx: EntrepreneurContext(api: server, speech: SilentSpeech(), language: 'en'),
+        services: services, item: item)));
     await settle(tester);
   }
 
   testWidgets('a typed pitch is saved on the phone, needs a centre, then reaches the server once', (tester) async {
     {
-      await openHome(tester);
-      await tester.tap(find.byKey(const Key('home-type')));
-      await settle(tester);
+      await openPitch(tester, 'typed');
       await tester.enterText(find.byKey(const Key('answer-sell')), 'Mobile phone repair');
       await tester.tap(find.byKey(const Key('pitch-send')));
       await settle(tester);
@@ -133,11 +134,7 @@ void main() {
 
   testWidgets('a guided step records into app storage and a re-record replaces the earlier take', (tester) async {
     {
-      await openHome(tester);
-      await tester.tap(find.byKey(const Key('home-speak')));
-      await settle(tester);
-      await tester.tap(find.byKey(const Key('speak-guided')));
-      await settle(tester);
+      await openPitch(tester, 'guided');
       final draft = (await store.load()).single.clientDraftId;
       Future<void> takeOne() async {
         await tester.tap(find.byKey(Key('record-$draft-sell')));
@@ -185,11 +182,7 @@ void main() {
   });
 
   testWidgets('free talk records one take of up to five minutes from the Speak choice', (tester) async {
-    await openHome(tester);
-    await tester.tap(find.byKey(const Key('home-speak')));
-    await settle(tester);
-    await tester.tap(find.byKey(const Key('speak-free')));
-    await settle(tester);
+    await openPitch(tester, 'free_talk');
     expect(find.text(tr('en', 'freeTalkPrompt')), findsOneWidget);
     final draft = (await store.load()).single;
     expect(draft.mode, 'free_talk');

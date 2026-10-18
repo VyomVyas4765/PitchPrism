@@ -30,6 +30,9 @@ class FollowUpServer implements ApiClient {
 
   @override
   Future<Map<String, dynamic>> uploadChunk(String documentId, int offset, List<int> bytes) => throw UnimplementedError();
+
+  @override
+  Future<List<int>> download(String path) => throw UnimplementedError();
 }
 
 class QuietSpeech implements Speech {

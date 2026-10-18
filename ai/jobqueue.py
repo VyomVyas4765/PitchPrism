@@ -39,7 +39,8 @@ from ai.providers import CapabilityUnavailable
 LEASE_SECONDS = 60
 log = logging.getLogger("ai.jobqueue")
 STAGES = tuple(bundle()["definitions"]["Stage"]["enum"])
-FINAL_STATUSES = ("READY", "NEEDS_INPUT", "UNASSESSABLE")
+# DRAFT: a chat plan is complete and waits for the person to send it to the evaluator.
+FINAL_STATUSES = ("READY", "NEEDS_INPUT", "UNASSESSABLE", "DRAFT")
 # The queue never changes the status of an idea a reviewer has decided: a rescore versions the evaluation only.
 DECIDED_STATUSES = ("SHORTLISTED", "NOT_YET", "MORE_INFO", "SHARED")
 
@@ -217,7 +218,7 @@ class Run:
                                 started_at=started, usage=state.usage)
 
     def submission_status(self, status):
-        """Set the outcome the reviewer sees: READY, NEEDS_INPUT or UNASSESSABLE."""
+        """Set the outcome the reviewer sees: READY, NEEDS_INPUT, UNASSESSABLE, or DRAFT (held for the person to submit)."""
         if status not in FINAL_STATUSES:
             raise ValueError(f"Workers may only set {FINAL_STATUSES}")
         self.final_status = status

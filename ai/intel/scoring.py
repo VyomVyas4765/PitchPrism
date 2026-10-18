@@ -129,7 +129,7 @@ def _score_schema(keys: list[str]) -> dict[str, Any]:
             "required": ["key", "score", "reason", "evidence", "confidence"],
             "properties": {"key": {"type": "string", "enum": keys}, "score": {"type": "integer", "minimum": 1, "maximum": 5},
                            "reason": {"type": "string", "minLength": 1, "maxLength": 500},
-                           "evidence": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"type": "string"}},
+                           "evidence": {"type": "array", "minItems": 1, "maxItems": 6, "items": {"type": "string"}},
                            "confidence": {"type": "string", "enum": ["high", "medium", "low"]}},
         }},
     }}
@@ -172,6 +172,10 @@ def evaluate(idea: dict[str, Any], adapter: LocalJsonAdapter | None = None,
     # Only cited, redacted source text is included. No name, phone, gender, address, GPS or social category.
     source = {key: [{"segId": seg["segId"], "text": seg["textEn"]} for seg in meta["segments"]
                     if seg["segId"] in allowed_by_domain[key]] for key in score_keys}
+    if adapter and hasattr(adapter, "max_domains_per_call"):
+        for key in score_keys:
+            source[key] = source[key][:3]
+            allowed_by_domain[key] = {item["segId"] for item in source[key]}
     def prompt_for(keys):
         return ("Score the listed EDP domains 1-5 using ONLY this cited evidence. Do not score grammar, language, "
                 "handwriting, template or pitch length. Return each listed key exactly once, with a concise reason and "
@@ -196,8 +200,12 @@ def evaluate(idea: dict[str, Any], adapter: LocalJsonAdapter | None = None,
             key = item["key"]
             if not isinstance(item.get("score"), int) or not 1 <= item["score"] <= 5:
                 raise InvalidEvidence("Invalid domain score.")
-            if not item.get("evidence") or len(item["evidence"]) > 3 or not set(item["evidence"]) <= allowed_by_domain[key]:
+            # Models sometimes cite a fourth segment although asked for 1-3. Every ID must still be a real segment
+            # for this domain; the first three (without repeats) are kept, the rest are dropped, nothing is invented.
+            cited = list(dict.fromkeys(item.get("evidence") or []))
+            if not cited or len(cited) > 6 or not set(cited) <= allowed_by_domain[key]:
                 raise InvalidEvidence("Domain score has unsupported evidence.")
+            item["evidence"] = cited[:3]
             if item.get("confidence") not in {"high", "medium", "low"} or not item.get("reason") or find_pii(item["reason"]):
                 raise InvalidEvidence("Domain judgement is incomplete.")
         runs.append({item["key"]: item for item in domains})

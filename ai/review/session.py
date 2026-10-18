@@ -82,6 +82,25 @@ class ReviewEngine:
                 question["status"] = "skipped"
         return self._review(session, {GROUP_OF[field] for field in touched}, recheck=touched)
 
+    def answer_message(self, session: dict, segments: list[dict], english: str) -> dict:
+        """Merge one free chat reply (text, a voice note or a PDF, already read, redacted and translated by Dev 1's
+        intake into numbered segments) that answers the pending questions together, then review again.
+
+        A chat reply may also touch topics nobody asked about yet, so every group is re-read, not only the asked ones."""
+        if session["status"] != "needs_input":
+            raise ValueError("This review is not waiting for answers.")
+        pending = [question for question in session["questions"] if question["status"] == "pending"]
+        if not pending or not segments:
+            raise ValueError("No pending question was answered.")
+        session["segments"] += segments
+        declined = judge.is_declined(english)
+        for question in pending:
+            question.update({"status": "answered", "answerSegIds": [seg["segId"] for seg in segments], "answerText": english[:2000]})
+            if declined:
+                session["declined"][question["field"]] = "The entrepreneur has not decided this yet."
+        touched = set() if declined else {question["field"] for question in pending}
+        return self._review(session, set(GROUPS), recheck=touched)
+
     # ---- one review pass
     def _review(self, session: dict, groups: set[str], recheck: set[str]) -> dict:
         session["round"] += 1
@@ -99,6 +118,8 @@ class ReviewEngine:
                 session["location"] = result["location"]
             if result["businessType"]:
                 session["businessType"] = result["businessType"]
+        if session["location"] is None and session["fields"].get("location", {}).get("state") == "answered":
+            session["location"] = _location_from_answer(session["fields"]["location"], session["segments"])
         session["verdicts"] = judge.judge(session["fields"], session["numbers"], session["location"], session["segments"],
                                           session["declined"], call, recheck, session["verdicts"])
         self._ask(session, call)
@@ -121,6 +142,16 @@ class ReviewEngine:
             session["questions"].append({"qId": f"f{len(session['questions']) + 1}", "field": key, "round": session["round"],
                                          "questionEn": texts[key], "reason": verdicts[key]["reason"], "status": "pending"})
         session["status"] = "needs_input"
+
+
+def _location_from_answer(field: dict, segments: list[dict]) -> dict | None:
+    from ai.ingest.run import Pipeline
+    # Answers read from a form carry their question ("Where do you intend… — Village X, District Y"); parse the answer.
+    answers = [{**segment, "textEn": segment["textEn"].split(" — ", 1)[-1]} for segment in segments if segment["segId"] in field["evidence"]]
+    place = Pipeline._location({"state": "answered", "evidence": field["evidence"]}, answers, {})
+    if not place or not place.get("district"):
+        return None
+    return {key: place[key] for key in ("village", "district", "state") if place.get(key)} | {"segId": field["evidence"][0]}
 
 
 def pending_questions(session: dict) -> list[dict]:

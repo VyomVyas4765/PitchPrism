@@ -16,9 +16,10 @@ DESCRIBE.update({"skills": "What skills or training does the entrepreneur have f
 CHECKS = {key: _BANK["fields"][key]["review"]["checks"] for key in CORE}
 FALLBACK_QUESTION = {key: _BANK["fields"][key]["review"]["followUp"] for key in CORE}
 
-# Highest-impact gaps are asked first (same order as ai/intel/narrative.followups).
-PRIORITY = ("offering", "customers", "location", "funding", "unit_price", "monthly_revenue",
-            "market_research", "competition", "suppliers", "raw_materials")
+# The printed Business Idea Brief: questions are asked in its order, a field's first question in its wording, so the
+# conversation fills the same form the evaluator reads (M-05 chat). Follow-ups for unclear answers are model-written.
+FORM_QUESTION = {key: _BANK["fields"][key]["form"]["question"] for key in CORE}
+PRIORITY = tuple(sorted(CORE, key=lambda key: _BANK["fields"][key]["form"]["number"]))
 # Small, focused extraction calls keep prompts short enough for a 3B local model.
 GROUPS = {
     "offer": ("offering", "customers", "location", "market_research"),

@@ -21,12 +21,15 @@ import argparse
 import json
 import logging
 import os
+from pathlib import Path
 import socket
+import tempfile
 
 from gridfs import GridFSBucket
 
 from ai.config import PolicyViolation
 from ai.contracts import bundle
+from ai.ingest import chat
 from ai.ingest.pii import find_pii
 from ai.intel.finance import check_finances
 from ai.intel.narrative import feedback_draft, followups, summary_plan
@@ -34,9 +37,10 @@ from ai.intel.routing import suggest_partners
 from ai.intel.scoring import FIELDS, InvalidEvidence, evaluate, prepare_input, quality
 from ai.jobqueue import Consumer, InvalidInput, connect, now
 from ai.llm.adapter import ModelOutputError
-from ai.llm.factory import make_adapter
+from ai.llm.factory import make_adapter as default_adapter
 from ai.providers import CapabilityUnavailable
 from ai.review import ReviewEngine, extracted_input, pending_questions, summary as review_summary
+from ai.review.localize import localize
 from ai.review.segment import PitchTooLong, segment
 
 log = logging.getLogger("ai.worker")
@@ -136,22 +140,119 @@ def save_review(db, job, session, processed):
         {"qId": q["qId"], "field": q["field"], "questionEn": q["questionEn"], "status": q["status"]} for q in session["questions"]]}})
 
 
-def review_pitch(db, job, run, make_adapter):
+class Readers:
+    """Dev 1's local reading models, loaded only when a reply needs them (tests pass fakes)."""
+
+    def __init__(self, pipeline_factory=None):
+        self._factory, self._pipeline = pipeline_factory, None
+
+    def pipeline(self):
+        if self._pipeline is None:
+            if self._factory:
+                self._pipeline = self._factory()
+            else:
+                from ai.ingest.run import Pipeline
+                self._pipeline = Pipeline()
+        return self._pipeline
+
+    def translator(self):
+        return self.pipeline().translator
+
+
+def needs_reading(db, pitch) -> bool:
+    """Chat pitches, voice notes, PDFs, photos and non-English text go through Dev 1's reading pipeline."""
+    if pitch.get("mode") == "chat" or pitch.get("language", "en") != "en":
+        return True
+    return db["documents"].count_documents({"pitchId": pitch["_id"], "purpose": "pitch", "state": "complete",
+                                            "kind": {"$in": ["audio", "pdf", "image"]}}) > 0
+
+
+def reply_segments(db, storage_id, kind, declared_mime, language, document_id, prefix, readers):
+    """One original (a chat reply or an intake file) as numbered, redacted English segments."""
+    data = read_original(db, storage_id)
+    if kind in chat.SUFFIX:
+        with tempfile.TemporaryDirectory(prefix="pitchprism-reply-") as folder:
+            path = Path(folder) / f"reply{chat.SUFFIX[kind]}"
+            path.write_bytes(data)
+            return chat.file_segments(path, kind, language, document_id, prefix, readers.pipeline())
+    text = data.decode("utf-8", errors="replace")
+    if declared_mime == "application/json":
+        try:  # typed answers saved by the intake route: {"language", "answers": [{"step", "text"}]}
+            text = "\n".join(answer.get("text", "") for answer in json.loads(text).get("answers", []))
+        except (ValueError, AttributeError):
+            text = ""
+    return chat.text_segments(text, language, document_id, prefix, readers.translator())
+
+
+def read_pitch(db, job, run, pitch, readers):
+    """Stages ingest .. translate for a pitch that needs reading. Returns (segments, redacted spans)."""
+    language = pitch.get("language", "en")
+    with run.stage("ingest") as current:
+        documents = list(db["documents"].find({"pitchId": pitch["_id"], "purpose": "pitch", "state": "complete"}).sort("_id", 1))
+        if not documents:
+            raise InvalidInput("the pitch has no content")
+        current.summary(documents=len(documents), formats=sorted({document["kind"] for document in documents}))
+    with run.stage("classify") as current:
+        current.summary(formats=sorted({document["kind"] for document in documents}))
+    segments, redacted = [], 0
+    with run.stage("read") as current:
+        for index, document in enumerate(documents, start=1):
+            found, spans = reply_segments(db, document["storageId"], document["kind"], document.get("declaredMime"), language,
+                                          str(document["_id"]), f"d{index}s", readers)
+            segments += found
+            redacted += spans
+        if not segments:
+            raise InvalidInput("the pitch has no readable text")
+        for number, segment in enumerate(segments, start=1):
+            segment["segId"] = f"s{number}"
+        current.summary(segments=len(segments))
+    with run.stage("structure") as current:
+        current.summary(segments=len(segments))
+    with run.stage("redact") as current:
+        if any(find_pii(segment["textEn"]) for segment in segments):
+            raise InvalidInput("unredacted personal data in evidence")
+        current.summary(redacted=redacted)
+    with run.stage("translate") as current:
+        current.summary(languages=sorted({segment["lang"] for segment in segments}))
+    return segments, redacted
+
+
+def review_pitch(db, job, run, make_adapter, readers=None):
     """D-33: read the text pitch, judge each topic, ask follow-ups. Returns the extracted input when complete, else None."""
     session = db["reviewSessions"].find_one({"submissionId": job["submissionId"]})
+    pitch = db["pitches"].find_one({"submissionId": job["submissionId"]}, {"_id": 1, "language": 1, "mode": 1}) or {}
+    language = pitch.get("language", "en")
+    readers = readers or Readers()
     processed = []
+    adapter = None
     if job["reason"] == "followup":
         if not session or session["status"] != "needs_input":
             with run.stage(job["fromStage"]):
                 raise InvalidInput("no review is waiting for answers")
         inbox = session.get("inbox", [])
-        answers = [{"qId": item["qId"], "text": read_original(db, item["storageId"]).decode("utf-8", errors="replace"),
-                    "documentId": str(item["storageId"])} for item in inbox]
         processed = [item["qId"] for item in inbox]
+        answers = segments = None
+        if pitch.get("mode") == "chat" and len({str(item["storageId"]) for item in inbox}) == 1:
+            # One chat reply answers every pending question together (text, a voice note or a file).
+            storage_id = inbox[0]["storageId"]
+            document = db["documents"].find_one({"storageId": storage_id}, {"kind": 1, "declaredMime": 1}) or {}
+            with run.stage("read") as current:
+                segments, _ = reply_segments(db, storage_id, document.get("kind", "text"), document.get("declaredMime"),
+                                             language, str(document.get("_id", storage_id)), f"r{session['round']}m", readers)
+                if not segments:
+                    raise InvalidInput("the reply has no readable text")
+                if any(find_pii(segment["textEn"]) for segment in segments):
+                    raise InvalidInput("unredacted personal data in evidence")
+                current.summary(segments=len(segments), format=document.get("kind", "text"))
+        else:
+            answers = [{"qId": item["qId"], "text": read_original(db, item["storageId"]).decode("utf-8", errors="replace"),
+                        "documentId": str(item["storageId"])} for item in inbox]
         with run.stage("extract") as current:
             adapter = make_adapter()
             try:
-                session = ReviewEngine(adapter.complete_json, model=getattr(adapter.settings, "model", None)).answer(session, answers)
+                engine = ReviewEngine(adapter.complete_json, model=getattr(adapter.settings, "model", None))
+                session = (engine.answer(session, answers) if answers is not None
+                           else engine.answer_message(session, segments, chat.english_of(segments)))
             except PitchTooLong as error:
                 raise InvalidInput("answer too long") from error
             except ValueError as error:
@@ -160,7 +261,14 @@ def review_pitch(db, job, run, make_adapter):
                 raise InvalidInput("answers did not match the pending questions") from error
             calls = [call for call in session["calls"] if call["round"] == session["round"]]
             current.model_use(provider=getattr(adapter, "provider", "ollama"), model=session.get("model"), llm_calls=len(calls))
-            current.summary(answers=len(answers), round=session["round"])
+            current.summary(answers=len(answers) if answers is not None else len(processed), round=session["round"])
+    elif pitch and needs_reading(db, pitch):
+        segments, redacted = read_pitch(db, job, run, pitch, readers)
+        with run.stage("extract") as current:
+            adapter = make_adapter()
+            session = ReviewEngine(adapter.complete_json, model=getattr(adapter.settings, "model", None)).start_segments(segments, redacted)
+            current.model_use(provider=getattr(adapter, "provider", "ollama"), model=session.get("model"), llm_calls=len(session["calls"]))
+            current.summary(round=1)
     else:
         with run.stage("ingest") as current:
             text, document_id, language = pitch_text(db, job)
@@ -196,6 +304,9 @@ def review_pitch(db, job, run, make_adapter):
     with run.stage("quality") as current:
         current.summary(**{key: value for key, value in review_summary(session).items() if key != "questions"})
     with run.stage("followup") as current:
+        if pending_questions(session) and adapter is not None:
+            # The chat speaks the entrepreneur's language; the English wording stays as the reviewed one.
+            localize(pending_questions(session), language, adapter.complete_json)
         current.summary(questions=len(pending_questions(session)), status=session["status"])
     save_review(db, job, session, processed)
     if session["status"] != "complete":
@@ -208,9 +319,9 @@ def review_pitch(db, job, run, make_adapter):
     return idea
 
 
-def handler_for(db, adapter_factory=None):
+def handler_for(db, adapter_factory=None, pipeline_factory=None):
     def make_adapter():
-        return (adapter_factory or make_adapter)()
+        return (adapter_factory or default_adapter)()
 
     def handle(job, run):
         case = db["centrecases"].find_one({"submissionId": job["submissionId"]})
@@ -218,9 +329,15 @@ def handler_for(db, adapter_factory=None):
         reviewed = idea is None or job["reason"] == "followup"
         if reviewed:
             # No extracted evidence yet: review the text pitch (D-33). Questions pending means the job ends here.
-            idea = review_pitch(db, job, run, make_adapter)
+            idea = review_pitch(db, job, run, make_adapter, Readers(pipeline_factory))
             if idea is None:
                 run.submission_status("NEEDS_INPUT")
+                return
+            pitch = db["pitches"].find_one({"submissionId": job["submissionId"]}, {"mode": 1}) or {}
+            if pitch.get("mode") == "chat":
+                # The plan is built. The person sends it to the evaluator with a button, which queues a job
+                # from the quality stage; nothing is scored before that.
+                run.submission_status("DRAFT")
                 return
             case = db["centrecases"].find_one({"submissionId": job["submissionId"]})
         for stage in INTAKE_STAGES if not reviewed else ():

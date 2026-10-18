@@ -13,6 +13,7 @@ import { PitchDocument } from '../entrepreneur/intake-models.js';
 import { readOriginal } from '../entrepreneur/storage.js';
 import { hasProcessingConsent } from '../entrepreneur/consent.js';
 import { piiVault, type Sealed } from '../entrepreneur/pii-vault.js';
+import { applicantContact, applicantForCentre } from '../entrepreneur/applicant.js';
 import { portfolioRouter, portfolioRows, buildPortfolio } from './portfolio.js';
 
 const id = z.string().regex(/^[a-f\d]{24}$/i);
@@ -121,11 +122,11 @@ export function centreRouter(assess: (input: CentreExtractedInput) => Promise<As
         kind: 'pdf', purpose: 'pitch', state: 'complete' }).select('storageId bytes').lean();
       if (!document?.storageId || !document.bytes || document.bytes > 12 * 1024 * 1024)
         throw new HttpError(404, 'A supported pitch plan was not found.');
-      const applicant = await Entrepreneur.findOne({ _id: submission.entrepreneurId, homeOrgId: submission.ownerOrgId })
-        .setOptions({ tenant: { homeOrgId: submission.ownerOrgId } }).select('+personal').lean();
-      const vault = config?.PII_ENCRYPTION_KEY && piiVault(config.PII_ENCRYPTION_KEY);
+      // The applicant's name goes to the local extractor only, to redact it before the hosted model (D-13).
+      const applicant = await applicantForCentre(submission.entrepreneurId, submission.ownerOrgId);
+      const vault = config?.PII_ENCRYPTION_KEY ? piiVault(config.PII_ENCRYPTION_KEY) : null;
       if (!applicant?.personal || !vault) throw new HttpError(503, 'Private applicant details are unavailable.');
-      const name = vault.open<{ name?: string }>(applicant.personal as Sealed, String(applicant._id)).name;
+      const name = applicantContact(applicant, vault).name;
       if (!name) throw new HttpError(422, 'The applicant name is needed for redaction.');
       let output: PdfAssessment;
       try { output = await assessPdf(await readOriginal(document.storageId), applicant.district ?? 'Not recorded', name, String(document._id)); }

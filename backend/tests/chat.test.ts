@@ -208,5 +208,12 @@ describe('chat intake', () => {
     expect(file.status).toBe(200);
     expect((file.body as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
     expect(createHash('sha256').update(file.body as Buffer).digest('hex')).toBe(briefs[0]!.sha256);
+    // ...and sees the personal details the chat model never saw, next to the brief.
+    const plan = await request(app).get(`/api/v1/centre/submissions/${sent.body.submissionId}/plan`).set('Authorization', await as(assessor)).expect(200);
+    expect(plan.body.applicant).toEqual({ name: 'Asha Demo', phone: '9000000080' });
+    expect(plan.body.document).toMatchObject({ sha256: briefs[0]!.sha256 });
+    const sibling = await Org.create({ name: 'Synthetic other centre', type: 'centre' });
+    const outsider = await User.create({ displayName: 'Other assessor', email: 'other-send@pitchprism.test', role: 'centre_assessor', orgId: sibling._id });
+    await request(app).get(`/api/v1/centre/submissions/${sent.body.submissionId}/plan`).set('Authorization', await as(outsider)).expect(404);
   });
 });

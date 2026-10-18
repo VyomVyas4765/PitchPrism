@@ -71,7 +71,8 @@ def connect(uri=None):
     load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
     uri = uri or os.getenv("MONGODB_URI", "mongodb://127.0.0.1:27017/pitchprism")
     client = MongoClient(uri, tz_aware=True, serverSelectionTimeoutMS=int(os.getenv("MONGODB_TIMEOUT_MS", "10000")))
-    return client.get_default_database()
+    # Same default as the API (backend/src/database.ts) when the URI names no database.
+    return client.get_default_database(default="pitchprism")
 
 
 def _json(value):

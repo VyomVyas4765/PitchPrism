@@ -35,7 +35,11 @@ export function configureDatabaseDns(config: Config) {
   if (config.MONGODB_DNS_SERVERS) setServers(config.MONGODB_DNS_SERVERS.split(',').map(ip => ip.trim()));
 }
 export function databaseOptions(config: Config): mongoose.ConnectOptions {
-  return { family: 4, serverSelectionTimeoutMS: config.MONGODB_TIMEOUT_MS, connectTimeoutMS: config.MONGODB_TIMEOUT_MS, maxPoolSize: 10 };
+  // An Atlas "Connect" string often ends in "/" with no database; the API and the worker (ai/jobqueue.py) then both
+  // use "pitchprism" instead of the driver's "test", so they always share one database.
+  const named = /^mongodb(?:\+srv)?:\/\/[^/]+\/[^/?]+/.test(config.MONGODB_URI);
+  return { family: 4, serverSelectionTimeoutMS: config.MONGODB_TIMEOUT_MS, connectTimeoutMS: config.MONGODB_TIMEOUT_MS, maxPoolSize: 10,
+    ...(named ? {} : { dbName: 'pitchprism' }) };
 }
 export async function connectDatabase(config: Config) {
   configureDatabaseDns(config);

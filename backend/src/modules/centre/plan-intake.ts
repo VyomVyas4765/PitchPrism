@@ -165,7 +165,7 @@ export function planIntakeRouter(config: Config, assessPdf: (pdf: Buffer, distri
 
   router.get('/submissions/:id/plan', async (req, res) => {
     const submissionId = id.parse(req.params.id);
-    const submission = await Submission.findOne(scoped(submissionScope(req.auth!), { _id: submissionId })).lean();
+    const submission = await Submission.findOne({ _id: submissionId }).setOptions({ tenant: submissionScope(req.auth!) }).lean();
     if (!submission) throw new HttpError(404, 'Submission not found.');
     const [document, applicant] = await Promise.all([
       PitchDocument.findOne({ submissionId: submission._id, entrepreneurId: submission.entrepreneurId,
@@ -192,7 +192,7 @@ export function planIntakeRouter(config: Config, assessPdf: (pdf: Buffer, distri
     if (!['centre_assessor', 'cohort_lead'].includes(req.auth!.user.role))
       throw new HttpError(403, 'Only centre staff can record consent for an imported plan.');
     const submissionId = id.parse(req.params.id);
-    const submission = await Submission.findOne(scoped(submissionScope(req.auth!), { _id: submissionId }));
+    const submission = await Submission.findOne({ _id: submissionId }).setOptions({ tenant: submissionScope(req.auth!) });
     if (!submission) throw new HttpError(404, 'Submission not found.');
     if (submission.channel !== 'centre_import' || submission.language !== 'en')
       throw new HttpError(422, 'This consent recording path supports English centre imports only.');
@@ -238,7 +238,7 @@ export function planIntakeRouter(config: Config, assessPdf: (pdf: Buffer, distri
 
   router.get('/submissions/:id/plan/file', async (req, res) => {
     const submissionId = id.parse(req.params.id);
-    const submission = await Submission.findOne(scoped(submissionScope(req.auth!), { _id: submissionId })).select('entrepreneurId').lean();
+    const submission = await Submission.findOne({ _id: submissionId }).setOptions({ tenant: submissionScope(req.auth!) }).select('entrepreneurId').lean();
     if (!submission) throw new HttpError(404, 'Submission not found.');
     const document = await PitchDocument.findOne({ submissionId: submission._id, entrepreneurId: submission.entrepreneurId,
       kind: 'pdf', purpose: 'pitch', state: 'complete' }).select('storageId').lean();

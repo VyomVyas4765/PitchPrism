@@ -377,6 +377,20 @@ export function intakeRouter(config: Config) {
     const reviewed = review as unknown as ReviewForBrief;
     return buildBrief({ name: personal.name ?? null, mobile: details.mobile ?? null, business: reviewed.businessType ?? null, rows: briefRows(reviewed) });
   }
+  /** Stores the brief once as the submission's immutable PDF original (not linked to the pitch, so it is never re-read as input). */
+  async function attachBrief(submissionId: Types.ObjectId, pitch: InstanceType<typeof Pitch>) {
+    const clientFileId = `brief-${submissionId}`;
+    if (await PitchDocument.exists({ createdByUserId: pitch.createdByUserId, clientFileId })) return;
+    const { pdf } = await brief(submissionId, pitch.entrepreneurId);
+    const storageId = await storeOriginal(clientFileId, pdf, { submissionId, kind: 'pdf', purpose: 'business_idea_brief' });
+    try {
+      await PitchDocument.create({ submissionId, entrepreneurId: pitch.entrepreneurId, createdByUserId: pitch.createdByUserId, purpose: 'pitch',
+        kind: 'pdf', declaredMime: 'application/pdf', clientFileId, bytes: pdf.length, sha256: createHash('sha256').update(pdf).digest('hex'),
+        receivedBytes: pdf.length, state: 'complete', storageId, completedAt: new Date() });
+    } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error; // a parallel send stored it first
+    }
+  }
   const sendPdf = (res: express.Response, pdf: Buffer) => {
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': 'inline; filename="business-idea-brief.pdf"', 'Cache-Control': 'private, no-store' });
     res.send(pdf);
@@ -410,6 +424,10 @@ export function intakeRouter(config: Config) {
     if (!await hasProcessingConsent(pitch.entrepreneurId)) throw new HttpError(403, 'Processing consent is needed before submitting.');
     if (!['DRAFT', 'FAILED'].includes(submission.status) && !await Job.exists({ submissionId: submission._id, fromStage: 'quality' }).setOptions({ tenant: 'system' }))
       throw new HttpError(409, 'Wait for the review to finish, then send your plan.');
+    // The evaluator receives the Business Idea Brief with the applicant's name and mobile as a private original on the
+    // submission (the centre desk's plan view and PDF evaluator read it there). The model scoring still sees only the
+    // redacted evidence: names and phone numbers are never sent to the hosted model (consent notice, D-13).
+    await attachBrief(submission._id, pitch);
     const { created } = await enqueueJob({ submissionId: String(submission._id), ownerOrgId: String(submission.ownerOrgId), fromStage: 'quality', reason: 'new',
       inputVersion: submission.inputVersion ?? 1, requestedByUserId: req.auth!.user.id });
     if (created) await recordAudit(req.auth!, 'submission.send_to_evaluator', { type: 'submission', id: String(submission._id), orgId: String(submission.ownerOrgId) }, {});

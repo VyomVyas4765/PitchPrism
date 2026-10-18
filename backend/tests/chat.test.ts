@@ -180,4 +180,33 @@ describe('chat intake', () => {
     await request(app).get(`/api/v1/submissions/${sent.body.submissionId}/brief`).set('Authorization', await as(outsider)).expect(404);
     await request(app).get(`/api/v1/submissions/${sent.body.submissionId}/brief`).set('Authorization', auth).expect(403);
   });
+
+  it('hands the evaluator the brief with the applicant details when the person sends the finished plan', async () => {
+    const id = await chatPitch();
+    const sent = await request(app).post(`/api/v1/pitches/${id}/chat`).set('Authorization', auth).send({ text: 'Tailoring shop.' }).expect(201);
+    await request(app).post(`/api/v1/pitches/${id}/chat/submit`).set('Authorization', auth).expect(409); // review not complete
+    await ReviewSession.create({ submissionId: sent.body.submissionId, ownerOrgId: centre._id, status: 'complete', round: 2, questions: [], inbox: [],
+      verdicts: {}, declined: {}, calls: [], businessType: 'Tailoring unit', segments: [{ segId: 's1', textEn: 'Village Kothapally, District Ranga Reddy, Telangana.' }],
+      fields: { location: { state: 'answered', evidence: ['s1'] } } });
+    await Submission.updateOne({ _id: sent.body.submissionId }, { $set: { status: 'DRAFT' } }); // the worker stops here for chat plans
+    const vault = piiVault('ef'.repeat(32))!;
+    await Entrepreneur.updateOne({ _id: applicant._id }, { $set: { personal: vault.seal({ name: 'Asha Demo' }, String(applicant._id)),
+      onboarding: vault.seal({ mobile: '9000000080' }, String(applicant._id)) } }, { upsert: true });
+
+    await request(app).post(`/api/v1/pitches/${id}/chat/submit`).set('Authorization', auth).expect(202);
+    await request(app).post(`/api/v1/pitches/${id}/chat/submit`).set('Authorization', auth).expect(202); // repeating is harmless
+    const briefs = await PitchDocument.find({ submissionId: sent.body.submissionId }).lean();
+    expect(briefs).toHaveLength(1);
+    expect(briefs[0]).toMatchObject({ kind: 'pdf', purpose: 'pitch', state: 'complete', declaredMime: 'application/pdf' });
+    expect(briefs[0]!.pitchId).toBeUndefined(); // never read back as pitch input
+    expect(await Job.countDocuments({ submissionId: sent.body.submissionId, fromStage: 'quality' })).toBe(1);
+
+    // The centre evaluator opens the stored brief from the review desk.
+    const assessor = await User.create({ displayName: 'Synthetic assessor', email: 'assessor-send@pitchprism.test', role: 'centre_assessor', orgId: centre._id });
+    const file = await request(app).get(`/api/v1/centre/submissions/${sent.body.submissionId}/plan/file`).set('Authorization', await as(assessor)).buffer(true)
+      .parse((response, done) => { const parts: Buffer[] = []; response.on('data', (part: Buffer) => parts.push(part)); response.on('end', () => done(null, Buffer.concat(parts))); });
+    expect(file.status).toBe(200);
+    expect((file.body as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
+    expect(createHash('sha256').update(file.body as Buffer).digest('hex')).toBe(briefs[0]!.sha256);
+  });
 });
